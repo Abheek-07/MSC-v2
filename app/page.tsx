@@ -14,7 +14,6 @@ import {
   Sparkles,
   ShieldCheck,
 } from 'lucide-react';
-import RingLoader from '@/components/RingLoader';
 import TelemetryMarquee from '@/components/TelemetryMarquee';
 import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
 import { getAdminClient } from '@/lib/supabase/admin';
@@ -48,29 +47,36 @@ export default async function HomePage() {
 
   return (
     <div>
-      {/* 0. Interactive Ring Loader (First visit per session) */}
-      <RingLoader />
-
-      {/* 1. CINEMATIC DARK HERO SECTION */}
+      {/* 1. CINEMATIC HERO SECTION WITH OFFICIAL WINDOWS FLOW WALLPAPER */}
       <section
         style={{
-          background: 'radial-gradient(ellipse at 80% 20%, #162a45 0%, var(--bg-deep) 50%, var(--bg-deeper) 100%)',
+          backgroundColor: '#040b14',
           color: 'var(--text-on-dark)',
-          padding: '100px 0 80px 0',
+          padding: '110px 0 90px 0',
           position: 'relative',
           overflow: 'hidden',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
         }}
       >
-        {/* Subtle grid pattern background */}
+        {/* Background Wallpaper Image */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            opacity: 0.1,
-            backgroundImage:
-              'linear-gradient(rgba(255,255,255,0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.2) 1px, transparent 1px)',
-            backgroundSize: '40px 40px',
+            backgroundImage: 'url(/images/hero-bg.png)',
+            backgroundSize: 'cover',
+            backgroundPosition: 'center right',
+            backgroundRepeat: 'no-repeat',
+            pointerEvents: 'none',
+          }}
+        />
+
+        {/* Ambient Dark Gradient Overlay for text contrast */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(90deg, rgba(4, 11, 20, 0.94) 0%, rgba(4, 11, 20, 0.80) 48%, rgba(4, 11, 20, 0.35) 100%)',
             pointerEvents: 'none',
           }}
         />
@@ -330,49 +336,54 @@ export default async function HomePage() {
 
           {/* Spotlight Card */}
           <div
-            className="fluent-card"
+            className="fluent-showcase-card"
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+              borderRadius: '24px',
+              border: '1px solid var(--border)',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
               overflow: 'hidden',
-              boxShadow: 'var(--shadow-lift)',
               marginBottom: '36px',
+              background: 'var(--surface)',
             }}
           >
-            <div style={{ minHeight: '320px', position: 'relative', overflow: 'hidden' }}>
-              <img
-                src={flagship.image_url}
-                alt={flagship.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-              <div
-                style={{
-                  position: 'absolute',
-                  top: '16px',
-                  left: '16px',
-                  background: 'rgba(0,0,0,0.85)',
-                  backdropFilter: 'blur(4px)',
-                  color: '#ffffff',
-                  padding: '6px 14px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '13px',
-                  fontWeight: 800,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.08em',
-                  border: '1px solid rgba(255,255,255,0.2)',
-                }}
-              >
-                SEP 17
+            <div style={{ minHeight: '340px', position: 'relative', overflow: 'hidden', padding: '16px' }}>
+              <div style={{ width: '100%', height: '100%', minHeight: '320px', borderRadius: '18px', overflow: 'hidden', position: 'relative' }}>
+                <img
+                  src={flagship.image_url}
+                  alt={flagship.title}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+                <div
+                  style={{
+                    position: 'absolute',
+                    top: '14px',
+                    left: '14px',
+                    background: 'rgba(0,0,0,0.85)',
+                    backdropFilter: 'blur(4px)',
+                    color: '#ffffff',
+                    padding: '6px 14px',
+                    borderRadius: '8px',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.08em',
+                    border: '1px solid rgba(255,255,255,0.2)',
+                  }}
+                >
+                  SEP 17
+                </div>
               </div>
             </div>
 
-            <div style={{ padding: '40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ padding: '44px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
-                <span className="fluent-badge badge-warning" style={{ fontWeight: 800, letterSpacing: '0.05em' }}>
+                <span className="fluent-badge badge-warning" style={{ fontWeight: 800, letterSpacing: '0.05em', borderRadius: '6px' }}>
                   SEP 17
                 </span>
-                <span className="fluent-badge badge-success">Registration Open</span>
-                <span className="fluent-badge badge-info">&#8377; 30,000+ Bounty Pool</span>
+                <span className="fluent-badge badge-success" style={{ borderRadius: '6px' }}>Registration Open</span>
+                <span className="fluent-badge badge-info" style={{ borderRadius: '6px' }}>&#8377; 30,000+ Bounty Pool</span>
               </div>
 
               <h3 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '12px' }}>
@@ -398,14 +409,14 @@ export default async function HomePage() {
                 <Link
                   href={`/events/${flagship.slug}`}
                   className="fluent-btn fluent-btn-primary"
-                  style={{ padding: '12px 28px', fontSize: '15px' }}
+                  style={{ padding: '12px 28px', fontSize: '15px', borderRadius: '8px' }}
                 >
                   Enter Event Portal &rarr;
                 </Link>
                 <Link
                   href="/custom-events/synora"
                   className="fluent-btn fluent-btn-secondary"
-                  style={{ padding: '12px 20px', fontSize: '15px' }}
+                  style={{ padding: '12px 20px', fontSize: '15px', borderRadius: '8px' }}
                 >
                   F1 Interactive Microsite
                 </Link>
@@ -419,18 +430,19 @@ export default async function HomePage() {
       <section id="contact" style={{ padding: '80px 0', background: 'var(--bg)' }}>
         <div className="container">
           <div
+            className="fluent-showcase-card"
             style={{
               background: 'var(--surface)',
               border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-sm)',
-              boxShadow: 'var(--shadow-rest)',
+              borderRadius: '24px',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
               overflow: 'hidden',
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
             }}
           >
             {/* Contact details */}
-            <div style={{ padding: '48px', background: 'var(--bg-tinted)' }}>
+            <div style={{ padding: '48px 44px', background: 'var(--bg-tinted)' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Official Line
               </span>
@@ -467,7 +479,7 @@ export default async function HomePage() {
             </div>
 
             {/* Message form via Web3Forms API relay */}
-            <div style={{ padding: '48px' }}>
+            <div style={{ padding: '48px 44px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '20px', color: 'var(--text-strong)' }}>
                 Send Us a Message
               </h3>
@@ -491,6 +503,7 @@ export default async function HomePage() {
                     required
                     placeholder="e.g. Alex Morgan"
                     className="fluent-input"
+                    style={{ borderRadius: '8px' }}
                   />
                 </div>
 
@@ -504,6 +517,7 @@ export default async function HomePage() {
                     required
                     placeholder="name@srmap.edu.in"
                     className="fluent-input"
+                    style={{ borderRadius: '8px' }}
                   />
                 </div>
 
@@ -517,6 +531,7 @@ export default async function HomePage() {
                     required
                     placeholder="e.g. Hackathon Sponsorship / Event Collaboration"
                     className="fluent-input"
+                    style={{ borderRadius: '8px' }}
                   />
                 </div>
 
@@ -530,14 +545,14 @@ export default async function HomePage() {
                     required
                     placeholder="Provide details about your query..."
                     className="fluent-input"
-                    style={{ resize: 'vertical' }}
+                    style={{ resize: 'vertical', borderRadius: '8px' }}
                   />
                 </div>
 
                 <button
                   type="submit"
                   className="fluent-btn fluent-btn-primary"
-                  style={{ alignSelf: 'flex-start', padding: '10px 24px' }}
+                  style={{ alignSelf: 'flex-start', padding: '12px 28px', borderRadius: '8px' }}
                 >
                   <Send size={15} /> Submit Inquiry
                 </button>

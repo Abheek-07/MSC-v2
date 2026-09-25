@@ -38,10 +38,11 @@
   --shadow-rest:     0 6.4px 14.4px rgba(0, 0, 0, 0.08);
   --shadow-lift:     0 12.8px 28.8px rgba(0, 0, 0, 0.12);
 
-  /* Fluent tight radii */
-  --radius-sm:       2px;
-  --radius-md:       4px;
-  --radius-lg:       6px;
+  /* Modern Microsoft Fluent Curvature */
+  --radius-sm:       6px;
+  --radius-md:       12px;
+  --radius-lg:       16px;
+  --radius-xl:       24px;
 
   /* Official Microsoft Web Typography System (Segoe UI) */
   --font-family:     "Segoe UI", SegoeUI, -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
@@ -221,7 +222,7 @@ a:hover {
 .fluent-card {
   background-color: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-lg);
   box-shadow: var(--shadow-rest);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   overflow: hidden;
@@ -229,6 +230,20 @@ a:hover {
 
 .fluent-card:hover {
   box-shadow: var(--shadow-lift);
+}
+
+/* Large Showcase Card (Windows 11 / Surface style) */
+.fluent-showcase-card {
+  background-color: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+
+.fluent-showcase-card:hover {
+  box-shadow: 0 16px 40px -12px rgba(0, 0, 0, 0.12);
 }
 
 /* 4-Column Tile Grid */
