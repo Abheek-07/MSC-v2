@@ -35,107 +35,175 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
           </p>
         </div>
 
-        {/* 3. FEATURED EVENT BANNER (Automatically spotlights closest upcoming event) */}
-        {featuredEvent && (
-          <div
-            style={{
-              background: 'linear-gradient(135deg, #0e1726 0%, #05111c 100%)',
-              color: '#ffffff',
-              borderRadius: 'var(--radius-sm)',
-              border: '1px solid rgba(0, 103, 184, 0.4)',
-              boxShadow: 'var(--shadow-lift)',
-              padding: 'clamp(20px, 4vw, 44px)',
-              marginBottom: '48px',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
-            <div style={{ maxWidth: '800px', position: 'relative', zIndex: 1 }}>
-              <div
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  background: 'rgba(0, 103, 184, 0.25)',
-                  border: '1px solid rgba(0, 103, 184, 0.5)',
-                  color: '#58a6ff',
-                  padding: '4px 12px',
-                  borderRadius: 'var(--radius-sm)',
-                  fontSize: '11px',
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
-                  textTransform: 'uppercase',
-                  marginBottom: '16px',
-                }}
-              >
-                <Sparkles size={14} /> Spotlight Upcoming Event
-              </div>
+        {/* 3. FEATURED EVENT SHOWCASE (24px Fluent Showcase Card) */}
+        {featuredEvent && (() => {
+          const startDate = new Date(featuredEvent.date_start);
+          const monthShort = startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
+          const dayNum = startDate.toLocaleDateString('en-US', { day: '2-digit' });
+          const isPaid = featuredEvent.form_requirements?.event_pricing === 'paid';
+          const priceLabel = isPaid ? `₹${featuredEvent.form_requirements.registration_fee}` : 'Free Entry';
 
-              <h2 style={{ fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 700, color: '#ffffff', marginBottom: '14px' }}>
-                {featuredEvent.title}
-              </h2>
-
-              <p style={{ fontSize: '15px', color: 'rgba(255, 255, 255, 0.85)', lineHeight: 1.6, marginBottom: '28px' }}>
-                {featuredEvent.description}
-              </p>
-
-              <div
-                style={{
-                  display: 'flex',
-                  gap: '24px',
-                  flexWrap: 'wrap',
-                  marginBottom: '28px',
-                  fontSize: '13px',
-                  color: 'rgba(255, 255, 255, 0.8)',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Calendar size={15} color="#58a6ff" />
-                  <span>{new Date(featuredEvent.date_start).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <MapPin size={15} color="#58a6ff" />
-                  <span>{featuredEvent.location}</span>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Users size={15} color="#58a6ff" />
-                  <span>{featuredEvent.max_capacity} Seats</span>
-                </div>
-              </div>
-
-              <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
-                <Link
-                  href={`/events/${featuredEvent.slug}`}
-                  className="fluent-btn fluent-btn-primary"
-                  style={{ padding: '10px 24px', fontSize: '14px' }}
+          return (
+            <div
+              className="fluent-showcase-card"
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+                borderRadius: '24px',
+                border: '1px solid var(--border)',
+                boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+                overflow: 'hidden',
+                marginBottom: '48px',
+                background: 'var(--surface)',
+              }}
+            >
+              {/* Event Image Column with Floating Badges */}
+              <div style={{ minHeight: '280px', position: 'relative', overflow: 'hidden', padding: '16px' }}>
+                <div
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    minHeight: '260px',
+                    borderRadius: '18px',
+                    overflow: 'hidden',
+                    position: 'relative',
+                    background: 'var(--bg-soft)',
+                  }}
                 >
-                  Enter Event Portal &rarr;
-                </Link>
-                {featuredEvent.slug === 'synora-26' && (
-                  <Link
-                    href="/custom-events/synora"
-                    className="fluent-btn fluent-btn-secondary"
+                  <img
+                    src={featuredEvent.image_url}
+                    alt={featuredEvent.title}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
+                  />
+                  {/* Floating Date Badge */}
+                  <div
                     style={{
-                      padding: '10px 20px',
-                      fontSize: '14px',
-                      backgroundColor: 'rgba(255,255,255,0.08)',
+                      position: 'absolute',
+                      top: '14px',
+                      left: '14px',
+                      background: 'rgba(0, 0, 0, 0.85)',
+                      backdropFilter: 'blur(8px)',
                       color: '#ffffff',
-                      borderColor: 'rgba(255,255,255,0.3)',
+                      padding: '6px 14px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.08em',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
                     }}
                   >
-                    View F1 Microsite <ExternalLink size={13} />
+                    <span>{monthShort}</span>
+                    <span>{dayNum}</span>
+                  </div>
+
+                  {/* Floating Status / Price Pill */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '14px',
+                      right: '14px',
+                      background: 'rgba(0, 103, 184, 0.90)',
+                      backdropFilter: 'blur(8px)',
+                      color: '#ffffff',
+                      padding: '5px 14px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      border: '1px solid rgba(255, 255, 255, 0.25)',
+                    }}
+                  >
+                    {priceLabel}
+                  </div>
+                </div>
+              </div>
+
+              {/* Event Information Column */}
+              <div style={{ padding: 'clamp(24px, 4vw, 40px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <span
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '5px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      color: 'var(--brand)',
+                      background: 'var(--brand-soft)',
+                      padding: '4px 10px',
+                      borderRadius: '6px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                    }}
+                  >
+                    <Sparkles size={13} /> Spotlight Upcoming Event
+                  </span>
+                  <span className="fluent-badge badge-success" style={{ borderRadius: '6px' }}>
+                    Registration Open
+                  </span>
+                  {featuredEvent.type && (
+                    <span className="fluent-badge badge-info" style={{ borderRadius: '6px' }}>
+                      {featuredEvent.type.toUpperCase()}
+                    </span>
+                  )}
+                </div>
+
+                <h2 style={{ fontSize: 'clamp(24px, 4vw, 32px)', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '12px', lineHeight: 1.25 }}>
+                  {featuredEvent.title}
+                </h2>
+
+                <p style={{ fontSize: '14.5px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
+                  {featuredEvent.description}
+                </p>
+
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: 'var(--text-body)', marginBottom: '28px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Calendar size={15} color="var(--brand)" />
+                    <span>
+                      {startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <MapPin size={15} color="var(--brand)" />
+                    <span>{featuredEvent.location}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <Users size={15} color="var(--brand)" />
+                    <span>{featuredEvent.max_capacity} Confirmed Attendee Seats</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                  <Link
+                    href={`/events/${featuredEvent.slug}`}
+                    className="fluent-btn fluent-btn-primary"
+                    style={{ padding: '11px 26px', fontSize: '14px', borderRadius: '8px' }}
+                  >
+                    Enter Event Portal &rarr;
                   </Link>
-                )}
-                <Link
-                  href="/gallery"
-                  style={{ color: '#58a6ff', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-                >
-                  <ImageIcon size={14} /> View Photo Gallery
-                </Link>
+                  {featuredEvent.slug === 'synora-26' && (
+                    <Link
+                      href="/custom-events/synora"
+                      className="fluent-btn fluent-btn-secondary"
+                      style={{ padding: '11px 20px', fontSize: '14px', borderRadius: '8px' }}
+                    >
+                      View F1 Microsite <ExternalLink size={13} />
+                    </Link>
+                  )}
+                  <Link
+                    href="/gallery"
+                    style={{ color: 'var(--brand)', fontSize: '13px', display: 'inline-flex', alignItems: 'center', gap: '5px', marginLeft: '4px' }}
+                  >
+                    <ImageIcon size={15} /> View Photo Gallery
+                  </Link>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
 
         {/* 2. CATEGORY FILTER TABS */}
         <div
