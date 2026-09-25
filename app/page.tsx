@@ -12,6 +12,9 @@ import {
   MapPin,
   Send,
   ShieldCheck,
+  Code,
+  BookOpen,
+  Sparkles,
 } from 'lucide-react';
 import TelemetryMarquee from '@/components/TelemetryMarquee';
 import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
@@ -35,60 +38,93 @@ export default async function HomePage() {
       allEvents = data as EventItem[];
     }
   } catch (err) {
-    console.warn('Home events query fallback:', err);
+    console.warn('Using fallback events catalog:', err);
   }
 
-  const upcomingEvents = allEvents.filter((e) => e.status === 'upcoming');
-  const flagship =
-    allEvents.find((e) => e.slug === 'synora-26' || e.slug === 'synora') ||
-    upcomingEvents[0] ||
-    allEvents[0];
+  const upcomingList = allEvents.filter((e) => e.status === 'upcoming');
+  const flagship = upcomingList[0] || allEvents[0];
 
   return (
-    <div>
-      {/* 1. CINEMATIC HERO SECTION WITH OFFICIAL WINDOWS FLOW WALLPAPER */}
+    <div style={{ background: 'var(--bg)', color: 'var(--text-body)', fontFamily: 'var(--font-family)' }}>
+      {/* 1. AUTHENTIC MICROSOFT FLUENT HERO SECTION */}
       <section
         style={{
-          backgroundColor: '#040b14',
-          color: 'var(--text-on-dark)',
-          padding: '110px 0 90px 0',
           position: 'relative',
+          padding: 'clamp(80px, 12vw, 130px) 0 clamp(70px, 10vw, 110px) 0',
           overflow: 'hidden',
-          borderBottom: '1px solid rgba(255,255,255,0.08)',
+          backgroundColor: '#05111c',
+          color: '#ffffff',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
         }}
       >
-        {/* Background Wallpaper Image */}
+        {/* Background Artwork */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            backgroundImage: 'url(/images/hero-bg.png)',
+            backgroundImage: "url('/hero_bg.png')",
             backgroundSize: 'cover',
-            backgroundPosition: 'center right',
-            backgroundRepeat: 'no-repeat',
-            pointerEvents: 'none',
+            backgroundPosition: 'center',
+            opacity: 0.35,
           }}
         />
 
-        {/* Ambient Dark Gradient Overlay for text contrast */}
+        {/* Ambient Dark Gradient Overlay for optimal contrast */}
         <div
           style={{
             position: 'absolute',
             inset: 0,
-            background: 'linear-gradient(90deg, rgba(4, 11, 20, 0.94) 0%, rgba(4, 11, 20, 0.80) 48%, rgba(4, 11, 20, 0.35) 100%)',
+            background: 'linear-gradient(90deg, rgba(5, 17, 28, 0.95) 0%, rgba(5, 17, 28, 0.82) 50%, rgba(5, 17, 28, 0.40) 100%)',
             pointerEvents: 'none',
           }}
         />
 
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
-          <div style={{ maxWidth: '860px' }}>
+          <div style={{ maxWidth: '840px' }}>
+            {/* Microsoft Brand Eyebrow with 4-Color Tiles */}
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '8px',
+                padding: '5px 12px',
+                background: 'rgba(255, 255, 255, 0.08)',
+                border: '1px solid rgba(255, 255, 255, 0.16)',
+                borderRadius: '4px',
+                marginBottom: '24px',
+                fontSize: '12px',
+                fontWeight: 600,
+                letterSpacing: '0.04em',
+                color: '#ffffff',
+                backdropFilter: 'blur(8px)',
+              }}
+            >
+              <div
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(2, 6px)',
+                  gridTemplateRows: 'repeat(2, 6px)',
+                  gap: '2px',
+                  flexShrink: 0,
+                }}
+              >
+                <div style={{ background: '#f25022', borderRadius: '1px' }} />
+                <div style={{ background: '#7fba00', borderRadius: '1px' }} />
+                <div style={{ background: '#00a4ef', borderRadius: '1px' }} />
+                <div style={{ background: '#ffb900', borderRadius: '1px' }} />
+              </div>
+              <span>MICROSOFT STUDENT COMMUNITY &bull; SRM AP CHAPTER &apos;26</span>
+            </div>
+
             {/* Headline */}
             <h1
-              className="display-hero"
               style={{
-                color: '#ffffff',
-                marginBottom: '24px',
+                fontSize: 'clamp(36px, 5.5vw, 56px)',
                 fontWeight: 600,
+                lineHeight: 1.15,
+                color: '#ffffff',
+                marginBottom: '20px',
+                letterSpacing: '-0.02em',
               }}
             >
               Where Student Builders Architect the Future.
@@ -96,38 +132,61 @@ export default async function HomePage() {
 
             {/* Sub-headline */}
             <p
-              className="body-lg"
               style={{
+                fontSize: 'clamp(16px, 2.2vw, 18px)',
                 color: 'rgba(255, 255, 255, 0.85)',
                 maxWidth: '680px',
-                lineHeight: 1.5,
-                marginBottom: '40px',
+                lineHeight: 1.6,
+                marginBottom: '36px',
               }}
             >
-              SRM University AP&apos;s premier engineering collective powered by Microsoft Learn Student Ambassadors. We engineer scalable cloud platforms, accelerate applied AI, and compete across national hackathons.
+              SRM University AP&apos;s official Microsoft Student Community chapter. We engineer scalable cloud applications on Azure, build open-source systems, and host national hackathons.
             </p>
 
-            {/* Primary Action Buttons */}
-            <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <a
-                href="https://discord.gg/K5NC5wAhg"
-                target="_blank"
-                rel="noopener noreferrer"
+            {/* Microsoft Primary Action Buttons */}
+            <div style={{ display: 'flex', gap: '14px', flexWrap: 'wrap', alignItems: 'center' }}>
+              <Link
+                href="/events"
                 className="fluent-btn fluent-btn-primary"
                 style={{
-                  padding: '12px 28px',
-                  fontSize: '15px',
+                  padding: '11px 26px',
+                  fontSize: '14.5px',
+                  fontWeight: 600,
+                  borderRadius: '4px',
                   backgroundColor: 'var(--brand)',
                   color: '#ffffff',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '10px',
+                  gap: '8px',
+                }}
+              >
+                <span>Explore Events</span>
+                <ArrowRight size={15} />
+              </Link>
+
+              <a
+                href="https://discord.gg/K5NC5wAhg"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fluent-btn fluent-btn-secondary"
+                style={{
+                  padding: '11px 22px',
+                  fontSize: '14.5px',
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  color: '#ffffff',
+                  borderColor: 'rgba(255, 255, 255, 0.25)',
+                  backdropFilter: 'blur(8px)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
                 <span>Join Discord Guild</span>
                 <span
                   style={{
-                    background: '#0e7c41',
+                    background: '#107c10',
                     color: '#ffffff',
                     fontSize: '10px',
                     padding: '2px 6px',
@@ -135,127 +194,176 @@ export default async function HomePage() {
                     fontWeight: 700,
                   }}
                 >
-                  1,200+ ONLINE
+                  1,200+
                 </span>
-                <ExternalLink size={14} />
+                <ExternalLink size={13} />
               </a>
+
+              <Link
+                href="/about"
+                style={{
+                  fontSize: '13.5px',
+                  fontWeight: 500,
+                  color: 'rgba(255, 255, 255, 0.8)',
+                  textDecoration: 'none',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginLeft: '4px',
+                }}
+              >
+                <span>Our Charter &amp; Mission &rarr;</span>
+              </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 2. INFINITE TELEMETRY TICKER MARQUEE */}
+      {/* 2. INFINITE TELEMETRY MARQUEE */}
       <TelemetryMarquee />
 
-      {/* 3. ECOSYSTEM PILLARS (#ecosystem) - 3 Numbered Domain Cards */}
+      {/* 3. ENGINEERING PILLARS - Microsoft Solution Architecture Style */}
       <section id="ecosystem" style={{ padding: '80px 0', background: 'var(--bg)' }}>
         <div className="container">
           <div style={{ marginBottom: '40px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Guiding Engineering Framework
             </span>
-            <h2 style={{ fontSize: '32px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
-              Built for serious student developers.
+            <h2 style={{ fontSize: '32px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px', letterSpacing: '-0.01em' }}>
+              Built for student developers who ship.
             </h2>
-            <p style={{ color: 'var(--text-muted)', fontSize: '15px', maxWidth: '640px', marginTop: '8px' }}>
+            <p style={{ color: 'var(--text-muted)', fontSize: '15px', maxWidth: '640px', marginTop: '8px', lineHeight: 1.6 }}>
               Three specialized engineering disciplines elevating student developers from local experiments into production-grade systems.
             </p>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '24px' }}>
             {/* Pillar 01 */}
-            <div className="fluent-card" style={{ padding: 'clamp(20px, 4vw, 32px)', display: 'flex', flexDirection: 'column' }}>
+            <div
+              className="fluent-card"
+              style={{
+                padding: '32px 28px',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: '6px',
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div
                   style={{
-                    width: '48px',
-                    height: '48px',
+                    width: '44px',
+                    height: '44px',
                     background: 'var(--brand-soft)',
                     color: 'var(--brand)',
-                    borderRadius: 'var(--radius-sm)',
+                    borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Cloud size={24} />
+                  <Cloud size={22} />
                 </div>
-                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--border-strong)', opacity: 0.4 }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-muted)' }}>
                   01
                 </span>
               </div>
-              <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '10px', color: 'var(--text-strong)' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-strong)' }}>
                 Applied Cloud &amp; AI
               </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
+              <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '20px' }}>
                 Hands-on systems engineering, Microsoft Azure deployments, and production LLM orchestration workshops built for real scale.
               </p>
-              <Link href="/events" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                Explore Cloud Workshops <ArrowRight size={14} />
+              <Link href="/events" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                Explore Cloud Workshops <ArrowRight size={13} />
               </Link>
             </div>
 
             {/* Pillar 02 */}
-            <div className="fluent-card" style={{ padding: 'clamp(20px, 4vw, 32px)', display: 'flex', flexDirection: 'column' }}>
+            <div
+              className="fluent-card"
+              style={{
+                padding: '32px 28px',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: '6px',
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div
                   style={{
-                    width: '48px',
-                    height: '48px',
+                    width: '44px',
+                    height: '44px',
                     background: 'var(--brand-soft)',
                     color: 'var(--brand)',
-                    borderRadius: 'var(--radius-sm)',
+                    borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Trophy size={24} />
+                  <Trophy size={22} />
                 </div>
-                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--border-strong)', opacity: 0.4 }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-muted)' }}>
                   02
                 </span>
               </div>
-              <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '10px', color: 'var(--text-strong)' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-strong)' }}>
                 National Hackathons
               </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
-                Organizing high-stakes hackathons like Solutions for Smart India, uniting hundreds of student innovators to solve hard problems.
+              <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '20px' }}>
+                Organizing high-stakes hackathons like Solutions for Smart India and SYNORA, uniting hundreds of student innovators.
               </p>
-              <Link href="/events/synora-26" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                SYNORA &apos;26 Details <ArrowRight size={14} />
+              <Link href="/events" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                View Hackathons <ArrowRight size={13} />
               </Link>
             </div>
 
             {/* Pillar 03 */}
-            <div className="fluent-card" style={{ padding: 'clamp(20px, 4vw, 32px)', display: 'flex', flexDirection: 'column' }}>
+            <div
+              className="fluent-card"
+              style={{
+                padding: '32px 28px',
+                display: 'flex',
+                flexDirection: 'column',
+                borderRadius: '6px',
+                border: '1px solid var(--border)',
+                background: 'var(--surface)',
+                boxShadow: '0 1px 4px rgba(0, 0, 0, 0.04)',
+              }}
+            >
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div
                   style={{
-                    width: '48px',
-                    height: '48px',
+                    width: '44px',
+                    height: '44px',
                     background: 'var(--brand-soft)',
                     color: 'var(--brand)',
-                    borderRadius: 'var(--radius-sm)',
+                    borderRadius: '6px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                   }}
                 >
-                  <Terminal size={24} />
+                  <Terminal size={22} />
                 </div>
-                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--border-strong)', opacity: 0.4 }}>
+                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-muted)' }}>
                   03
                 </span>
               </div>
-              <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '10px', color: 'var(--text-strong)' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-strong)' }}>
                 Mentorship &amp; Open Source
               </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
+              <p style={{ fontSize: '13.5px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '20px' }}>
                 Direct mentorship from Microsoft MVP alumni, senior student engineers, and peer code reviews for production open-source tools.
               </p>
-              <Link href="/about" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
-                Our Chapter Mission <ArrowRight size={14} />
+              <Link href="/about" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: '6px', textDecoration: 'none' }}>
+                Our Chapter Mission <ArrowRight size={13} />
               </Link>
             </div>
           </div>
@@ -265,87 +373,91 @@ export default async function HomePage() {
       {/* 4. UPCOMING EVENT SPOTLIGHT (#upcoming) */}
       <section id="upcoming" style={{ padding: '80px 0', background: 'var(--bg-soft)', borderTop: '1px solid var(--border)' }}>
         <div className="container">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '36px', flexWrap: 'wrap', gap: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Featured Engineering Sprint
               </span>
-              <h2 style={{ fontSize: '32px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
+              <h2 style={{ fontSize: '30px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px', letterSpacing: '-0.01em' }}>
                 Upcoming Event Spotlight
               </h2>
             </div>
-            <Link href="/events" className="fluent-btn fluent-btn-secondary">
+            <Link
+              href="/events"
+              style={{
+                fontSize: '13.5px',
+                fontWeight: 600,
+                color: 'var(--brand)',
+                textDecoration: 'none',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+              }}
+            >
               View All Directory Events &rarr;
             </Link>
           </div>
 
           {/* Spotlight Card */}
           <div
-            className="fluent-showcase-card"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
-              borderRadius: '24px',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+              borderRadius: '8px',
               border: '1px solid var(--border)',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
               overflow: 'hidden',
-              marginBottom: '36px',
               background: 'var(--surface)',
             }}
           >
-            <div style={{ minHeight: '260px', position: 'relative', overflow: 'hidden', padding: '16px' }}>
-              <div style={{ width: '100%', height: '100%', minHeight: '240px', borderRadius: '18px', overflow: 'hidden', position: 'relative' }}>
-                <img
-                  src={flagship.image_url}
-                  alt={flagship.title}
-                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                />
-                <div
-                  style={{
-                    position: 'absolute',
-                    top: '14px',
-                    left: '14px',
-                    background: 'rgba(0,0,0,0.85)',
-                    backdropFilter: 'blur(4px)',
-                    color: '#ffffff',
-                    padding: '6px 14px',
-                    borderRadius: '8px',
-                    fontSize: '13px',
-                    fontWeight: 800,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.08em',
-                    border: '1px solid rgba(255,255,255,0.2)',
-                  }}
-                >
-                  SEP 17
-                </div>
+            <div style={{ minHeight: '260px', position: 'relative', overflow: 'hidden', background: '#0a0a0c' }}>
+              <img
+                src={flagship.image_url}
+                alt={flagship.title}
+                style={{ width: '100%', height: '100%', minHeight: '260px', objectFit: 'cover' }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '14px',
+                  left: '14px',
+                  background: 'rgba(0, 0, 0, 0.85)',
+                  backdropFilter: 'blur(6px)',
+                  color: '#ffffff',
+                  padding: '5px 12px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                }}
+              >
+                SEP 17
               </div>
             </div>
 
-            <div style={{ padding: 'clamp(24px, 4vw, 44px) clamp(16px, 4vw, 40px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
-                <span className="fluent-badge badge-warning" style={{ fontWeight: 800, letterSpacing: '0.05em', borderRadius: '6px' }}>
-                  SEP 17
-                </span>
-                <span className="fluent-badge badge-success" style={{ borderRadius: '6px' }}>Registration Open</span>
-                <span className="fluent-badge badge-info" style={{ borderRadius: '6px' }}>&#8377; 30,000+ Bounty Pool</span>
+            <div style={{ padding: 'clamp(24px, 4vw, 36px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                <span className="fluent-badge badge-success" style={{ borderRadius: '4px' }}>Registration Open</span>
+                <span className="fluent-badge badge-info" style={{ borderRadius: '4px' }}>&#8377; 30,000+ Bounty Pool</span>
               </div>
 
-              <h3 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '12px' }}>
+              <h3 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '10px' }}>
                 SYNORA
               </h3>
 
-              <p style={{ fontSize: '15px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
-                It is a fresher-oriented 18-hour technology event that combines 6 hours of orientation and technical talks with a 12-hour intensive hackathon, giving students a complete experience of learning, collaboration, and hands-on project building.
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '20px' }}>
+                An 18-hour technology sprint combining foundational talks with a 12-hour intensive hackathon, giving students a complete experience of learning, collaboration, and shipping software.
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: 'var(--text-body)', marginBottom: '28px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: 'var(--text-body)', marginBottom: '24px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Calendar size={16} color="var(--brand)" />
+                  <Calendar size={15} color="var(--brand)" />
                   <span>September 17, 2026 &bull; 18-Hour Sprint</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <MapPin size={16} color="var(--brand)" />
+                  <MapPin size={15} color="var(--brand)" />
                   <span>{flagship.location}</span>
                 </div>
               </div>
@@ -354,14 +466,14 @@ export default async function HomePage() {
                 <Link
                   href={`/events/${flagship.slug}`}
                   className="fluent-btn fluent-btn-primary"
-                  style={{ padding: '12px 28px', fontSize: '15px', borderRadius: '8px' }}
+                  style={{ padding: '9px 24px', fontSize: '13.5px', borderRadius: '4px' }}
                 >
                   Enter Event Portal &rarr;
                 </Link>
                 <Link
                   href="/custom-events/synora"
                   className="fluent-btn fluent-btn-secondary"
-                  style={{ padding: '12px 20px', fontSize: '15px', borderRadius: '8px' }}
+                  style={{ padding: '9px 18px', fontSize: '13.5px', borderRadius: '4px' }}
                 >
                   F1 Interactive Microsite
                 </Link>
@@ -371,38 +483,99 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 5. CONTACT SECTION (#contact) */}
-      <section id="contact" style={{ padding: '80px 0', background: 'var(--bg)' }}>
+      {/* 5. IMPACT TELEMETRY - Microsoft Metrics Strip */}
+      <section style={{ padding: '60px 0', background: 'var(--bg)', borderTop: '1px solid var(--border)' }}>
         <div className="container">
           <div
-            className="fluent-showcase-card"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+              gap: '24px',
+              textAlign: 'center',
+            }}
+          >
+            <div>
+              <div style={{ fontSize: '36px', fontWeight: 600, color: 'var(--brand)', letterSpacing: '-0.02em' }}>
+                1,200+
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
+                Active Student Members
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                Across engineering disciplines
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '36px', fontWeight: 600, color: 'var(--brand)', letterSpacing: '-0.02em' }}>
+                18+
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
+                Hackathons &amp; Summits
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                National and campus sprints
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '36px', fontWeight: 600, color: 'var(--brand)', letterSpacing: '-0.02em' }}>
+                45+
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
+                Technical Workshops
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                Azure, AI, Web &amp; Security
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: '36px', fontWeight: 600, color: 'var(--brand)', letterSpacing: '-0.02em' }}>
+                100%
+              </div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
+                Student-Run Chapter
+              </div>
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                Supported by faculty mentors
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 6. CONTACT & PARTNERSHIPS */}
+      <section id="contact" style={{ padding: '80px 0', background: 'var(--bg-soft)', borderTop: '1px solid var(--border)' }}>
+        <div className="container">
+          <div
             style={{
               background: 'var(--surface)',
               border: '1px solid var(--border)',
-              borderRadius: '24px',
-              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
+              borderRadius: '8px',
+              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
               overflow: 'hidden',
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
             }}
           >
             {/* Contact details */}
-            <div style={{ padding: 'clamp(28px, 4vw, 48px) clamp(18px, 4vw, 44px)', background: 'var(--bg-tinted)' }}>
+            <div style={{ padding: 'clamp(28px, 4vw, 44px)', background: 'var(--bg-tinted)' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Official Line
               </span>
-              <h2 style={{ fontSize: '28px', fontWeight: 600, color: 'var(--text-strong)', margin: '6px 0 16px 0' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-strong)', margin: '6px 0 14px 0' }}>
                 Connect With The MSC Lead Team
               </h2>
-              <p style={{ fontSize: '14px', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: '32px' }}>
+              <p style={{ fontSize: '13.5px', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: '28px' }}>
                 Whether you represent an institutional club, an industry partner, or want to speak at our next
                 Azure cloud conference, reach out directly.
               </p>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '14px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px', fontSize: '13px' }}>
                 <div>
                   <strong style={{ display: 'block', color: 'var(--text-strong)' }}>Official Community Email:</strong>
-                  <a href="mailto:msc.community@srmap.edu.in" style={{ color: 'var(--brand)', fontWeight: 600 }}>
+                  <a href="mailto:msc.community@srmap.edu.in" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>
                     msc.community@srmap.edu.in
                   </a>
                 </div>
@@ -415,31 +588,30 @@ export default async function HomePage() {
                 </div>
 
                 <div>
-                  <strong style={{ display: 'block', color: 'var(--text-strong)' }}>Primary Community Channel:</strong>
-                  <a href="https://discord.gg/microsoft" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 600 }}>
+                  <strong style={{ display: 'block', color: 'var(--text-strong)' }}>Discord Community:</strong>
+                  <a href="https://discord.gg/K5NC5wAhg" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 600, textDecoration: 'none' }}>
                     Join Discord Server (Active 24/7)
                   </a>
                 </div>
               </div>
             </div>
 
-            {/* Message form via Web3Forms API relay */}
-            <div style={{ padding: 'clamp(28px, 4vw, 48px) clamp(18px, 4vw, 44px)' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '20px', color: 'var(--text-strong)' }}>
+            {/* Message form */}
+            <div style={{ padding: 'clamp(28px, 4vw, 44px)' }}>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '16px', color: 'var(--text-strong)' }}>
                 Send Us a Message
               </h3>
               <form
                 action="https://api.web3forms.com/submit"
                 method="POST"
-                style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
+                style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}
               >
-                {/* Web3Forms public access key placeholder */}
                 <input type="hidden" name="access_key" value="YOUR_WEB3FORMS_ACCESS_KEY" />
                 <input type="hidden" name="subject" value="New Inquiry from MSC SRM AP Platform" />
                 <input type="hidden" name="from_name" value="MSC Public Portal" />
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-strong)' }}>
                     Full Name
                   </label>
                   <input
@@ -448,12 +620,12 @@ export default async function HomePage() {
                     required
                     placeholder="e.g. Alex Morgan"
                     className="fluent-input"
-                    style={{ borderRadius: '8px' }}
+                    style={{ borderRadius: '4px' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-strong)' }}>
                     Email Address
                   </label>
                   <input
@@ -462,12 +634,12 @@ export default async function HomePage() {
                     required
                     placeholder="name@srmap.edu.in"
                     className="fluent-input"
-                    style={{ borderRadius: '8px' }}
+                    style={{ borderRadius: '4px' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-strong)' }}>
                     Inquiry Topic
                   </label>
                   <input
@@ -476,12 +648,12 @@ export default async function HomePage() {
                     required
                     placeholder="e.g. Hackathon Sponsorship / Event Collaboration"
                     className="fluent-input"
-                    style={{ borderRadius: '8px' }}
+                    style={{ borderRadius: '4px' }}
                   />
                 </div>
 
                 <div>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px', color: 'var(--text-strong)' }}>
                     Message
                   </label>
                   <textarea
@@ -490,16 +662,16 @@ export default async function HomePage() {
                     required
                     placeholder="Provide details about your query..."
                     className="fluent-input"
-                    style={{ resize: 'vertical', borderRadius: '8px' }}
+                    style={{ resize: 'vertical', borderRadius: '4px' }}
                   />
                 </div>
 
                 <button
                   type="submit"
                   className="fluent-btn fluent-btn-primary"
-                  style={{ alignSelf: 'flex-start', padding: '12px 28px', borderRadius: '8px' }}
+                  style={{ alignSelf: 'flex-start', padding: '9px 24px', borderRadius: '4px', fontSize: '13.5px' }}
                 >
-                  <Send size={15} /> Submit Inquiry
+                  <Send size={14} /> Submit Inquiry
                 </button>
               </form>
             </div>

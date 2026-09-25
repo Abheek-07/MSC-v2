@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { FALLBACK_GALLERY } from '@/lib/data/mock-fallback';
-import { Search, X, ChevronLeft, ChevronRight, Maximize2, Tag, Calendar } from 'lucide-react';
+import { Search, X, ChevronLeft, ChevronRight, Maximize2, Tag, Calendar, Sparkles } from 'lucide-react';
 
 export default function GalleryPage() {
   const [activeCategory, setActiveCategory] = useState<string>('all');
@@ -68,37 +68,83 @@ export default function GalleryPage() {
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh', padding: '60px 0 100px 0' }}>
       <div className="container">
-        {/* Header */}
-        <div style={{ marginBottom: '32px' }}>
-          <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Visual Archives &bull; Chapter &apos;26
-          </span>
-          <h1 style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
-            Community Photo Gallery
+        {/* Header with Microsoft 4-Color Eyebrow */}
+        <div style={{ marginBottom: '36px', maxWidth: '840px' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '8px',
+              padding: '4px 10px',
+              background: 'var(--bg-soft)',
+              border: '1px solid var(--border)',
+              borderRadius: '4px',
+              marginBottom: '16px',
+              fontSize: '12px',
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              color: 'var(--text-body)',
+            }}
+          >
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 6px)',
+                gridTemplateRows: 'repeat(2, 6px)',
+                gap: '2px',
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ background: '#f25022', borderRadius: '1px' }} />
+              <div style={{ background: '#7fba00', borderRadius: '1px' }} />
+              <div style={{ background: '#00a4ef', borderRadius: '1px' }} />
+              <div style={{ background: '#ffb900', borderRadius: '1px' }} />
+            </div>
+            <span>MICROSOFT MEDIA ARCHIVES &bull; CAMPUS VISUAL STORIES</span>
+          </div>
+
+          <h1
+            style={{
+              fontSize: 'clamp(32px, 5vw, 44px)',
+              fontWeight: 600,
+              color: 'var(--text-strong)',
+              letterSpacing: '-0.02em',
+              lineHeight: 1.15,
+              marginBottom: '12px',
+            }}
+          >
+            Visual Archives &amp; Moments
           </h1>
-          <p style={{ fontSize: '16px', color: 'var(--text-muted)', maxWidth: '680px', marginTop: '8px' }}>
-            Capturing the energy of midnight hackathon sprints, Azure cloud architectures, and campus tech summits at SRM University AP.
+
+          <p
+            style={{
+              fontSize: 'clamp(15px, 2vw, 17px)',
+              color: 'var(--text-muted)',
+              lineHeight: 1.6,
+            }}
+          >
+            Photographic documentation of hackathon sprints, technical keynotes, Azure cloud architecture workshops, and campus community summits at SRM University-AP.
           </p>
         </div>
 
-        {/* Search & Category Filter Controls */}
+        {/* Microsoft Fluent Search & Pivot Bar */}
         <div
           style={{
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
+            gap: '20px',
             marginBottom: '36px',
             borderBottom: '1px solid var(--border)',
             paddingBottom: '20px',
           }}
         >
-          {/* Real-time search bar */}
-          <div style={{ position: 'relative', maxWidth: '420px', width: '100%' }}>
+          {/* Fluent Search Box */}
+          <div style={{ position: 'relative', maxWidth: '440px', width: '100%' }}>
             <Search
               size={16}
               style={{
                 position: 'absolute',
-                left: '14px',
+                left: '12px',
                 top: '50%',
                 transform: 'translateY(-50%)',
                 color: 'var(--text-muted)',
@@ -112,15 +158,18 @@ export default function GalleryPage() {
                 setSearchQuery(e.target.value);
                 setSelectedIdx(null);
               }}
-              placeholder="Search by title, category, or keyword..."
+              placeholder="Filter archives by title, keywords, or tags..."
               className="fluent-input"
               style={{
-                paddingLeft: '38px',
+                paddingLeft: '36px',
                 paddingRight: searchQuery ? '36px' : '14px',
                 fontSize: '13px',
-                borderRadius: 'var(--radius-sm)',
-                height: '40px',
+                borderRadius: '4px',
+                height: '38px',
                 width: '100%',
+                border: '1px solid var(--border-strong)',
+                background: 'var(--surface)',
+                color: 'var(--text-strong)',
               }}
             />
             {searchQuery && (
@@ -137,6 +186,9 @@ export default function GalleryPage() {
                   color: 'var(--text-muted)',
                   cursor: 'pointer',
                   padding: '4px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
                 aria-label="Clear search"
               >
@@ -145,10 +197,24 @@ export default function GalleryPage() {
             )}
           </div>
 
-          {/* Category Filter Pills */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', alignItems: 'center' }}>
+          {/* Microsoft Pivot Tabs for Categories */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              overflowX: 'auto',
+              borderBottom: '1px solid var(--border)',
+              paddingBottom: '0',
+            }}
+          >
             {categories.map((cat) => {
               const isActive = activeCategory === cat.id;
+              const count =
+                cat.id === 'all'
+                  ? FALLBACK_GALLERY.length
+                  : FALLBACK_GALLERY.filter((item) => item.category.toLowerCase() === cat.id.toLowerCase()).length;
+
               return (
                 <button
                   key={cat.id}
@@ -157,52 +223,77 @@ export default function GalleryPage() {
                     setSelectedIdx(null);
                   }}
                   style={{
-                    background: isActive ? 'var(--brand)' : 'var(--surface)',
-                    color: isActive ? '#ffffff' : 'var(--text-body)',
-                    border: isActive ? '1px solid var(--brand)' : '1px solid var(--border)',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '7px 16px',
-                    fontSize: '13px',
-                    fontWeight: 600,
+                    background: 'none',
+                    border: 'none',
+                    borderBottom: isActive ? '2px solid var(--brand)' : '2px solid transparent',
+                    padding: '8px 14px',
+                    fontSize: '13.5px',
+                    fontWeight: isActive ? 600 : 500,
+                    color: isActive ? 'var(--brand)' : 'var(--text-muted)',
                     cursor: 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
                     transition: 'all 0.15s ease',
+                    whiteSpace: 'nowrap',
                   }}
                 >
-                  {cat.label}
+                  <span>{cat.label}</span>
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      padding: '1px 6px',
+                      borderRadius: '10px',
+                      background: isActive ? 'var(--brand-soft)' : 'var(--bg-soft)',
+                      color: isActive ? 'var(--brand)' : 'var(--text-muted)',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {count}
+                  </span>
                 </button>
               );
             })}
-            <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: 'auto' }}>
-              Showing {filteredItems.length} {filteredItems.length === 1 ? 'photo' : 'photos'}
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginLeft: 'auto', whiteSpace: 'nowrap', padding: '0 8px' }}>
+              Showing {filteredItems.length} {filteredItems.length === 1 ? 'record' : 'records'}
             </span>
           </div>
         </div>
 
-        {/* Photo Grid with Hover-Reveal Focus Cards */}
+        {/* Photo Grid with Microsoft Fluent Card Styling */}
         {filteredItems.length === 0 ? (
           <div
             style={{
-              padding: '60px 20px',
+              padding: '60px 24px',
               textAlign: 'center',
               background: 'var(--surface)',
-              borderRadius: 'var(--radius-sm)',
+              borderRadius: '8px',
               border: '1px solid var(--border)',
-              color: 'var(--text-muted)',
             }}
           >
-            <p style={{ fontSize: '16px', fontWeight: 500, color: 'var(--text-strong)', marginBottom: '8px' }}>
-              No photography matches your search
+            <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '6px' }}>
+              No visual archives match your criteria
             </p>
-            <p style={{ fontSize: '13px', margin: 0 }}>
-              Try adjusting your search query or switching categories.
+            <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+              Try adjusting your query or resetting to all categories.
             </p>
+            <button
+              onClick={() => {
+                setActiveCategory('all');
+                setSearchQuery('');
+              }}
+              className="fluent-btn fluent-btn-secondary"
+              style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '4px' }}
+            >
+              Reset Filters
+            </button>
           </div>
         ) : (
           <div
             style={{
               display: 'grid',
               gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
-              gap: '24px',
+              gap: '20px',
             }}
           >
             {filteredItems.map((photo, idx) => (
@@ -222,68 +313,95 @@ export default function GalleryPage() {
                   cursor: 'pointer',
                   position: 'relative',
                   overflow: 'hidden',
-                  borderRadius: 'var(--radius-sm)',
-                  height: '280px',
+                  borderRadius: '6px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--surface)',
+                  boxShadow: 'var(--shadow-rest)',
                   display: 'flex',
                   flexDirection: 'column',
+                  transition: 'transform 0.2s ease, box-shadow 0.2s ease',
                 }}
               >
-                <img
-                  src={photo.image_url}
-                  alt={photo.alt_text}
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'cover',
-                    transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
-                  }}
-                  className="focus-card-image"
-                />
+                {/* Image Container */}
+                <div style={{ height: '220px', position: 'relative', overflow: 'hidden', background: 'var(--bg-soft)' }}>
+                  <img
+                    src={photo.image_url}
+                    alt={photo.alt_text}
+                    style={{
+                      width: '100%',
+                      height: '100%',
+                      objectFit: 'cover',
+                      display: 'block',
+                      transition: 'transform 0.4s cubic-bezier(0.16, 1, 0.3, 1)',
+                    }}
+                    className="focus-card-image"
+                  />
 
-                {/* Permanent Category Pill */}
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '12px',
-                    left: '12px',
-                    background: 'rgba(10, 10, 12, 0.75)',
-                    backdropFilter: 'blur(6px)',
-                    color: '#ffffff',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    padding: '3px 8px',
-                    borderRadius: '2px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.04em',
-                    zIndex: 2,
-                  }}
-                >
-                  {photo.category}
-                </span>
+                  {/* Top Category Badge */}
+                  <span
+                    style={{
+                      position: 'absolute',
+                      top: '10px',
+                      left: '10px',
+                      background: 'rgba(0, 0, 0, 0.75)',
+                      backdropFilter: 'blur(4px)',
+                      color: '#ffffff',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      padding: '3px 8px',
+                      borderRadius: '3px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      zIndex: 2,
+                    }}
+                  >
+                    {photo.category}
+                  </span>
 
-                {/* Hover-Reveal Focus Overlay */}
-                <div
-                  className="focus-card-overlay"
-                  style={{
-                    position: 'absolute',
-                    inset: 0,
-                    background: 'linear-gradient(to top, rgba(10,14,24,0.92) 0%, rgba(10,14,24,0.4) 60%, rgba(10,14,24,0.1) 100%)',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'flex-end',
-                    padding: '20px',
-                    color: '#ffffff',
-                    opacity: 0.9,
-                    transition: 'all 0.3s ease',
-                  }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-                    <h3 style={{ fontSize: '15px', fontWeight: 600, color: '#ffffff', margin: 0 }}>
-                      {photo.title}
-                    </h3>
-                    <Maximize2 size={16} color="var(--accent-strong)" />
+                  {/* Hover icon */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '10px',
+                      right: '10px',
+                      background: 'rgba(0, 103, 184, 0.9)',
+                      color: '#ffffff',
+                      padding: '5px',
+                      borderRadius: '4px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 2,
+                    }}
+                  >
+                    <Maximize2 size={13} />
                   </div>
-                  <p style={{ fontSize: '12px', color: '#d1d5db', margin: 0, lineHeight: 1.4 }}>
+                </div>
+
+                {/* Card Information Footer */}
+                <div style={{ padding: '14px 16px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                  <h3
+                    style={{
+                      fontSize: '14.5px',
+                      fontWeight: 600,
+                      color: 'var(--text-strong)',
+                      lineHeight: 1.3,
+                      margin: 0,
+                    }}
+                  >
+                    {photo.title}
+                  </h3>
+                  <p
+                    style={{
+                      fontSize: '12.5px',
+                      color: 'var(--text-muted)',
+                      lineHeight: 1.4,
+                      margin: 0,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                    }}
+                  >
                     {photo.alt_text}
                   </p>
                 </div>
@@ -292,20 +410,20 @@ export default function GalleryPage() {
           </div>
         )}
 
-        {/* Interactive Lightbox Modal with Keyboard Navigation & Chevrons */}
+        {/* Microsoft Fluent Lightbox Dialog */}
         {currentPhoto && selectedIdx !== null && (
           <div
             onClick={handleClose}
             style={{
               position: 'fixed',
               inset: 0,
-              backgroundColor: 'rgba(8, 10, 15, 0.92)',
+              backgroundColor: 'rgba(10, 12, 16, 0.88)',
               zIndex: 1000,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               padding: '24px',
-              backdropFilter: 'blur(8px)',
+              backdropFilter: 'blur(6px)',
             }}
           >
             {/* Previous Button */}
@@ -322,12 +440,12 @@ export default function GalleryPage() {
                   left: '20px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
                   color: '#ffffff',
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '4px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -336,7 +454,7 @@ export default function GalleryPage() {
                   transition: 'background 0.2s ease',
                 }}
               >
-                <ChevronLeft size={28} />
+                <ChevronLeft size={24} />
               </button>
             )}
 
@@ -354,12 +472,12 @@ export default function GalleryPage() {
                   right: '20px',
                   top: '50%',
                   transform: 'translateY(-50%)',
-                  background: 'rgba(255, 255, 255, 0.15)',
-                  border: '1px solid rgba(255, 255, 255, 0.25)',
+                  background: 'rgba(0, 0, 0, 0.6)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
                   color: '#ffffff',
-                  width: '48px',
-                  height: '48px',
-                  borderRadius: '50%',
+                  width: '44px',
+                  height: '44px',
+                  borderRadius: '4px',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -368,7 +486,7 @@ export default function GalleryPage() {
                   transition: 'background 0.2s ease',
                 }}
               >
-                <ChevronRight size={28} />
+                <ChevronRight size={24} />
               </button>
             )}
 
@@ -376,42 +494,56 @@ export default function GalleryPage() {
             <div
               onClick={(e) => e.stopPropagation()}
               style={{
-                maxWidth: '920px',
+                maxWidth: '960px',
                 width: '100%',
                 background: 'var(--surface)',
-                borderRadius: 'var(--radius-sm)',
+                borderRadius: '6px',
                 overflow: 'hidden',
                 boxShadow: 'var(--shadow-lift)',
                 position: 'relative',
                 display: 'flex',
                 flexDirection: 'column',
+                border: '1px solid var(--border)',
               }}
             >
-              {/* Top Modal Bar */}
+              {/* Top Command Bar */}
               <div
                 style={{
                   display: 'flex',
                   justifyContent: 'space-between',
                   alignItems: 'center',
-                  padding: '14px 20px',
+                  padding: '12px 18px',
                   borderBottom: '1px solid var(--border)',
+                  background: 'var(--bg-soft)',
                 }}
               >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                  <span className="fluent-badge badge-neutral" style={{ textTransform: 'uppercase' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span
+                    style={{
+                      background: 'var(--brand-soft)',
+                      color: 'var(--brand)',
+                      border: '1px solid rgba(0, 103, 184, 0.2)',
+                      padding: '2px 8px',
+                      borderRadius: '3px',
+                      fontSize: '11px',
+                      fontWeight: 600,
+                      textTransform: 'uppercase',
+                    }}
+                  >
                     {currentPhoto.category}
                   </span>
                   <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    Photo {selectedIdx + 1} of {filteredItems.length}
+                    Item {selectedIdx + 1} of {filteredItems.length}
                   </span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
-                    Tip: Use &larr; &rarr; arrows to browse, Esc to close
+                    Tip: Arrow keys to browse &bull; Esc to close
                   </span>
                   <button
                     onClick={handleClose}
-                    aria-label="Close lightbox"
+                    aria-label="Close dialog"
                     style={{
                       background: 'none',
                       border: 'none',
@@ -423,7 +555,7 @@ export default function GalleryPage() {
                       justifyContent: 'center',
                     }}
                   >
-                    <X size={22} />
+                    <X size={20} />
                   </button>
                 </div>
               </div>
@@ -433,7 +565,7 @@ export default function GalleryPage() {
                 style={{
                   maxHeight: '65vh',
                   minHeight: '340px',
-                  background: '#0a0a0c',
+                  background: '#05070a',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -452,18 +584,37 @@ export default function GalleryPage() {
                 />
               </div>
 
-              {/* Metadata & Description Footer */}
+              {/* Caption & Metadata Footer */}
               <div style={{ padding: '18px 24px', background: 'var(--surface)' }}>
-                <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '6px' }}>
+                <h2
+                  style={{
+                    fontSize: '18px',
+                    fontWeight: 600,
+                    color: 'var(--text-strong)',
+                    marginBottom: '6px',
+                  }}
+                >
                   {currentPhoto.title}
                 </h2>
-                <p style={{ fontSize: '14px', color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>
+                <p style={{ fontSize: '13.5px', color: 'var(--text-body)', margin: 0, lineHeight: 1.5 }}>
                   {currentPhoto.alt_text}
                 </p>
-                <div style={{ marginTop: '12px', fontSize: '12px', color: 'var(--text-muted)', display: 'flex', gap: '16px' }}>
-                  <span>Chapter &apos;26 Archives</span>
+                <div
+                  style={{
+                    marginTop: '12px',
+                    fontSize: '12px',
+                    color: 'var(--text-muted)',
+                    display: 'flex',
+                    gap: '12px',
+                    borderTop: '1px solid var(--border)',
+                    paddingTop: '10px',
+                  }}
+                >
+                  <span>Microsoft Student Community Archives</span>
                   <span>&bull;</span>
                   <span>SRM University AP</span>
+                  <span>&bull;</span>
+                  <span>Chapter &apos;26</span>
                 </div>
               </div>
             </div>
@@ -473,10 +624,7 @@ export default function GalleryPage() {
 
       <style jsx>{`
         .focus-card-container:hover .focus-card-image {
-          transform: scale(1.05);
-        }
-        .focus-card-container:hover .focus-card-overlay {
-          opacity: 1;
+          transform: scale(1.04);
         }
       `}</style>
     </div>

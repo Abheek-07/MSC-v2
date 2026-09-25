@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
-import { Shield, Lock, Mail, ArrowRight, AlertCircle, CheckCircle } from 'lucide-react';
+import { Lock, Mail, ArrowRight, AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
@@ -81,7 +81,7 @@ export default function LoginPage() {
       if (err.message === 'Failed to fetch' || err.message?.includes('fetch')) {
         setMessage({
           type: 'error',
-          text: 'Cannot reach Supabase: Please update .env.local with your real NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY from your Supabase Dashboard (Project Settings > API).',
+          text: 'Cannot reach Supabase: Please verify network connection or Supabase status.',
         });
       } else {
         setMessage({ type: 'error', text: err.message || 'Authentication error.' });
@@ -92,105 +92,148 @@ export default function LoginPage() {
   };
 
   return (
-    <div style={{ background: 'var(--bg)', minHeight: '85vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '40px 24px' }}>
+    <div
+      style={{
+        background: 'var(--bg-soft)',
+        minHeight: '88vh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '40px 16px',
+        fontFamily: 'var(--font-family)',
+      }}
+    >
+      {/* Authentic Microsoft Login Card */}
       <div
         style={{
           maxWidth: '440px',
           width: '100%',
           background: 'var(--surface)',
           border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-sm)',
-          boxShadow: 'var(--shadow-lift)',
-          padding: '36px',
+          borderRadius: '8px',
+          boxShadow: '0 4px 24px rgba(0, 0, 0, 0.06)',
+          padding: 'clamp(28px, 5vw, 44px)',
         }}
       >
-        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+        {/* Microsoft Logo Header */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
           <div
             style={{
-              width: '44px',
-              height: '44px',
-              background: 'var(--brand-soft)',
-              color: 'var(--brand)',
-              borderRadius: 'var(--radius-sm)',
-              display: 'inline-flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '12px',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(2, 9px)',
+              gridTemplateRows: 'repeat(2, 9px)',
+              gap: '2px',
+              flexShrink: 0,
             }}
           >
-            <Shield size={22} />
+            <div style={{ background: '#f25022', borderRadius: '1px' }} />
+            <div style={{ background: '#7fba00', borderRadius: '1px' }} />
+            <div style={{ background: '#00a4ef', borderRadius: '1px' }} />
+            <div style={{ background: '#ffb900', borderRadius: '1px' }} />
           </div>
-          <h1 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-strong)', margin: 0 }}>
-            {mode === 'signin' && 'Sign in to MSC'}
-            {mode === 'signup' && 'Create Member Account'}
-            {mode === 'reset' && 'Request Password Reset'}
-          </h1>
-          <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>
-            {mode === 'signin' && 'Microsoft Student Community • SRM University AP'}
-            {mode === 'signup' && 'Join the premier student engineering guild'}
-            {mode === 'reset' && 'Admin-approved cryptographic password reset'}
-          </p>
+          <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>
+            Microsoft
+          </span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '13px' }}>|</span>
+          <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+            Student Community
+          </span>
         </div>
 
+        {/* Title */}
+        <h1
+          style={{
+            fontSize: '24px',
+            fontWeight: 600,
+            color: 'var(--text-strong)',
+            margin: '0 0 4px 0',
+            letterSpacing: '-0.01em',
+          }}
+        >
+          {mode === 'signin' && 'Sign in'}
+          {mode === 'signup' && 'Create account'}
+          {mode === 'reset' && 'Reset password'}
+        </h1>
+        <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 24px 0' }}>
+          {mode === 'signin' && 'to continue to Microsoft Student Community SRM AP'}
+          {mode === 'signup' && 'Join the SRM AP Microsoft Student Community guild'}
+          {mode === 'reset' && 'Submit an encrypted password update for approval'}
+        </p>
+
+        {/* Status Message */}
         {message && (
           <div
             style={{
-              padding: '12px',
-              borderRadius: 'var(--radius-sm)',
-              fontSize: '13px',
+              padding: '10px 14px',
+              borderRadius: '4px',
+              fontSize: '12.5px',
               marginBottom: '20px',
               display: 'flex',
-              alignItems: 'center',
+              alignItems: 'flex-start',
               gap: '8px',
               background: message.type === 'error' ? 'var(--danger-bg)' : 'var(--success-bg)',
               color: message.type === 'error' ? 'var(--danger)' : 'var(--success)',
+              border: `1px solid ${message.type === 'error' ? 'rgba(197, 15, 31, 0.2)' : 'rgba(14, 124, 65, 0.2)'}`,
             }}
           >
-            {message.type === 'error' ? <AlertCircle size={16} /> : <CheckCircle size={16} />}
-            {message.text}
+            {message.type === 'error' ? <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '2px' }} /> : <CheckCircle size={15} style={{ flexShrink: 0, marginTop: '2px' }} />}
+            <span>{message.text}</span>
           </div>
         )}
 
-        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
           {mode === 'signup' && (
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
                 Full Name
               </label>
               <input
                 type="text"
                 required
-                placeholder="Alex Morgan"
+                placeholder="e.g. Alex Morgan"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 className="fluent-input"
+                style={{ width: '100%' }}
               />
             </div>
           )}
 
           <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-              University / Personal Email
+            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
+              Email, phone, or Skype
             </label>
             <input
               type="email"
               required
-              placeholder="alex@srmap.edu.in"
+              placeholder="name@srmap.edu.in or personal email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="fluent-input"
+              style={{ width: '100%' }}
             />
           </div>
 
           {mode !== 'reset' && (
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                <label style={{ fontSize: '12px', fontWeight: 600 }}>Password</label>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-strong)' }}>Password</label>
                 {mode === 'signin' && (
                   <button
                     type="button"
-                    onClick={() => setMode('reset')}
-                    style={{ background: 'none', border: 'none', color: 'var(--brand)', fontSize: '11px', cursor: 'pointer' }}
+                    onClick={() => {
+                      setMode('reset');
+                      setMessage(null);
+                    }}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--brand)',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
                   >
                     Forgot password?
                   </button>
@@ -203,65 +246,147 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="fluent-input"
+                style={{ width: '100%' }}
               />
             </div>
           )}
 
           {mode === 'reset' && (
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                Proposed New Password
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
+                New Desired Password (Min 8 chars)
               </label>
               <input
                 type="password"
                 required
-                placeholder="Minimum 8 characters"
+                minLength={8}
+                placeholder="••••••••"
                 value={proposedPassword}
                 onChange={(e) => setProposedPassword(e.target.value)}
                 className="fluent-input"
+                style={{ width: '100%' }}
               />
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-                Stored as AES-256-GCM ciphertext until an administrator reviews and approves.
-              </span>
             </div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="fluent-btn fluent-btn-primary"
-            style={{ padding: '10px', fontSize: '14px', marginTop: '8px' }}
-          >
-            {loading ? 'Please wait...' : mode === 'signin' ? 'Sign In' : mode === 'signup' ? 'Create Account' : 'Submit Reset Request'}
-          </button>
-        </form>
-
-        {/* Mode Switcher */}
-        <div style={{ textAlign: 'center', marginTop: '24px', fontSize: '13px', color: 'var(--text-muted)' }}>
-          {mode === 'signin' ? (
-            <>
-              Don&apos;t have an account?{' '}
+          {/* Links & Action Switchers */}
+          {mode === 'signin' && (
+            <div style={{ fontSize: '12.5px', color: 'var(--text-body)' }}>
+              No account?{' '}
               <button
                 type="button"
-                onClick={() => setMode('signup')}
-                style={{ background: 'none', border: 'none', color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }}
+                onClick={() => {
+                  setMode('signup');
+                  setMessage(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--brand)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  padding: 0,
+                }}
               >
-                Sign Up
+                Create one!
               </button>
-            </>
-          ) : (
-            <>
-              Already have an account?{' '}
-              <button
-                type="button"
-                onClick={() => setMode('signin')}
-                style={{ background: 'none', border: 'none', color: 'var(--brand)', fontWeight: 600, cursor: 'pointer' }}
-              >
-                Sign In
-              </button>
-            </>
+            </div>
           )}
-        </div>
+
+          {mode === 'signup' && (
+            <div style={{ fontSize: '12.5px', color: 'var(--text-body)' }}>
+              Already registered?{' '}
+              <button
+                type="button"
+                onClick={() => {
+                  setMode('signin');
+                  setMessage(null);
+                }}
+                style={{
+                  background: 'none',
+                  border: 'none',
+                  color: 'var(--brand)',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  padding: 0,
+                }}
+              >
+                Sign in with existing credentials
+              </button>
+            </div>
+          )}
+
+          {mode === 'reset' && (
+            <button
+              type="button"
+              onClick={() => {
+                setMode('signin');
+                setMessage(null);
+              }}
+              style={{
+                alignSelf: 'flex-start',
+                background: 'none',
+                border: 'none',
+                color: 'var(--brand)',
+                cursor: 'pointer',
+                fontSize: '12.5px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                padding: 0,
+              }}
+            >
+              <ArrowLeft size={13} /> Back to Sign in
+            </button>
+          )}
+
+          {/* Buttons Row */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+            <button
+              type="submit"
+              disabled={loading}
+              className="fluent-btn fluent-btn-primary"
+              style={{
+                padding: '9px 28px',
+                fontSize: '14px',
+                fontWeight: 600,
+                borderRadius: '4px',
+                backgroundColor: 'var(--brand)',
+              }}
+            >
+              {loading
+                ? 'Processing...'
+                : mode === 'signin'
+                ? 'Sign in'
+                : mode === 'signup'
+                ? 'Register'
+                : 'Submit Request'}
+            </button>
+          </div>
+        </form>
+      </div>
+
+      {/* Microsoft Legal & Identity Micro-footer */}
+      <div
+        style={{
+          marginTop: '28px',
+          display: 'flex',
+          gap: '16px',
+          fontSize: '11.5px',
+          color: 'var(--text-muted)',
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+        }}
+      >
+        <span>Microsoft Student Community &bull; SRM AP Chapter &apos;26</span>
+        <span>&bull;</span>
+        <Link href="/about" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+          Mission &amp; Manifesto
+        </Link>
+        <span>&bull;</span>
+        <Link href="/" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>
+          Return to Portal
+        </Link>
       </div>
     </div>
   );
