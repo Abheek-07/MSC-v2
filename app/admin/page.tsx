@@ -10,6 +10,9 @@ import {
   Shield,
   ArrowRight,
   TrendingUp,
+  Plus,
+  FileSpreadsheet,
+  BarChart3,
 } from 'lucide-react';
 import { EMAIL_DAILY_CAP } from '@/lib/email';
 import { getAdminClient } from '@/lib/supabase/admin';
@@ -33,24 +36,69 @@ export default async function AdminDashboardPage() {
   const revenueInRupees = payments?.reduce((acc: number, p: any) => acc + (p.amount || 0), 0) || 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-      {/* Title */}
-      <div>
-        <h1 style={{ fontSize: '28px', fontWeight: 600, color: 'var(--text-strong)' }}>
-          Platform Operations Dashboard
-        </h1>
-        <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-          Real-time metrics, capacity telemetry, and event operations for MSC Chapter &apos;26.
-        </p>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+      {/* Microsoft Fluent Page Header & Command Bar */}
+      <div
+        style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'flex-start',
+          flexWrap: 'wrap',
+          gap: '16px',
+          paddingBottom: '16px',
+          borderBottom: '1px solid var(--border)',
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              fontSize: '22px',
+              fontWeight: 600,
+              color: 'var(--text-strong)',
+              margin: 0,
+              letterSpacing: '-0.01em',
+            }}
+          >
+            Overview
+          </h1>
+          <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
+            Real-time telemetry, admission capacity, and event operations for Chapter &apos;26.
+          </p>
+        </div>
+
+        {/* Microsoft Command Bar Actions */}
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+          <Link
+            href="/admin/events"
+            className="fluent-btn fluent-btn-primary"
+            style={{ fontSize: '12.5px', padding: '6px 14px', gap: '6px' }}
+          >
+            <Plus size={14} /> Create Event
+          </Link>
+          <Link
+            href="/admin/scanner"
+            className="fluent-btn fluent-btn-secondary"
+            style={{ fontSize: '12.5px', padding: '6px 14px', gap: '6px' }}
+          >
+            <QrCode size={14} /> Turnstile Scanner
+          </Link>
+          <Link
+            href="/admin/registrations"
+            className="fluent-btn fluent-btn-secondary"
+            style={{ fontSize: '12.5px', padding: '6px 14px', gap: '6px' }}
+          >
+            <FileSpreadsheet size={14} /> Attendees
+          </Link>
+        </div>
       </div>
 
-      {/* Transactional Email Quota Alert (Section 1 requirement) */}
+      {/* Transactional Email Quota Note */}
       <div
         style={{
           background: 'var(--bg-tinted)',
           border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '16px 20px',
+          borderRadius: '6px',
+          padding: '12px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -58,67 +106,115 @@ export default async function AdminDashboardPage() {
           gap: '12px',
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <Mail size={20} color="var(--brand)" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          <Mail size={16} color="var(--brand)" style={{ flexShrink: 0 }} />
           <div>
-            <strong style={{ fontSize: '13px', color: 'var(--text-strong)' }}>
-              Email Delivery Service Quota Note
-            </strong>
-            <p style={{ fontSize: '12px', color: 'var(--text-body)', margin: 0 }}>
-              Free Tier Cap: <strong>{EMAIL_DAILY_CAP} emails/day</strong>. Throttle mass notification blasts across multiple batches if approaching threshold.
-            </p>
+            <span style={{ fontSize: '12.5px', fontWeight: 600, color: 'var(--text-strong)' }}>
+              Email Service Quota &bull; Resend Free Tier
+            </span>
+            <span style={{ fontSize: '12px', color: 'var(--text-body)', marginLeft: '8px' }}>
+              Cap: <strong>{EMAIL_DAILY_CAP} emails/day</strong>. Throttle bulk blasts across multiple batches if approaching threshold.
+            </span>
           </div>
         </div>
-        <span className="fluent-badge badge-info">{EMAIL_DAILY_CAP} Emails / Day Max</span>
+        <span className="fluent-badge badge-info" style={{ borderRadius: '4px' }}>
+          {EMAIL_DAILY_CAP} / day
+        </span>
       </div>
 
-      {/* 4 Metric Cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 160px), 1fr))', gap: '16px' }}>
-        <div className="fluent-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Total Registrations</span>
-            <Users size={18} color="var(--brand)" />
+      {/* 4 Fluent Metric Tiles */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 200px), 1fr))',
+          gap: '14px',
+        }}
+      >
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '6px',
+            padding: '16px 18px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Total Registrations
+            </span>
+            <Users size={16} color="var(--brand)" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)' }}>
+          <div style={{ fontSize: '26px', fontWeight: 600, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>
             {totalRegistrations}
           </div>
           <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
-            <TrendingUp size={12} /> Across all active sessions
+            <TrendingUp size={11} /> Across all active sessions
           </span>
         </div>
 
-        <div className="fluent-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Turnstile Attendance</span>
-            <CheckCircle size={18} color="var(--success)" />
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '6px',
+            padding: '16px 18px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Turnstile Attendance
+            </span>
+            <CheckCircle size={16} color="var(--success)" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)' }}>
+          <div style={{ fontSize: '26px', fontWeight: 600, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>
             {attendanceRate}%
           </div>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-            {checkedInCount} / {totalRegistrations} checked in
+            {checkedInCount} of {totalRegistrations} checked in
           </span>
         </div>
 
-        <div className="fluent-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Gross Revenue</span>
-            <IndianRupee size={18} color="var(--warning)" />
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '6px',
+            padding: '16px 18px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Gross Revenue
+            </span>
+            <IndianRupee size={16} color="var(--warning)" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)' }}>
-            &#8377; {revenueInRupees.toLocaleString('en-IN')}
+          <div style={{ fontSize: '26px', fontWeight: 600, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>
+            &#8377;{revenueInRupees.toLocaleString('en-IN')}
           </div>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
             Captured through Razorpay
           </span>
         </div>
 
-        <div className="fluent-card" style={{ padding: '20px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-muted)', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, textTransform: 'uppercase' }}>Live Events</span>
-            <Calendar size={18} color="var(--accent-strong)" />
+        <div
+          style={{
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: '6px',
+            padding: '16px 18px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+              Live Events
+            </span>
+            <Calendar size={16} color="var(--brand)" />
           </div>
-          <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)' }}>
+          <div style={{ fontSize: '26px', fontWeight: 600, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>
             {activeEvents}
           </div>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
@@ -127,61 +223,127 @@ export default async function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* Quick Launchpad Tiles */}
+      {/* Operations Quick Launchpad */}
       <div>
-        <h2 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '16px' }}>
-          Operations Launchpad
+        <h2 style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '12px' }}>
+          Quick Launchpad
         </h2>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '16px' }}>
-          <div className="fluent-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 260px), 1fr))', gap: '14px' }}>
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <QrCode size={20} color="var(--brand)" />
-              <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Real-Time QR Turnstile Scanner</h3>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  background: 'var(--brand-soft)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <QrCode size={18} color="var(--brand)" />
+              </div>
+              <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Door Turnstile Scanner</h3>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1, marginBottom: '16px' }}>
-              Launch full-screen camera QR scanner to check in participants and individual team members at the entrance.
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1, marginBottom: '16px' }}>
+              Full-screen camera QR validator with offline IndexedDB queueing to check in participants and teams.
             </p>
             <Link
               href="/admin/scanner"
               className="fluent-btn fluent-btn-primary"
-              style={{ alignSelf: 'flex-start', fontSize: '13px' }}
+              style={{ alignSelf: 'flex-start', fontSize: '12px', padding: '6px 14px' }}
             >
-              Launch QR Scanner &rarr;
+              Launch Scanner &rarr;
             </Link>
           </div>
 
-          <div className="fluent-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <Users size={20} color="var(--brand)" />
-              <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Registrations, Badges &amp; Export</h3>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  background: 'var(--brand-soft)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <Users size={18} color="var(--brand)" />
+              </div>
+              <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Registrations Ledger</h3>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1, marginBottom: '16px' }}>
-              Filter attendees, manually register at-the-door walk-ins, print badges, and export to CSV or formatted Excel (.xlsx).
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1, marginBottom: '16px' }}>
+              Filter attendees, manual walk-in tickets, print event badges, and export to CSV or Excel (.xlsx).
             </p>
             <Link
               href="/admin/registrations"
               className="fluent-btn fluent-btn-secondary"
-              style={{ alignSelf: 'flex-start', fontSize: '13px' }}
+              style={{ alignSelf: 'flex-start', fontSize: '12px', padding: '6px 14px' }}
             >
-              Manage Registrations &rarr;
+              Manage Ledger &rarr;
             </Link>
           </div>
 
-          <div className="fluent-card" style={{ padding: '24px', display: 'flex', flexDirection: 'column' }}>
+          <div
+            style={{
+              background: 'var(--surface)',
+              border: '1px solid var(--border)',
+              borderRadius: '6px',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              boxShadow: '0 1px 3px rgba(0, 0, 0, 0.04)',
+            }}
+          >
             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-              <Shield size={20} color="var(--brand)" />
-              <h3 style={{ fontSize: '16px', fontWeight: 600 }}>Security &amp; Password Resets</h3>
+              <div
+                style={{
+                  width: '32px',
+                  height: '32px',
+                  borderRadius: '6px',
+                  background: 'var(--brand-soft)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <BarChart3 size={18} color="var(--brand)" />
+              </div>
+              <h3 style={{ fontSize: '14px', fontWeight: 600, margin: 0 }}>Live Conversion Telemetry</h3>
             </div>
-            <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1, marginBottom: '16px' }}>
-              Review encrypted password reset requests in queue and manage user roles (admin, core_member, user).
+            <p style={{ fontSize: '12.5px', color: 'var(--text-muted)', lineHeight: 1.5, flex: 1, marginBottom: '16px' }}>
+              Real-time admission turnout stream, solo vs. team ratios, and event capacity tracking.
             </p>
             <Link
-              href="/admin/passwords"
+              href="/admin/analytics"
               className="fluent-btn fluent-btn-secondary"
-              style={{ alignSelf: 'flex-start', fontSize: '13px' }}
+              style={{ alignSelf: 'flex-start', fontSize: '12px', padding: '6px 14px' }}
             >
-              Review Approvals &rarr;
+              View Analytics &rarr;
             </Link>
           </div>
         </div>
