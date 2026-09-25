@@ -120,7 +120,7 @@ export default function TicketClient({
             style={{
               background: 'linear-gradient(135deg, #0067b8 0%, #004c87 100%)',
               color: '#ffffff',
-              padding: '24px',
+              padding: 'clamp(16px, 4vw, 24px)',
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
@@ -152,7 +152,7 @@ export default function TicketClient({
           </div>
 
           {/* Ticket Body */}
-          <div style={{ padding: '32px' }}>
+          <div style={{ padding: 'clamp(20px, 4vw, 32px)' }}>
             <h2 style={{ fontSize: '26px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
               {ticket.event_title}
             </h2>
@@ -187,10 +187,10 @@ export default function TicketClient({
                   includeMargin={false}
                 />
               </div>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '12px', fontFamily: 'monospace' }}>
+              <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '12px', fontFamily: 'monospace', wordBreak: 'break-all', textAlign: 'center', maxWidth: '100%', padding: '0 8px' }}>
                 {ticket.hash_payload}
               </span>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px' }}>
+              <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', textAlign: 'center' }}>
                 Present this scannable QR code at the entrance turnstile
               </span>
             </div>
@@ -203,7 +203,7 @@ export default function TicketClient({
                 borderRadius: 'var(--radius-sm)',
                 marginTop: '20px',
                 display: 'grid',
-                gridTemplateColumns: 'repeat(2, 1fr)',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))',
                 gap: '16px',
                 fontSize: '13px',
               }}

@@ -144,7 +144,7 @@ export default async function TeamPage() {
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Guild Leadership &bull; Chapter &apos;26
           </span>
-          <h1 style={{ fontSize: '44px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
+          <h1 style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
             Community Team Roster
           </h1>
           <p style={{ fontSize: '16px', color: 'var(--text-muted)', maxWidth: '720px', marginTop: '8px' }}>
@@ -162,7 +162,7 @@ export default async function TeamPage() {
               Executive leadership and strategic direction for Chapter &apos;26
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '24px' }}>
             {chiefBoard.map(renderMemberCard)}
           </div>
         </section>
@@ -177,7 +177,7 @@ export default async function TeamPage() {
               Technical architecture, brand design, and community infrastructure leads
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '24px' }}>
             {boardMembers.map(renderMemberCard)}
           </div>
         </section>
@@ -192,7 +192,7 @@ export default async function TeamPage() {
               Full-stack developers, events coordinators, and community ambassadors
             </p>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '24px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))', gap: '24px' }}>
             {teamMembers.map(renderMemberCard)}
           </div>
         </section>

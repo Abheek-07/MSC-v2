@@ -70,7 +70,7 @@ export default function AboutPage() {
           </span>
           <h1
             style={{
-              fontSize: '44px',
+              fontSize: 'clamp(28px, 6vw, 44px)',
               fontWeight: 700,
               color: 'var(--text-strong)',
               marginTop: '8px',
@@ -177,7 +177,7 @@ export default function AboutPage() {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))',
                 gap: '24px',
                 borderTop: '1px solid var(--border)',
                 paddingTop: '28px',
@@ -244,7 +244,7 @@ export default function AboutPage() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '28px' }}>
             {manifestoPillars.map((pillar) => {
               const Icon = pillar.icon;
               return (
@@ -252,7 +252,7 @@ export default function AboutPage() {
                   key={pillar.num}
                   className="fluent-card"
                   style={{
-                    padding: '32px',
+                    padding: 'clamp(20px, 4vw, 32px)',
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'space-between',

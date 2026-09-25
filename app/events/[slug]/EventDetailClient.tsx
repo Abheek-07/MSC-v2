@@ -369,7 +369,7 @@ export default function EventDetailClient({
               </span>
             </div>
 
-            <h1 style={{ fontSize: '36px', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '14px' }}>
+            <h1 style={{ fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '14px' }}>
               {event.title}
             </h1>
 
@@ -439,14 +439,17 @@ export default function EventDetailClient({
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-sm)',
             marginBottom: '32px',
-            overflow: 'hidden',
+            overflowX: 'auto',
+            WebkitOverflowScrolling: 'touch',
           }}
         >
           <button
             onClick={() => setActivePortalTab('register')}
             style={{
               flex: 1,
-              padding: '16px',
+              minWidth: 'max-content',
+              whiteSpace: 'nowrap',
+              padding: '14px 20px',
               fontSize: '14px',
               fontWeight: 700,
               cursor: 'pointer',
@@ -462,7 +465,9 @@ export default function EventDetailClient({
             onClick={() => setActivePortalTab('lookup')}
             style={{
               flex: 1,
-              padding: '16px',
+              minWidth: 'max-content',
+              whiteSpace: 'nowrap',
+              padding: '14px 20px',
               fontSize: '14px',
               fontWeight: 700,
               cursor: 'pointer',
@@ -480,7 +485,9 @@ export default function EventDetailClient({
             onClick={() => setActivePortalTab('certificate')}
             style={{
               flex: 1,
-              padding: '16px',
+              minWidth: 'max-content',
+              whiteSpace: 'nowrap',
+              padding: '14px 20px',
               fontSize: '14px',
               fontWeight: 700,
               cursor: 'pointer',
@@ -496,7 +503,7 @@ export default function EventDetailClient({
 
         {/* TAB 1: REGISTER */}
         {activePortalTab === 'register' && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '32px' }}>
             {/* Registration Form */}
             <div
               style={{
@@ -504,7 +511,7 @@ export default function EventDetailClient({
                 border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-sm)',
                 boxShadow: 'var(--shadow-rest)',
-                padding: '36px',
+                padding: 'clamp(20px, 4vw, 36px)',
               }}
             >
               <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>

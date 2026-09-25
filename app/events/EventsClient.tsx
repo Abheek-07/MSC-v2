@@ -44,7 +44,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
               borderRadius: 'var(--radius-sm)',
               border: '1px solid rgba(0, 103, 184, 0.4)',
               boxShadow: 'var(--shadow-lift)',
-              padding: '44px',
+              padding: 'clamp(20px, 4vw, 44px)',
               marginBottom: '48px',
               position: 'relative',
               overflow: 'hidden',
@@ -71,7 +71,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                 <Sparkles size={14} /> Spotlight Upcoming Event
               </div>
 
-              <h2 style={{ fontSize: '36px', fontWeight: 700, color: '#ffffff', marginBottom: '14px' }}>
+              <h2 style={{ fontSize: 'clamp(24px, 5vw, 36px)', fontWeight: 700, color: '#ffffff', marginBottom: '14px' }}>
                 {featuredEvent.title}
               </h2>
 
@@ -173,7 +173,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
         </div>
 
         {/* 4. EVENT CARDS */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '28px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '24px' }}>
           {filteredEvents.map((evt) => {
             const isCompleted = evt.status === 'completed';
             const priceLabel =

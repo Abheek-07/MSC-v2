@@ -88,7 +88,9 @@ export default async function HomePage() {
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: '10px',
+                flexWrap: 'wrap',
+                gap: '8px',
+                maxWidth: '100%',
                 padding: '6px 14px',
                 background: 'rgba(0, 103, 184, 0.25)',
                 border: '1px solid rgba(0, 103, 184, 0.5)',
@@ -217,9 +219,9 @@ export default async function HomePage() {
             </p>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '24px' }}>
             {/* Pillar 01 */}
-            <div className="fluent-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column' }}>
+            <div className="fluent-card" style={{ padding: 'clamp(20px, 4vw, 32px)', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div
                   style={{
@@ -251,7 +253,7 @@ export default async function HomePage() {
             </div>
 
             {/* Pillar 02 */}
-            <div className="fluent-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column' }}>
+            <div className="fluent-card" style={{ padding: 'clamp(20px, 4vw, 32px)', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div
                   style={{
@@ -283,7 +285,7 @@ export default async function HomePage() {
             </div>
 
             {/* Pillar 03 */}
-            <div className="fluent-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column' }}>
+            <div className="fluent-card" style={{ padding: 'clamp(20px, 4vw, 32px)', display: 'flex', flexDirection: 'column' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                 <div
                   style={{
@@ -339,7 +341,7 @@ export default async function HomePage() {
             className="fluent-showcase-card"
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 320px), 1fr))',
               borderRadius: '24px',
               border: '1px solid var(--border)',
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
@@ -348,8 +350,8 @@ export default async function HomePage() {
               background: 'var(--surface)',
             }}
           >
-            <div style={{ minHeight: '340px', position: 'relative', overflow: 'hidden', padding: '16px' }}>
-              <div style={{ width: '100%', height: '100%', minHeight: '320px', borderRadius: '18px', overflow: 'hidden', position: 'relative' }}>
+            <div style={{ minHeight: '260px', position: 'relative', overflow: 'hidden', padding: '16px' }}>
+              <div style={{ width: '100%', height: '100%', minHeight: '240px', borderRadius: '18px', overflow: 'hidden', position: 'relative' }}>
                 <img
                   src={flagship.image_url}
                   alt={flagship.title}
@@ -377,7 +379,7 @@ export default async function HomePage() {
               </div>
             </div>
 
-            <div style={{ padding: '44px 40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <div style={{ padding: 'clamp(24px, 4vw, 44px) clamp(16px, 4vw, 40px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
               <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
                 <span className="fluent-badge badge-warning" style={{ fontWeight: 800, letterSpacing: '0.05em', borderRadius: '6px' }}>
                   SEP 17
@@ -438,11 +440,11 @@ export default async function HomePage() {
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.06)',
               overflow: 'hidden',
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))',
             }}
           >
             {/* Contact details */}
-            <div style={{ padding: '48px 44px', background: 'var(--bg-tinted)' }}>
+            <div style={{ padding: 'clamp(28px, 4vw, 48px) clamp(18px, 4vw, 44px)', background: 'var(--bg-tinted)' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Official Line
               </span>
@@ -479,7 +481,7 @@ export default async function HomePage() {
             </div>
 
             {/* Message form via Web3Forms API relay */}
-            <div style={{ padding: '48px 44px' }}>
+            <div style={{ padding: 'clamp(28px, 4vw, 48px) clamp(18px, 4vw, 44px)' }}>
               <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '20px', color: 'var(--text-strong)' }}>
                 Send Us a Message
               </h3>

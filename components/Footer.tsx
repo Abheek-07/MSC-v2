@@ -75,7 +75,7 @@ export default function Footer() {
           }}
         >
           {/* Identity & Mission */}
-          <div style={{ maxWidth: '380px' }}>
+          <div style={{ maxWidth: '380px', width: '100%' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '12px' }}>
               <img
                 src="https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png"
@@ -171,7 +171,7 @@ export default function Footer() {
           </div>
 
           {/* Contact & Location */}
-          <div style={{ maxWidth: '280px' }}>
+          <div style={{ maxWidth: '280px', width: '100%' }}>
             <span
               style={{
                 fontSize: '12px',

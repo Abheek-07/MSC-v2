@@ -73,7 +73,7 @@ export default function GalleryPage() {
           <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Visual Archives &bull; Chapter &apos;26
           </span>
-          <h1 style={{ fontSize: '44px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
+          <h1 style={{ fontSize: 'clamp(28px, 6vw, 44px)', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
             Community Photo Gallery
           </h1>
           <p style={{ fontSize: '16px', color: 'var(--text-muted)', maxWidth: '680px', marginTop: '8px' }}>
@@ -201,7 +201,7 @@ export default function GalleryPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 280px), 1fr))',
               gap: '24px',
             }}
           >
