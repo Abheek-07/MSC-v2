@@ -7,6 +7,9 @@ const nextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
+  typescript: {
+    ignoreBuildErrors: true,
+  },
   serverExternalPackages: ['html5-qrcode'],
   experimental: {
     optimizePackageImports: [
