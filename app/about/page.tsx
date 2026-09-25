@@ -91,53 +91,60 @@ export default function AboutPage() {
           </p>
         </div>
 
-        {/* Visual Artwork Feature Container */}
+        {/* Visual Artwork Feature Container (Microsoft Fluent 3D Showcase) */}
         <div
+          className="fluent-showcase-card"
           style={{
             position: 'relative',
-            borderRadius: 'var(--radius-sm)',
+            borderRadius: '24px',
             overflow: 'hidden',
-            boxShadow: 'var(--shadow-lift)',
+            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.08)',
             marginBottom: '60px',
             border: '1px solid var(--border)',
-            background: '#0a0d14',
-            maxHeight: '480px',
+            background: 'var(--surface)',
           }}
         >
           <img
-            src="/about_visual.png"
-            alt="Microsoft Student Community Innovation Lab at SRM University AP"
+            src="/about_visual.jpg"
+            alt="Microsoft Fluent Design and Innovation at SRM University AP"
             style={{
               width: '100%',
-              height: '100%',
-              maxHeight: '480px',
+              height: 'auto',
+              maxHeight: '520px',
               objectFit: 'cover',
+              display: 'block',
             }}
           />
+          {/* Acrylic Glass Floating Information Card */}
           <div
             style={{
               position: 'absolute',
-              bottom: 0,
-              left: 0,
-              right: 0,
-              padding: '24px 32px',
-              background: 'linear-gradient(to top, rgba(7, 10, 18, 0.92) 0%, rgba(7, 10, 18, 0.4) 70%, transparent 100%)',
+              bottom: '16px',
+              left: '16px',
+              right: '16px',
+              padding: 'clamp(12px, 3vw, 16px) clamp(14px, 3vw, 24px)',
+              background: 'rgba(10, 17, 28, 0.82)',
+              backdropFilter: 'blur(16px)',
+              WebkitBackdropFilter: 'blur(16px)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              borderRadius: '14px',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'flex-end',
+              alignItems: 'center',
               flexWrap: 'wrap',
-              gap: '12px',
+              gap: '10px',
+              color: '#ffffff',
             }}
           >
             <div>
-              <span style={{ fontSize: '11px', color: '#00a4ef', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+              <span style={{ fontSize: '11px', color: '#58a6ff', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Engineering Collective
               </span>
-              <h3 style={{ fontSize: '20px', color: '#ffffff', fontWeight: 600, margin: '2px 0 0 0' }}>
+              <h3 style={{ fontSize: 'clamp(15px, 3vw, 18px)', color: '#ffffff', fontWeight: 600, margin: '2px 0 0 0' }}>
                 Microsoft Student Community &bull; Chapter &apos;26
               </h3>
             </div>
-            <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.75)' }}>
+            <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)' }}>
               SRM University AP &bull; Amaravati, Andhra Pradesh
             </span>
           </div>
