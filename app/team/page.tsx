@@ -3,7 +3,7 @@ import { FALLBACK_TEAM, TeamMemberItem } from '@/lib/data/mock-fallback';
 import { Linkedin, Github, Twitter, Instagram, Globe, Mail } from 'lucide-react';
 
 export const metadata = {
-  title: 'Team Roster — Microsoft Student Community | SRM University AP',
+  title: 'Team Roster | Microsoft Student Community | SRM University-AP',
   description:
     'Meet the student leaders, engineers, and coordinators driving Microsoft Student Community at SRM University AP.',
 };

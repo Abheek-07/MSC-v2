@@ -33,7 +33,7 @@ export async function sendTicketEmail(params: SendTicketEmailParams): Promise<{ 
       body: JSON.stringify({
         from: 'MSC SRM AP <tickets@srmap.edu.in>',
         to: [params.to],
-        subject: `Your Ticket: ${params.eventTitle} — Microsoft Student Community`,
+        subject: `Your Ticket: ${params.eventTitle} - Microsoft Student Community`,
         html: `
           <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e5e5e5; border-radius: 4px; background: #ffffff;">
             <div style="border-bottom: 2px solid #0067b8; padding-bottom: 12px; margin-bottom: 20px;">

@@ -1,5 +1,5 @@
 -- ==============================================================================
--- MSC SRM AP — Production Database Schema & Hardening
+-- MSC SRM AP - Production Database Schema & Hardening
 -- Grounded in production requirements with concurrency, idempotency & RLS
 -- ==============================================================================
 

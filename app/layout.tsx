@@ -4,7 +4,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 export const metadata: Metadata = {
-  title: 'Microsoft Student Community — SRM University AP',
+  title: 'Microsoft Student Community | SRM University-AP',
   description:
     'The premier student engineering guild at SRM University AP. Official Microsoft Student Community organizing national hackathons, Azure cloud computing workshops, and AI bootcamps.',
   keywords: [
@@ -17,7 +17,7 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'MSC SRM AP Core Team' }],
   openGraph: {
-    title: 'Microsoft Student Community — SRM University AP',
+    title: 'Microsoft Student Community | SRM University-AP',
     description:
       'Where Student Builders Engineer Production Scale. Official chapter organizing hackathons, Azure compute bootcamps, and technical summits.',
     type: 'website',

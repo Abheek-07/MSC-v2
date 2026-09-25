@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 
 export const metadata = {
-  title: 'Admin Portal — Microsoft Student Community SRM AP',
+  title: 'Admin Portal | Microsoft Student Community SRM AP',
 };
 
 export default async function AdminLayout({

@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata = {
-  title: 'Events Directory — Microsoft Student Community | SRM University AP',
+  title: 'Events Directory | Microsoft Student Community | SRM University-AP',
   description:
     'Explore hackathons, workshops, bootcamps, and technical conferences hosted by Microsoft Student Community at SRM University AP.',
 };

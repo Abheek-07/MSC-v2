@@ -14,7 +14,7 @@ export async function generateMetadata({ params }: CertificatePageProps) {
   if (!event) return { title: 'Certificate' };
 
   return {
-    title: `Certificate of Participation — ${event.title}`,
+    title: `Certificate of Participation - ${event.title}`,
     description: `Official verified certificate for ${event.title} issued by Microsoft Student Community SRM AP.`,
   };
 }

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Award, Compass, Users, MapPin, CheckCircle, ArrowRight, Sparkles, Layers, Cpu, Rocket } from 'lucide-react';
 
 export const metadata = {
-  title: 'About MSC SRM AP — Origin, Mentors & Manifesto',
+  title: 'About MSC SRM AP | Origin, Mentors & Manifesto',
   description:
     'The official provenance and founding history of Microsoft Student Community at SRM University AP. Founded by Jayanth Ramakrishnan, guided by Dr. Murali Krishna Enduri Sir and Dr. CV Tomy Sir.',
 };
@@ -170,7 +170,7 @@ export default function AboutPage() {
                 Origin Story &amp; Provenance
               </h2>
               <p style={{ fontSize: '16px', color: 'var(--text-body)', marginTop: '12px', lineHeight: 1.6 }}>
-                What started as a handful of students sharing notes on Azure turned into SRM AP&apos;s most active engineering community. MSC isn&apos;t a club &mdash; it&apos;s a launchpad for future creators.
+                What started as a handful of students sharing notes on Azure turned into SRM AP&apos;s most active engineering community. MSC isn&apos;t a club, it&apos;s a launchpad for future creators.
               </p>
             </div>
 

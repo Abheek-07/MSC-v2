@@ -41,7 +41,7 @@ export async function generateMetadata({ params }: EventPageProps) {
   if (!event) return { title: 'Event Not Found' };
 
   return {
-    title: `${event.title} — Microsoft Student Community | SRM AP`,
+    title: `${event.title} | Microsoft Student Community | SRM AP`,
     description: event.description,
   };
 }

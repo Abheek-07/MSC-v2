@@ -3,6 +3,8 @@ import ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 import { getAdminClient } from '@/lib/supabase/admin';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
