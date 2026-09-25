@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Calendar, MapPin, Users, Sparkles, Image as ImageIcon, ArrowRight, ExternalLink } from 'lucide-react';
+import { Calendar, MapPin, Users, Image as ImageIcon, ExternalLink } from 'lucide-react';
 import { EventItem } from '@/lib/data/mock-fallback';
 
 export default function EventsClient({ events }: { events: EventItem[] }) {
@@ -124,23 +124,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
               {/* Event Information Column */}
               <div style={{ padding: 'clamp(24px, 4vw, 40px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '5px',
-                      fontSize: '11px',
-                      fontWeight: 700,
-                      color: 'var(--brand)',
-                      background: 'var(--brand-soft)',
-                      padding: '4px 10px',
-                      borderRadius: '6px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.06em',
-                    }}
-                  >
-                    <Sparkles size={13} /> Spotlight Upcoming Event
-                  </span>
+
                   <span className="fluent-badge badge-success" style={{ borderRadius: '6px' }}>
                     Registration Open
                   </span>

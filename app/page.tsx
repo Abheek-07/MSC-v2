@@ -11,7 +11,6 @@ import {
   Calendar,
   MapPin,
   Send,
-  Sparkles,
   ShieldCheck,
 } from 'lucide-react';
 import TelemetryMarquee from '@/components/TelemetryMarquee';
@@ -83,33 +82,6 @@ export default async function HomePage() {
 
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: '860px' }}>
-            {/* Chapter badge */}
-            <div
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '8px',
-                maxWidth: '100%',
-                padding: '6px 14px',
-                background: 'rgba(0, 103, 184, 0.25)',
-                border: '1px solid rgba(0, 103, 184, 0.5)',
-                borderRadius: 'var(--radius-sm)',
-                marginBottom: '28px',
-                fontSize: '12px',
-                fontWeight: 600,
-                letterSpacing: '0.08em',
-                textTransform: 'uppercase',
-                color: '#58a6ff',
-              }}
-            >
-              <span>MICROSOFT STUDENT COMMUNITY</span>
-              <span>&bull;</span>
-              <span>SRM UNIVERSITY AP</span>
-              <span>&bull;</span>
-              <span>CHAPTER &apos;26</span>
-            </div>
-
             {/* Headline */}
             <h1
               className="display-hero"
@@ -138,33 +110,18 @@ export default async function HomePage() {
             {/* Primary Action Buttons */}
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
               <a
-                href="#upcoming"
+                href="https://discord.gg/K5NC5wAhg"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="fluent-btn fluent-btn-primary"
                 style={{
                   padding: '12px 28px',
                   fontSize: '15px',
                   backgroundColor: 'var(--brand)',
                   color: '#ffffff',
-                }}
-              >
-                <Sparkles size={16} /> SYNORA &apos;26 Hackathon &rarr;
-              </a>
-
-              <a
-                href="https://discord.gg/K5NC5wAhg"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="fluent-btn fluent-btn-secondary"
-                style={{
-                  padding: '12px 24px',
-                  fontSize: '15px',
-                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
-                  color: '#ffffff',
-                  borderColor: 'rgba(255, 255, 255, 0.3)',
-                  backdropFilter: 'blur(8px)',
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '8px',
+                  gap: '10px',
                 }}
               >
                 <span>Join Discord Guild</span>
@@ -182,20 +139,6 @@ export default async function HomePage() {
                 </span>
                 <ExternalLink size={14} />
               </a>
-
-              <Link
-                href="/custom-events/synora"
-                style={{
-                  fontSize: '13px',
-                  color: '#a5d0ff',
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                  marginLeft: '8px',
-                }}
-              >
-                View SYNORA F1 Microsite &rarr;
-              </Link>
             </div>
           </div>
         </div>

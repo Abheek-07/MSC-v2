@@ -1,6 +1,5 @@
 import React from 'react';
-import Link from 'next/link';
-import { Award, Compass, Users, MapPin, CheckCircle, ArrowRight, Sparkles, Layers, Cpu, Rocket } from 'lucide-react';
+import { Award, Compass, Users, MapPin, CheckCircle, Sparkles, Layers, Cpu, Rocket } from 'lucide-react';
 
 export const metadata = {
   title: 'About MSC SRM AP | Origin, Mentors & Manifesto',
@@ -331,40 +330,6 @@ export default function AboutPage() {
             ))}
           </div>
         </section>
-
-        {/* Bottom CTA Banner */}
-        <div
-          style={{
-            background: 'var(--surface)',
-            border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-sm)',
-            padding: '40px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '24px',
-            boxShadow: 'var(--shadow-rest)',
-          }}
-        >
-          <div>
-            <h3 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
-              Experience the MSC Community in Action
-            </h3>
-            <p style={{ fontSize: '14px', color: 'var(--text-muted)', margin: 0 }}>
-              Connect with fellow student builders, participate in national hackathons, or meet the leadership board.
-            </p>
-          </div>
-
-          <div style={{ display: 'flex', gap: '12px' }}>
-            <Link href="/events" className="fluent-btn fluent-btn-primary" style={{ padding: '10px 22px' }}>
-              Explore Events <ArrowRight size={15} />
-            </Link>
-            <Link href="/team" className="fluent-btn fluent-btn-secondary" style={{ padding: '10px 20px' }}>
-              Team Roster
-            </Link>
-          </div>
-        </div>
       </div>
     </div>
   );
