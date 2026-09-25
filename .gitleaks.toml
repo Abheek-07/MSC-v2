@@ -1,0 +1,13 @@
+# Gitleaks configuration for MSC SRM AP
+title = "Gitleaks MSC SRM AP Config"
+
+[allowlist]
+description = "Allowed test placeholders used in development and CI"
+regexes = [
+  '''rzp_test_placeholder''',
+  '''rzp_test_secret_placeholder''',
+  '''rzp_webhook_secret_placeholder''',
+  '''01234567890123456789012345678901''',
+  '''local_cron_dev_secret_token_12345678''',
+  '''super_secret_cron_bearer_key_32chars'''
+]

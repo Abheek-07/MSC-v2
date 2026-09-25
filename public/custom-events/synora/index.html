@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SYNORA '26 — The National Hackathon | MSC SRM AP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,600;0,800;1,700&family=Barlow:wght@400;600;700&family=IBM+Plex+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --racing-red: #e10600;
+      --racing-dark: #0a0a0c;
+      --racing-panel: #131418;
+      --racing-border: #22242b;
+      --racing-gold: #ffb900;
+      --racing-text: #f0f0f2;
+      --racing-muted: #8b8d99;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background-color: var(--racing-dark);
+      color: var(--racing-text);
+      font-family: 'Barlow', sans-serif;
+      overflow-x: hidden;
+      line-height: 1.5;
+    }
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 20px 40px;
+      border-bottom: 1px solid var(--racing-border);
+      background: rgba(10, 10, 12, 0.95);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      backdrop-filter: blur(10px);
+    }
+    .brand {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 800;
+      font-size: 28px;
+      letter-spacing: 2px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand span {
+      background: var(--racing-red);
+      color: white;
+      padding: 2px 8px;
+      border-radius: 2px;
+      font-size: 14px;
+      font-style: italic;
+    }
+    .nav-links a {
+      color: var(--racing-muted);
+      text-decoration: none;
+      margin-left: 24px;
+      font-weight: 600;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #ffffff; }
+    .hero {
+      padding: 100px 40px 80px;
+      max-width: 1200px;
+      margin: 0 auto;
+      text-align: center;
+      position: relative;
+    }
+    .telemetry-tag {
+      display: inline-block;
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--racing-red);
+      font-size: 13px;
+      letter-spacing: 2px;
+      background: rgba(225, 6, 0, 0.1);
+      border: 1px solid rgba(225, 6, 0, 0.3);
+      padding: 6px 16px;
+      border-radius: 2px;
+      margin-bottom: 24px;
+      text-transform: uppercase;
+    }
+    .hero h1 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: clamp(48px, 10vw, 110px);
+      font-weight: 800;
+      text-transform: uppercase;
+      font-style: italic;
+      line-height: 0.95;
+      letter-spacing: -1px;
+      margin-bottom: 24px;
+    }
+    .hero h1 span { color: var(--racing-red); }
+    .hero p {
+      font-size: 20px;
+      color: var(--racing-muted);
+      max-width: 700px;
+      margin: 0 auto 40px;
+    }
+    .cta-row {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+    .btn-pitstop {
+      background: var(--racing-red);
+      color: white;
+      text-decoration: none;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      text-transform: uppercase;
+      padding: 16px 40px;
+      border-radius: 3px;
+      letter-spacing: 1.5px;
+      box-shadow: 0 0 20px rgba(225, 6, 0, 0.4);
+      transition: transform 0.2s, background 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .btn-pitstop:hover {
+      background: #b50500;
+      transform: translateY(-2px);
+    }
+    .btn-secondary {
+      background: var(--racing-panel);
+      border: 1px solid var(--racing-border);
+      color: var(--racing-text);
+      text-decoration: none;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      font-size: 20px;
+      text-transform: uppercase;
+      padding: 16px 36px;
+      border-radius: 3px;
+      letter-spacing: 1.5px;
+      transition: background 0.2s;
+    }
+    .btn-secondary:hover { background: #1c1e24; }
+    .grid-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 20px;
+      max-width: 1200px;
+      margin: 60px auto;
+      padding: 0 40px;
+    }
+    .stat-card {
+      background: var(--racing-panel);
+      border: 1px solid var(--racing-border);
+      border-top: 3px solid var(--racing-red);
+      padding: 24px;
+      text-align: left;
+    }
+    .stat-card .val {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 44px;
+      font-weight: 800;
+      color: #fff;
+    }
+    .stat-card .lbl {
+      color: var(--racing-muted);
+      font-size: 13px;
+      font-family: 'IBM Plex Mono', monospace;
+      text-transform: uppercase;
+      margin-top: 4px;
+    }
+    .tracks-section {
+      max-width: 1200px;
+      margin: 80px auto;
+      padding: 0 40px;
+    }
+    .section-title {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 42px;
+      text-transform: uppercase;
+      font-style: italic;
+      font-weight: 800;
+      margin-bottom: 30px;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--racing-border);
+    }
+    .tracks-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 24px;
+    }
+    .track-card {
+      background: var(--racing-panel);
+      border: 1px solid var(--racing-border);
+      padding: 28px;
+      border-radius: 4px;
+    }
+    .track-card h3 {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: #ffffff;
+    }
+    .track-card p {
+      color: var(--racing-muted);
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .footer {
+      border-top: 1px solid var(--racing-border);
+      padding: 40px;
+      text-align: center;
+      font-size: 13px;
+      color: var(--racing-muted);
+      margin-top: 100px;
+    }
+    .footer a { color: var(--racing-red); text-decoration: none; }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <div class="brand">
+      SYNORA <span>F1 EDITION</span>
+    </div>
+    <nav class="nav-links">
+      <a href="#tracks">Tracks</a>
+      <a href="#telemetry">Telemetry</a>
+      <a href="/events/synora-26">Shared Portal</a>
+      <a href="/" target="_blank">MSC Home</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="telemetry-tag">&bull; SRM UNIVERSITY AP &bull; CHAPTER '26 &bull; 36-HOUR SPRINT</div>
+      <h1>HIGH-OCTANE <span>BUILDING.</span><br/>ZERO COMPROMISE.</h1>
+      <p>
+        Formula-1 pitstop engineering meets distributed scale, cloud computing, and autonomous AI agents.
+        Build production software in 36 hours.
+      </p>
+      <div class="cta-row">
+        <!-- Deep-links to the shared registration portal as required by Section 7 -->
+        <a href="/events/synora-26" class="btn-pitstop">
+          Register on Official Portal &rarr;
+        </a>
+        <a href="/" class="btn-secondary">
+          Visit MSC Community
+        </a>
+      </div>
+    </section>
+
+    <section class="grid-stats" id="telemetry">
+      <div class="stat-card">
+        <div class="val">&#8377; 1,50,000+</div>
+        <div class="lbl">Prize Bounty Pool</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">36 HRS</div>
+        <div class="lbl">Non-Stop Sprint</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">400+</div>
+        <div class="lbl">Engineers & Builders</div>
+      </div>
+      <div class="stat-card">
+        <div class="val">1:1</div>
+        <div class="lbl">Microsoft Cloud Mentors</div>
+      </div>
+    </section>
+
+    <section class="tracks-section" id="tracks">
+      <h2 class="section-title">Sprint Problem Tracks</h2>
+      <div class="tracks-grid">
+        <div class="track-card">
+          <h3>01. Autonomous Agents & LLMs</h3>
+          <p>Multi-agent collaboration, function calling, tool use, and cognitive reasoning with Azure OpenAI.</p>
+        </div>
+        <div class="track-card">
+          <h3>02. Distributed Cloud Architectures</h3>
+          <p>Fault-tolerant microservices, event streams, real-time message buses, and AKS deployment pipelines.</p>
+        </div>
+        <div class="track-card">
+          <h3>03. Campus & Institutional Tech</h3>
+          <p>Real-world automation for student life, academic research management, and hostel infrastructure.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>
+      SYNORA is the flagship hackathon of <strong>Microsoft Student Community (MSC) &bull; SRM University AP</strong>.<br/>
+      All registrations, payments, QR tickets, and verified certificates are handled securely on the
+      <a href="/events/synora-26">MSC SRM AP Production Platform</a>.
+    </p>
+  </footer>
+</body>
+</html>
