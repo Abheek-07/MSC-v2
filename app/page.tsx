@@ -1,10 +1,8 @@
 import React from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import {
   ArrowRight,
   ExternalLink,
-  Cpu,
   Cloud,
   Terminal,
   Trophy,
@@ -14,20 +12,27 @@ import {
   MapPin,
   Send,
   Sparkles,
+  ShieldCheck,
 } from 'lucide-react';
+import RingLoader from '@/components/RingLoader';
+import TelemetryMarquee from '@/components/TelemetryMarquee';
 import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
 
 export default async function HomePage() {
   const upcomingEvents = FALLBACK_EVENTS.filter((e) => e.status === 'upcoming');
+  const flagship = FALLBACK_EVENTS.find((e) => e.slug === 'synora-26') || FALLBACK_EVENTS[0];
 
   return (
     <div>
-      {/* 1. CINEMATIC DARK HERO SECTION (Homepage only, per Microsoft.com design pattern) */}
+      {/* 0. Interactive Ring Loader (First visit per session) */}
+      <RingLoader />
+
+      {/* 1. CINEMATIC DARK HERO SECTION */}
       <section
         style={{
           background: 'radial-gradient(ellipse at 80% 20%, #162a45 0%, var(--bg-deep) 50%, var(--bg-deeper) 100%)',
           color: 'var(--text-on-dark)',
-          padding: '100px 0 90px 0',
+          padding: '100px 0 80px 0',
           position: 'relative',
           overflow: 'hidden',
           borderBottom: '1px solid rgba(255,255,255,0.08)',
@@ -48,7 +53,7 @@ export default async function HomePage() {
 
         <div className="container" style={{ position: 'relative', zIndex: 1 }}>
           <div style={{ maxWidth: '860px' }}>
-            {/* Eyebrow stack */}
+            {/* Chapter badge */}
             <div
               style={{
                 display: 'inline-flex',
@@ -99,10 +104,10 @@ export default async function HomePage() {
               ship autonomous agentic AI workflows, and organize high-octane national hackathons.
             </p>
 
-            {/* CTAs */}
+            {/* Primary Action Buttons */}
             <div style={{ display: 'flex', gap: '16px', flexWrap: 'wrap', alignItems: 'center' }}>
-              <Link
-                href="/events/synora-26"
+              <a
+                href="#upcoming"
                 className="fluent-btn fluent-btn-primary"
                 style={{
                   padding: '12px 28px',
@@ -111,8 +116,8 @@ export default async function HomePage() {
                   color: '#ffffff',
                 }}
               >
-                <Sparkles size={16} /> Explore SYNORA &apos;26 Flagship &rarr;
-              </Link>
+                <Sparkles size={16} /> SYNORA &apos;26 Hackathon &rarr;
+              </a>
 
               <a
                 href="https://discord.gg/microsoft"
@@ -126,9 +131,25 @@ export default async function HomePage() {
                   color: '#ffffff',
                   borderColor: 'rgba(255, 255, 255, 0.3)',
                   backdropFilter: 'blur(8px)',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
                 }}
               >
-                Join Discord Guild <ExternalLink size={14} />
+                <span>Join Discord Guild</span>
+                <span
+                  style={{
+                    background: '#0e7c41',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    padding: '2px 6px',
+                    borderRadius: '2px',
+                    fontWeight: 700,
+                  }}
+                >
+                  1,200+ ONLINE
+                </span>
+                <ExternalLink size={14} />
               </a>
 
               <Link
@@ -149,277 +170,226 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* 2. STATS & TELEMETRY STRIP */}
-      <section
-        style={{
-          background: 'var(--surface)',
-          borderBottom: '1px solid var(--border)',
-          padding: '24px 0',
-        }}
-      >
-        <div className="container">
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
-              gap: '24px',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--brand)', display: 'block' }}>
-                SYNORA &apos;26
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Flagship National Hackathon</span>
-            </div>
+      {/* 2. INFINITE TELEMETRY TICKER MARQUEE */}
+      <TelemetryMarquee />
 
-            <div>
-              <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-strong)', display: 'block' }}>
-                Distributed Scale
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Azure Cloud &amp; Microservices</span>
-            </div>
-
-            <div>
-              <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-strong)', display: 'block' }}>
-                LLMs &amp; Agents
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Cognitive Services &amp; AI</span>
-            </div>
-
-            <div>
-              <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-strong)', display: 'block' }}>
-                1,200+ Members
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Active Campus Guild</span>
-            </div>
-
-            <div>
-              <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--success)', display: 'block' }}>
-                &#8377; 1.5 Lakhs+
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Hackathon Prize Pool</span>
-            </div>
-
-            <div>
-              <span style={{ fontSize: '24px', fontWeight: 600, color: 'var(--accent-strong)', display: 'block' }}>
-                MLSA Chapter
-              </span>
-              <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Microsoft Ambassadors</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* 3. EXPLORE ECOSYSTEM / PILLARS SECTION (4-Column Microsoft Tile Grid) */}
-      <section style={{ padding: '80px 0', background: 'var(--bg)' }}>
+      {/* 3. ECOSYSTEM PILLARS (#ecosystem) - 3 Numbered Domain Cards */}
+      <section id="ecosystem" style={{ padding: '80px 0', background: 'var(--bg)' }}>
         <div className="container">
           <div style={{ marginBottom: '40px' }}>
             <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
               Guiding Engineering Framework
             </span>
             <h2 style={{ fontSize: '32px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
-              Explore Ecosystem
+              Ecosystem Pillars
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '15px', maxWidth: '640px', marginTop: '8px' }}>
-              Four specialized pillars engineered to elevate student developers from toy projects into production systems.
+              Three specialized engineering disciplines elevating student developers from local experiments into production-grade systems.
             </p>
           </div>
 
-          <div className="fluent-grid-4">
-            {/* Pillar 1 */}
-            <div className="fluent-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column' }}>
-              <div
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  background: 'var(--brand-soft)',
-                  color: 'var(--brand)',
-                  borderRadius: 'var(--radius-sm)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '20px',
-                }}
-              >
-                <Cloud size={24} />
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '28px' }}>
+            {/* Pillar 01 */}
+            <div className="fluent-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    background: 'var(--brand-soft)',
+                    color: 'var(--brand)',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Cloud size={24} />
+                </div>
+                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--border-strong)', opacity: 0.4 }}>
+                  01
+                </span>
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-strong)' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '10px', color: 'var(--text-strong)' }}>
                 Applied Cloud &amp; AI
               </h3>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '20px' }}>
-                Hands-on immersion with Azure Kubernetes, Serverless compute, Azure OpenAI models, and production RAG pipelines.
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
+                Hands-on immersion with Azure Kubernetes Service, serverless event-driven architectures, cognitive services, and autonomous agentic workflows using Azure OpenAI.
               </p>
-              <Link href="/events" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                Explore Workshops <ArrowRight size={14} />
+              <Link href="/events" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                Explore Cloud Workshops <ArrowRight size={14} />
               </Link>
             </div>
 
-            {/* Pillar 2 */}
-            <div className="fluent-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column' }}>
-              <div
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  background: 'var(--brand-soft)',
-                  color: 'var(--brand)',
-                  borderRadius: 'var(--radius-sm)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '20px',
-                }}
-              >
-                <Trophy size={24} />
+            {/* Pillar 02 */}
+            <div className="fluent-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    background: 'var(--brand-soft)',
+                    color: 'var(--brand)',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Trophy size={24} />
+                </div>
+                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--border-strong)', opacity: 0.4 }}>
+                  02
+                </span>
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-strong)' }}>
+              <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '10px', color: 'var(--text-strong)' }}>
                 National Hackathons
               </h3>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '20px' }}>
-                Host of flagship national hackathon SYNORA. Fast-paced, competitive sprint building with real industry problem statements.
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
+                Home of flagship hackathon brand <strong>SYNORA</strong>. Fast-paced, high-octane 36-hour sprints solving real industry challenges with top technical talent from across India.
               </p>
-              <Link href="/events/synora-26" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                SYNORA Details <ArrowRight size={14} />
+              <Link href="/events/synora-26" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                SYNORA &apos;26 Details <ArrowRight size={14} />
               </Link>
             </div>
 
-            {/* Pillar 3 */}
-            <div className="fluent-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column' }}>
-              <div
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  background: 'var(--brand-soft)',
-                  color: 'var(--brand)',
-                  borderRadius: 'var(--radius-sm)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '20px',
-                }}
-              >
-                <Terminal size={24} />
+            {/* Pillar 03 */}
+            <div className="fluent-card" style={{ padding: '32px', display: 'flex', flexDirection: 'column' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+                <div
+                  style={{
+                    width: '48px',
+                    height: '48px',
+                    background: 'var(--brand-soft)',
+                    color: 'var(--brand)',
+                    borderRadius: 'var(--radius-sm)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                  }}
+                >
+                  <Terminal size={24} />
+                </div>
+                <span style={{ fontSize: '28px', fontWeight: 800, color: 'var(--border-strong)', opacity: 0.4 }}>
+                  03
+                </span>
               </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-strong)' }}>
-                Open Source &amp; Tooling
+              <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '10px', color: 'var(--text-strong)' }}>
+                Mentorship &amp; Open Source
               </h3>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '20px' }}>
-                Collaborative contributions to ecosystem tooling, CLI utilities, and student-first productivity software.
+              <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
+                Dedicated mentoring pipeline for Microsoft Learn Student Ambassadors (MLSA), architectural code reviews, and contributing to open-source developer infrastructure.
               </p>
-              <Link href="/about" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                Our Principles <ArrowRight size={14} />
-              </Link>
-            </div>
-
-            {/* Pillar 4 */}
-            <div className="fluent-card" style={{ padding: '28px', display: 'flex', flexDirection: 'column' }}>
-              <div
-                style={{
-                  width: '44px',
-                  height: '44px',
-                  background: 'var(--brand-soft)',
-                  color: 'var(--brand)',
-                  borderRadius: 'var(--radius-sm)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  marginBottom: '20px',
-                }}
-              >
-                <Award size={24} />
-              </div>
-              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '8px', color: 'var(--text-strong)' }}>
-                MLSA Leadership
-              </h3>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '20px' }}>
-                Mentorship pipeline guiding students to become Microsoft Learn Student Ambassadors and technical speakers.
-              </p>
-              <Link href="/team" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                Meet the Guild <ArrowRight size={14} />
+              <Link href="/about" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                Our Chapter Mission <ArrowRight size={14} />
               </Link>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 4. UPCOMING EVENTS STRIP */}
-      <section style={{ padding: '80px 0', background: 'var(--bg-soft)', borderTop: '1px solid var(--border)' }}>
+      {/* 4. UPCOMING EVENT SPOTLIGHT (#upcoming) */}
+      <section id="upcoming" style={{ padding: '80px 0', background: 'var(--bg-soft)', borderTop: '1px solid var(--border)' }}>
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '36px', flexWrap: 'wrap', gap: '16px' }}>
             <div>
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Live Opportunities
+                Featured Engineering Sprint
               </span>
               <h2 style={{ fontSize: '32px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
-                Upcoming Events
+                Upcoming Event Spotlight
               </h2>
             </div>
             <Link href="/events" className="fluent-btn fluent-btn-secondary">
-              View All Events &rarr;
+              View All Directory Events &rarr;
             </Link>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
-            {upcomingEvents.map((evt) => (
-              <div key={evt.id} className="fluent-card" style={{ display: 'flex', flexDirection: 'column' }}>
-                <div style={{ height: '180px', position: 'relative', overflow: 'hidden' }}>
-                  <img
-                    src={evt.image_url}
-                    alt={evt.title}
-                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                  />
-                  <div
-                    style={{
-                      position: 'absolute',
-                      top: '12px',
-                      left: '12px',
-                      background: 'rgba(0,0,0,0.75)',
-                      backdropFilter: 'blur(4px)',
-                      color: '#ffffff',
-                      padding: '4px 10px',
-                      borderRadius: 'var(--radius-sm)',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    {evt.type}
-                  </div>
+          {/* Spotlight Card */}
+          <div
+            className="fluent-card"
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
+              overflow: 'hidden',
+              boxShadow: 'var(--shadow-lift)',
+              marginBottom: '36px',
+            }}
+          >
+            <div style={{ minHeight: '320px', position: 'relative', overflow: 'hidden' }}>
+              <img
+                src={flagship.image_url}
+                alt={flagship.title}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '16px',
+                  left: '16px',
+                  background: 'rgba(0,0,0,0.8)',
+                  backdropFilter: 'blur(4px)',
+                  color: '#ffffff',
+                  padding: '4px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  fontSize: '12px',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}
+              >
+                {flagship.type} &bull; Active Sprint
+              </div>
+            </div>
+
+            <div style={{ padding: '40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+                <span className="fluent-badge badge-success">Registration Open</span>
+                <span className="fluent-badge badge-info">&#8377; 1,50,000+ Bounty</span>
+              </div>
+
+              <h3 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '12px' }}>
+                {flagship.title}
+              </h3>
+
+              <p style={{ fontSize: '15px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
+                {flagship.description}
+              </p>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: 'var(--text-body)', marginBottom: '28px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <Calendar size={16} color="var(--brand)" />
+                  <span>{new Date(flagship.date_start).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</span>
                 </div>
-
-                <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', flex: 1 }}>
-                  <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
-                    {evt.title}
-                  </h3>
-                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '20px', flex: 1 }}>
-                    {evt.description.slice(0, 140)}...
-                  </p>
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '12px', color: 'var(--text-muted)', marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <Calendar size={14} color="var(--brand)" />
-                      <span>{new Date(evt.date_start).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      <MapPin size={14} color="var(--brand)" />
-                      <span>{evt.location}</span>
-                    </div>
-                  </div>
-
-                  <Link
-                    href={`/events/${evt.slug}`}
-                    className="fluent-btn fluent-btn-primary"
-                    style={{ width: '100%' }}
-                  >
-                    View Details &amp; Register &rarr;
-                  </Link>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <MapPin size={16} color="var(--brand)" />
+                  <span>{flagship.location}</span>
                 </div>
               </div>
-            ))}
+
+              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                <Link
+                  href={`/events/${flagship.slug}`}
+                  className="fluent-btn fluent-btn-primary"
+                  style={{ padding: '12px 28px', fontSize: '15px' }}
+                >
+                  Enter Event Portal &rarr;
+                </Link>
+                <Link
+                  href="/custom-events/synora"
+                  className="fluent-btn fluent-btn-secondary"
+                  style={{ padding: '12px 20px', fontSize: '15px' }}
+                >
+                  F1 Interactive Microsite
+                </Link>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
-      {/* 5. CONTACT & INQUIRIES SECTION */}
-      <section style={{ padding: '80px 0', background: 'var(--bg)' }}>
+      {/* 5. CONTACT SECTION (#contact) */}
+      <section id="contact" style={{ padding: '80px 0', background: 'var(--bg)' }}>
         <div className="container">
           <div
             style={{
@@ -435,57 +405,62 @@ export default async function HomePage() {
             {/* Contact details */}
             <div style={{ padding: '48px', background: 'var(--bg-tinted)' }}>
               <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--brand)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Get In Touch
+                Official Line
               </span>
               <h2 style={{ fontSize: '28px', fontWeight: 600, color: 'var(--text-strong)', margin: '6px 0 16px 0' }}>
-                Connect With The MSC Guild
+                Connect With The MSC Lead Team
               </h2>
               <p style={{ fontSize: '14px', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: '32px' }}>
-                Whether you represent a technical student club, an industry sponsor, or want to speak at our next
-                Azure summit, reach out directly.
+                Whether you represent an institutional club, an industry partner, or want to speak at our next
+                Azure cloud conference, reach out directly.
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', fontSize: '14px' }}>
                 <div>
-                  <strong style={{ display: 'block', color: 'var(--text-strong)' }}>Official Email:</strong>
+                  <strong style={{ display: 'block', color: 'var(--text-strong)' }}>Official Community Email:</strong>
                   <a href="mailto:msc.community@srmap.edu.in" style={{ color: 'var(--brand)', fontWeight: 600 }}>
                     msc.community@srmap.edu.in
                   </a>
                 </div>
 
                 <div>
-                  <strong style={{ display: 'block', color: 'var(--text-strong)' }}>Campus Presence:</strong>
+                  <strong style={{ display: 'block', color: 'var(--text-strong)' }}>Campus Headquarters:</strong>
                   <span style={{ color: 'var(--text-muted)' }}>
                     SRM University AP, Neerukonda, Mangalagiri Mandal, Guntur District, Andhra Pradesh 522240
                   </span>
                 </div>
 
                 <div>
-                  <strong style={{ display: 'block', color: 'var(--text-strong)' }}>Primary Hub:</strong>
-                  <span style={{ color: 'var(--text-muted)' }}>
-                    Discord Community &bull; Active Engineering Discussions
-                  </span>
+                  <strong style={{ display: 'block', color: 'var(--text-strong)' }}>Primary Community Channel:</strong>
+                  <a href="https://discord.gg/microsoft" target="_blank" rel="noopener noreferrer" style={{ color: 'var(--brand)', fontWeight: 600 }}>
+                    Join Discord Server (Active 24/7)
+                  </a>
                 </div>
               </div>
             </div>
 
-            {/* Message form */}
+            {/* Message form via Web3Forms API relay */}
             <div style={{ padding: '48px' }}>
               <h3 style={{ fontSize: '20px', fontWeight: 600, marginBottom: '20px', color: 'var(--text-strong)' }}>
                 Send Us a Message
               </h3>
               <form
-                action="mailto:msc.community@srmap.edu.in"
+                action="https://api.web3forms.com/submit"
                 method="POST"
-                encType="text/plain"
                 style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}
               >
+                {/* Web3Forms public access key placeholder */}
+                <input type="hidden" name="access_key" value="YOUR_WEB3FORMS_ACCESS_KEY" />
+                <input type="hidden" name="subject" value="New Inquiry from MSC SRM AP Platform" />
+                <input type="hidden" name="from_name" value="MSC Public Portal" />
+
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
                     Full Name
                   </label>
                   <input
                     type="text"
+                    name="name"
                     required
                     placeholder="e.g. Alex Morgan"
                     className="fluent-input"
@@ -498,6 +473,7 @@ export default async function HomePage() {
                   </label>
                   <input
                     type="email"
+                    name="email"
                     required
                     placeholder="name@srmap.edu.in"
                     className="fluent-input"
@@ -506,10 +482,11 @@ export default async function HomePage() {
 
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
-                    Subject / Area of Inquiry
+                    Inquiry Topic
                   </label>
                   <input
                     type="text"
+                    name="topic"
                     required
                     placeholder="e.g. Hackathon Sponsorship / Event Collaboration"
                     className="fluent-input"
@@ -522,6 +499,7 @@ export default async function HomePage() {
                   </label>
                   <textarea
                     rows={4}
+                    name="message"
                     required
                     placeholder="Provide details about your query..."
                     className="fluent-input"
@@ -534,7 +512,7 @@ export default async function HomePage() {
                   className="fluent-btn fluent-btn-primary"
                   style={{ alignSelf: 'flex-start', padding: '10px 24px' }}
                 >
-                  <Send size={15} /> Send Message
+                  <Send size={15} /> Submit Inquiry
                 </button>
               </form>
             </div>

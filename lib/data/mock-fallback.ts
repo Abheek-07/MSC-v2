@@ -345,4 +345,19 @@ export const FALLBACK_GALLERY: GalleryItem[] = [
     image_url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1000&q=80',
     alt_text: 'Hands-on session using Azure OpenAI models',
   },
+  {
+    id: 'g-7',
+    title: 'MLSA Regional Chapter Excellence Award',
+    category: 'awards',
+    image_url: 'https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?auto=format&fit=crop&w=1000&q=80',
+    alt_text: 'SRM AP chapter receiving official Microsoft Learn Student Ambassador distinction',
+  },
+  {
+    id: 'g-8',
+    title: "SYNORA '26 Grand Prize Podium Ceremony",
+    category: 'awards',
+    image_url: 'https://images.unsplash.com/photo-1511578314322-379afb476865?auto=format&fit=crop&w=1000&q=80',
+    alt_text: 'Top national hackathon teams awarded Rs 1,50,000 pooled cash prize',
+  },
 ];
+

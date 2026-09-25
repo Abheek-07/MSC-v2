@@ -173,7 +173,14 @@ export default function AdminEventsPage() {
                   </button>
                 </td>
                 <td style={{ padding: '14px 16px' }}>
-                  <div style={{ display: 'flex', gap: '8px' }}>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <Link
+                      href={`/admin/events/${ev.id}`}
+                      className="fluent-btn fluent-btn-primary"
+                      style={{ padding: '4px 10px', fontSize: '12px' }}
+                    >
+                      Manage
+                    </Link>
                     <button
                       onClick={() => {
                         setEditingEvent(ev);

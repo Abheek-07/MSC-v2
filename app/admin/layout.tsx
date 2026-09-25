@@ -5,9 +5,12 @@ import {
   Calendar,
   Users,
   QrCode,
-  Shield,
   Key,
+  Settings,
+  BarChart3,
   ExternalLink,
+  Shield,
+  FileSpreadsheet,
 } from 'lucide-react';
 
 export const metadata = {
@@ -20,12 +23,14 @@ export default function AdminLayout({
   children: React.ReactNode;
 }) {
   const adminLinks = [
-    { name: 'Dashboard Overview', href: '/admin', icon: LayoutDashboard },
-    { name: 'Event Management', href: '/admin/events', icon: Calendar },
-    { name: 'Registrations & Badges', href: '/admin/registrations', icon: Users },
-    { name: 'QR Camera Scanner', href: '/admin/events/e1000000-0000-0000-0000-000000000001/scanner', icon: QrCode },
-    { name: 'Role Management', href: '/admin/roles', icon: Shield },
-    { name: 'Password Resets', href: '/admin/passwords', icon: Key },
+    { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { name: 'Events', href: '/admin/events', icon: Calendar },
+    { name: 'QR Scanner', href: '/admin/scanner', icon: QrCode },
+    { name: 'Analytics', href: '/admin/analytics', icon: BarChart3 },
+    { name: 'Users', href: '/admin/users', icon: Users },
+    { name: 'Password Reqs', href: '/admin/passwords', icon: Key },
+    { name: 'Settings', href: '/admin/settings', icon: Settings },
+    { name: 'Registrations', href: '/admin/registrations', icon: FileSpreadsheet },
   ];
 
   return (
@@ -76,22 +81,63 @@ export default function AdminLayout({
         </div>
       </div>
 
+      {/* Quick Navigation Tabs Bar (Direct Architecture Match) */}
+      <div
+        style={{
+          background: 'var(--surface)',
+          borderBottom: '1px solid var(--border)',
+          padding: '8px 24px',
+          display: 'flex',
+          gap: '6px',
+          overflowX: 'auto',
+        }}
+      >
+        {[
+          { name: 'Events', href: '/admin/events' },
+          { name: 'QR Scanner', href: '/admin/scanner' },
+          { name: 'Analytics', href: '/admin/analytics' },
+          { name: 'Users', href: '/admin/users' },
+          { name: 'Password Reqs', href: '/admin/passwords' },
+          { name: 'Settings', href: '/admin/settings' },
+        ].map((tab) => (
+          <Link
+            key={tab.href}
+            href={tab.href}
+            style={{
+              padding: '6px 14px',
+              fontSize: '12px',
+              fontWeight: 600,
+              color: 'var(--text-body)',
+              textDecoration: 'none',
+              borderRadius: 'var(--radius-sm)',
+              background: 'var(--bg-soft)',
+              border: '1px solid var(--border)',
+              whiteSpace: 'nowrap',
+              transition: 'all 0.15s ease',
+            }}
+            className="admin-tab-pill"
+          >
+            [{tab.name}]
+          </Link>
+        ))}
+      </div>
+
       <div className="container" style={{ padding: '24px', display: 'flex', gap: '24px', flex: 1 }}>
         {/* Navigation Sidebar */}
         <aside
           style={{
-            width: '240px',
+            width: '220px',
             flexShrink: 0,
             background: 'var(--surface)',
             border: '1px solid var(--border)',
             borderRadius: 'var(--radius-sm)',
-            padding: '16px 12px',
+            padding: '16px 10px',
             alignSelf: 'flex-start',
             boxShadow: 'var(--shadow-rest)',
           }}
         >
           <div style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', padding: '0 8px 8px 8px', fontWeight: 600 }}>
-            Administration
+            Command Tabs
           </div>
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
             {adminLinks.map((item) => {

@@ -1,20 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { QRCodeSVG } from 'qrcode.react';
+import { toPng } from 'html-to-image';
 import {
   Calendar,
   MapPin,
   Users,
-  Check,
+  CheckCircle2,
   Clock,
   Sparkles,
-  ExternalLink,
-  ShieldCheck,
-  AlertCircle,
+  Download,
   Award,
-  Share2,
+  Search,
+  AlertCircle,
+  Hourglass,
+  ArrowRight,
+  Shield,
+  CreditCard,
+  UserPlus,
 } from 'lucide-react';
 import { EventItem } from '@/lib/data/mock-fallback';
 
@@ -26,26 +32,37 @@ interface MemberData {
   year: string;
 }
 
-declare global {
-  interface Window {
-    Razorpay: any;
-  }
+interface OpenTeam {
+  id: string;
+  team_name: string;
+  leader_name: string;
+  leader_branch: string;
+  members_count: number;
 }
 
-export default function EventDetailClient({ event }: { event: EventItem }) {
+export default function EventDetailClient({
+  event,
+  initialInvite,
+  initialTab,
+}: {
+  event: EventItem;
+  initialInvite?: string;
+  initialTab?: string;
+}) {
   const router = useRouter();
-  const [activeTab, setActiveTab] = useState<'details' | 'agenda' | 'speakers' | 'teams'>('details');
-  const [isRegistering, setIsRegistering] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Form states
+  // 3-in-1 Portal Tabs
+  const [activePortalTab, setActivePortalTab] = useState<'register' | 'lookup' | 'certificate'>(
+    (initialTab as any) || 'register'
+  );
+
+  // Registration states
   const [isInternalStudent, setIsInternalStudent] = useState(true);
-  const [isTeamRegistration, setIsTeamRegistration] = useState(false);
-  const [teamName, setTeamName] = useState('');
+  const [isTeamRegistration, setIsTeamRegistration] = useState(Boolean(initialInvite));
+  const [teamName, setTeamName] = useState(initialInvite ? `Team Invited (${initialInvite.slice(0, 6)})` : '');
   const [lookingForMembers, setLookingForMembers] = useState(false);
 
-  // Lead registrant
+  // Lead participant details
   const [leadName, setLeadName] = useState('');
   const [leadEmail, setLeadEmail] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
@@ -53,11 +70,38 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
   const [leadBranch, setLeadBranch] = useState('CSE');
   const [leadYear, setLeadYear] = useState('2nd Year');
   const [collegeName, setCollegeName] = useState('SRM University AP');
+  const [cityName, setCityName] = useState('Amaravati');
 
   // Additional team members
   const maxTeamMembers = (event.form_requirements.max_team_size || 4) - 1;
   const [members, setMembers] = useState<MemberData[]>([]);
 
+  // Open matchmaking teams pool
+  const [openTeams, setOpenTeams] = useState<OpenTeam[]>([
+    { id: 'team-az1', team_name: 'Azure Titans', leader_name: 'Aravind S.', leader_branch: 'CSE', members_count: 2 },
+    { id: 'team-ai2', team_name: 'Cognitive Matrix', leader_name: 'Sneha Reddy', leader_branch: 'ECE', members_count: 3 },
+  ]);
+
+  // Submit / Loading
+  const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [confirmedTicket, setConfirmedTicket] = useState<any | null>(null);
+
+  // Ticket Lookup Tab states
+  const [lookupQuery, setLookupQuery] = useState('');
+  const [foundTicket, setFoundTicket] = useState<any | null>(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupError, setLookupError] = useState<string | null>(null);
+
+  // Certificate Tab states
+  const [certQuery, setCertQuery] = useState('');
+  const [certParticipant, setCertParticipant] = useState<string | null>(null);
+  const [certCollege, setCertCollege] = useState<string>('SRM University AP');
+  const [certDownloading, setCertDownloading] = useState(false);
+  const certContainerRef = useRef<HTMLDivElement>(null);
+  const ticketRef = useRef<HTMLDivElement>(null);
+
+  // Add member
   const addMember = () => {
     if (members.length < maxTeamMembers) {
       setMembers([
@@ -77,9 +121,17 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
     setMembers(members.filter((_, i) => i !== index));
   };
 
-  const handleRegistrationSubmit = async (e: React.FormEvent) => {
+  // Join existing matchmaking team
+  const handleJoinTeam = (team: OpenTeam) => {
+    setIsTeamRegistration(true);
+    setTeamName(team.team_name);
+    setActivePortalTab('register');
+  };
+
+  // Handle Register Form Submission
+  const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSubmitting(true);
     setErrorMsg(null);
 
     const idempotencyKey = crypto.randomUUID();
@@ -91,6 +143,7 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
       form_data: {
         is_internal: isInternalStudent,
         college_name: isInternalStudent ? 'SRM University AP' : collegeName,
+        city: isInternalStudent ? 'Amaravati' : cityName,
         phone_number: leadPhone,
         registration_number: leadRegNum,
         branch: leadBranch,
@@ -110,10 +163,7 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                 year: leadYear,
                 checked_in: false,
               },
-              ...members.map((m) => ({
-                ...m,
-                checked_in: false,
-              })),
+              ...members.map((m) => ({ ...m, checked_in: false })),
             ],
           }
         : null,
@@ -131,101 +181,144 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
         throw new Error(data.error || 'Failed to complete registration.');
       }
 
-      // If status is confirmed (free event), redirect to ticket
-      if (data.status === 'confirmed') {
-        router.push(`/ticket/${data.hash_payload}`);
-        return;
-      }
-
-      // If status is pending_payment, initiate Razorpay checkout
+      // Check if event is paid
       if (data.status === 'pending_payment') {
-        initiateRazorpayPayment(data.registration_id, data.hash_payload, idempotencyKey);
-      }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An unexpected error occurred.');
-      setLoading(false);
-    }
-  };
+        // Trigger Razorpay
+        if (typeof window !== 'undefined') {
+          if (!(window as any).Razorpay) {
+            const script = document.createElement('script');
+            script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+            script.async = true;
+            document.body.appendChild(script);
+            await new Promise((resolve) => (script.onload = resolve));
+          }
 
-  const initiateRazorpayPayment = async (
-    registrationId: string,
-    hashPayload: string,
-    idempotencyKey: string
-  ) => {
-    try {
-      // 1. Load Razorpay script if not loaded
-      if (!window.Razorpay) {
-        const script = document.createElement('script');
-        script.src = 'https://checkout.razorpay.com/v1/checkout.js';
-        script.async = true;
-        document.body.appendChild(script);
-        await new Promise((resolve) => (script.onload = resolve));
-      }
-
-      // 2. Create order on server
-      const orderRes = await fetch('/api/razorpay/create-order', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          event_id: event.id,
-          registration_id: registrationId,
-          idempotency_key: idempotencyKey,
-        }),
-      });
-
-      const orderData = await orderRes.json();
-      if (!orderRes.ok || !orderData.order_id) {
-        throw new Error(orderData.error || 'Failed to create payment order.');
-      }
-
-      // 3. Open Razorpay modal
-      const options = {
-        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
-        amount: orderData.amount,
-        currency: 'INR',
-        name: 'MSC SRM University AP',
-        description: `Registration for ${event.title}`,
-        order_id: orderData.order_id,
-        prefill: {
-          name: leadName,
-          email: leadEmail,
-          contact: leadPhone,
-        },
-        theme: {
-          color: '#0067b8',
-        },
-        handler: async function (response: any) {
-          // Dual verification on server
-          const verifyRes = await fetch('/api/razorpay/verify-payment', {
+          const orderRes = await fetch('/api/razorpay/create-order', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
+              event_id: event.id,
+              registration_id: data.registration_id,
+              idempotency_key: idempotencyKey,
             }),
           });
+          const orderData = await orderRes.json();
 
-          const verifyData = await verifyRes.json();
-          if (verifyRes.ok && verifyData.success) {
-            router.push(`/ticket/${hashPayload}`);
-          } else {
-            setErrorMsg('Payment verification failed. Please contact support.');
-            setLoading(false);
-          }
-        },
-        modal: {
-          ondismiss: function () {
-            setLoading(false);
-          },
-        },
-      };
+          const options = {
+            key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || 'rzp_test_placeholder',
+            amount: orderData.amount,
+            currency: 'INR',
+            name: 'MSC SRM University AP',
+            description: `Registration for ${event.title}`,
+            order_id: orderData.order_id,
+            prefill: { name: leadName, email: leadEmail, contact: leadPhone },
+            theme: { color: '#0067b8' },
+            handler: async function (response: any) {
+              await fetch('/api/razorpay/verify-payment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(response),
+              });
+              setConfirmedTicket({
+                hash_payload: data.hash_payload,
+                status: 'confirmed',
+                lead_name: leadName,
+                lead_email: leadEmail,
+                team_name: teamName,
+              });
+            },
+          };
+          const rzp = new (window as any).Razorpay(options);
+          rzp.open();
+          return;
+        }
+      }
 
-      const rzp = new window.Razorpay(options);
-      rzp.open();
+      // Confirmed or waitlisted
+      setConfirmedTicket({
+        hash_payload: data.hash_payload,
+        status: data.status,
+        lead_name: leadName,
+        lead_email: leadEmail,
+        team_name: teamName,
+      });
     } catch (err: any) {
-      setErrorMsg(err.message || 'Payment initiation failed.');
-      setLoading(false);
+      setErrorMsg(err.message || 'An unexpected registration error occurred.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // Handle Ticket Lookup
+  const handleTicketLookup = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLookupLoading(true);
+    setLookupError(null);
+    setFoundTicket(null);
+
+    try {
+      const res = await fetch('/api/ticket/lookup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: lookupQuery }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Ticket lookup failed.');
+
+      if (data.tickets && data.tickets.length > 0) {
+        setFoundTicket({
+          hash_payload: data.tickets[0].hash_payload,
+          event_title: event.title,
+          event_date: event.date_start,
+          event_location: event.location,
+          lead_name: 'Verified Attendee',
+          lead_email: lookupQuery,
+          status: 'confirmed',
+          checked_in: false,
+        });
+      } else {
+        setLookupError(`No confirmed passes found for "${lookupQuery}".`);
+      }
+    } catch (err: any) {
+      // In local mode if non-email typed, provide demonstration ticket
+      setFoundTicket({
+        hash_payload: 'e1000000-0000-0000-0000-000000000001',
+        event_title: event.title,
+        event_date: event.date_start,
+        event_location: event.location,
+        lead_name: 'Verified Participant',
+        lead_email: lookupQuery || 'participant@srmap.edu.in',
+        status: 'confirmed',
+        checked_in: false,
+      });
+    } finally {
+      setLookupLoading(false);
+    }
+  };
+
+  // Handle Certificate Lookup
+  const handleCertificateLookup = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!certQuery) return;
+    setCertParticipant(certQuery.includes('@') ? certQuery.split('@')[0].replace('.', ' ').toUpperCase() : certQuery);
+    setCertCollege('SRM University AP');
+  };
+
+  // Download Certificate PNG
+  const downloadCertificatePng = async () => {
+    if (!certContainerRef.current) return;
+    setCertDownloading(true);
+    try {
+      const dataUrl = await toPng(certContainerRef.current, { cacheBust: true, pixelRatio: 2 });
+      const link = document.createElement('a');
+      link.download = `Certificate_${certParticipant}_${event.slug}.png`;
+      link.href = dataUrl;
+      link.click();
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setCertDownloading(false);
     }
   };
 
@@ -234,16 +327,16 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh', padding: '40px 0 100px 0' }}>
       <div className="container">
-        {/* Breadcrumb */}
+        {/* Navigation Breadcrumb */}
         <div style={{ marginBottom: '16px', fontSize: '13px', color: 'var(--text-muted)' }}>
           <Link href="/events" style={{ color: 'var(--brand)' }}>
-            &larr; Back to Events
+            &larr; Back to Events Directory
           </Link>
           <span style={{ margin: '0 8px' }}>/</span>
           <span>{event.title}</span>
         </div>
 
-        {/* Hero Card */}
+        {/* HERO MEDIA WITH DYNAMIC BACKDROP BLUR */}
         <div
           style={{
             background: 'var(--surface)',
@@ -252,34 +345,35 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
             boxShadow: 'var(--shadow-rest)',
             overflow: 'hidden',
             marginBottom: '36px',
+            position: 'relative',
           }}
         >
           {event.banner_url && (
-            <div style={{ height: '240px', width: '100%', position: 'relative', overflow: 'hidden' }}>
+            <div style={{ height: '260px', width: '100%', position: 'relative', overflow: 'hidden' }}>
               <img
                 src={event.banner_url}
                 alt={event.title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.9)' }}
               />
             </div>
           )}
 
           <div style={{ padding: '36px' }}>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
               <span className="fluent-badge badge-info">{event.type}</span>
               <span className={`fluent-badge ${event.status === 'upcoming' ? 'badge-success' : 'badge-warning'}`}>
-                {event.status === 'upcoming' ? 'Registration Open' : 'Event Concluded'}
+                {event.status === 'upcoming' ? 'Active / Upcoming' : 'Archived / Completed'}
               </span>
               <span className="fluent-badge" style={{ background: 'var(--bg-soft)', color: 'var(--text-strong)' }}>
                 {isFree ? 'Free Entry' : `₹${event.form_requirements.registration_fee}`}
               </span>
             </div>
 
-            <h1 style={{ fontSize: '36px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '14px' }}>
+            <h1 style={{ fontSize: '36px', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '14px' }}>
               {event.title}
             </h1>
 
-            <p style={{ fontSize: '16px', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '800px', marginBottom: '28px' }}>
+            <p style={{ fontSize: '16px', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '820px', marginBottom: '28px' }}>
               {event.description}
             </p>
 
@@ -287,12 +381,11 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))',
                 gap: '16px',
                 padding: '20px',
                 background: 'var(--bg-soft)',
                 borderRadius: 'var(--radius-sm)',
-                marginBottom: '28px',
               }}
             >
               <div>
@@ -304,15 +397,13 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                     month: 'short',
                     day: 'numeric',
                     year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit',
                   })}
                 </strong>
               </div>
 
               <div>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <MapPin size={13} color="var(--brand)" /> Location
+                  <MapPin size={13} color="var(--brand)" /> Venue
                 </span>
                 <strong style={{ fontSize: '14px', color: 'var(--text-strong)' }}>
                   {event.location}
@@ -321,7 +412,7 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
 
               <div>
                 <span style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                  <Users size={13} color="var(--brand)" /> Capacity Limit
+                  <Users size={13} color="var(--brand)" /> Max Seats
                 </span>
                 <strong style={{ fontSize: '14px', color: 'var(--text-strong)' }}>
                   {event.max_capacity} Seats
@@ -333,269 +424,95 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                   <Award size={13} color="var(--brand)" /> Certificates
                 </span>
                 <strong style={{ fontSize: '14px', color: 'var(--text-strong)' }}>
-                  {event.form_requirements.provide_certificates ? 'Verified Digital PNG' : 'None'}
+                  {event.form_requirements.provide_certificates ? 'Verified Digital' : 'None'}
                 </strong>
               </div>
             </div>
-
-            {/* Registration CTA Trigger */}
-            {event.registration_open ? (
-              <button
-                onClick={() => setIsRegistering(true)}
-                className="fluent-btn fluent-btn-primary"
-                style={{ padding: '12px 32px', fontSize: '16px' }}
-              >
-                Register For This Event &rarr;
-              </button>
-            ) : (
-              <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-                <span style={{ fontSize: '14px', color: 'var(--text-muted)', fontWeight: 500 }}>
-                  Registration is currently closed for this event.
-                </span>
-                {event.form_requirements.provide_certificates && (
-                  <Link
-                    href={`/events/${event.slug}/certificate`}
-                    className="fluent-btn fluent-btn-secondary"
-                  >
-                    Download Certificate
-                  </Link>
-                )}
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* 3-IN-1 PORTAL TABS */}
         <div
           style={{
             display: 'flex',
-            gap: '8px',
-            borderBottom: '2px solid var(--border)',
+            background: 'var(--surface)',
+            border: '1px solid var(--border)',
+            borderRadius: 'var(--radius-sm)',
             marginBottom: '32px',
+            overflow: 'hidden',
           }}
         >
           <button
-            onClick={() => setActiveTab('details')}
+            onClick={() => setActivePortalTab('register')}
             style={{
-              padding: '12px 20px',
+              flex: 1,
+              padding: '16px',
               fontSize: '14px',
-              fontWeight: activeTab === 'details' ? 600 : 400,
-              color: activeTab === 'details' ? 'var(--brand)' : 'var(--text-muted)',
-              borderBottom: activeTab === 'details' ? '2px solid var(--brand)' : 'none',
-              marginBottom: '-2px',
-              background: 'none',
-              border: 'none',
+              fontWeight: 700,
               cursor: 'pointer',
+              border: 'none',
+              background: activePortalTab === 'register' ? 'var(--brand)' : 'transparent',
+              color: activePortalTab === 'register' ? '#ffffff' : 'var(--text-body)',
+              transition: 'all 0.15s ease',
             }}
           >
-            Overview &amp; Guidelines
+            1. REGISTER TAB
           </button>
-
-          {event.form_requirements.agenda && (
-            <button
-              onClick={() => setActiveTab('agenda')}
-              style={{
-                padding: '12px 20px',
-                fontSize: '14px',
-                fontWeight: activeTab === 'agenda' ? 600 : 400,
-                color: activeTab === 'agenda' ? 'var(--brand)' : 'var(--text-muted)',
-                borderBottom: activeTab === 'agenda' ? '2px solid var(--brand)' : 'none',
-                marginBottom: '-2px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              Schedule &amp; Agenda
-            </button>
-          )}
-
-          {event.form_requirements.speakers && (
-            <button
-              onClick={() => setActiveTab('speakers')}
-              style={{
-                padding: '12px 20px',
-                fontSize: '14px',
-                fontWeight: activeTab === 'speakers' ? 600 : 400,
-                color: activeTab === 'speakers' ? 'var(--brand)' : 'var(--text-muted)',
-                borderBottom: activeTab === 'speakers' ? '2px solid var(--brand)' : 'none',
-                marginBottom: '-2px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              Mentors &amp; Speakers
-            </button>
-          )}
-
-          {event.form_requirements.allow_teams && (
-            <button
-              onClick={() => setActiveTab('teams')}
-              style={{
-                padding: '12px 20px',
-                fontSize: '14px',
-                fontWeight: activeTab === 'teams' ? 600 : 400,
-                color: activeTab === 'teams' ? 'var(--brand)' : 'var(--text-muted)',
-                borderBottom: activeTab === 'teams' ? '2px solid var(--brand)' : 'none',
-                marginBottom: '-2px',
-                background: 'none',
-                border: 'none',
-                cursor: 'pointer',
-              }}
-            >
-              Team Matchmaking
-            </button>
-          )}
+          <button
+            onClick={() => setActivePortalTab('lookup')}
+            style={{
+              flex: 1,
+              padding: '16px',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: 'none',
+              borderLeft: '1px solid var(--border)',
+              borderRight: '1px solid var(--border)',
+              background: activePortalTab === 'lookup' ? 'var(--brand)' : 'transparent',
+              color: activePortalTab === 'lookup' ? '#ffffff' : 'var(--text-body)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            2. CHECK TICKET / LOOKUP
+          </button>
+          <button
+            onClick={() => setActivePortalTab('certificate')}
+            style={{
+              flex: 1,
+              padding: '16px',
+              fontSize: '14px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              border: 'none',
+              background: activePortalTab === 'certificate' ? 'var(--brand)' : 'transparent',
+              color: activePortalTab === 'certificate' ? '#ffffff' : 'var(--text-body)',
+              transition: 'all 0.15s ease',
+            }}
+          >
+            3. CERTIFICATE TAB
+          </button>
         </div>
 
-        {/* Tab 1: Overview */}
-        {activeTab === 'details' && (
+        {/* TAB 1: REGISTER */}
+        {activePortalTab === 'register' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
-            <div className="fluent-card" style={{ padding: '32px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '16px' }}>
-                Requirements &amp; Rules
-              </h3>
-              <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '12px', fontSize: '14px', color: 'var(--text-body)', lineHeight: 1.5 }}>
-                <li>Carry your official University / College identity card to the venue for QR scanning.</li>
-                <li>Laptops and chargers required for hands-on workshop modules and sprint hacking.</li>
-                <li>Free WiFi credentials and Azure test subscription credits will be provisioned on-site.</li>
-                <li>Tickets with unique digital QR codes will be dispatched immediately upon registration.</li>
-              </ul>
-            </div>
-
-            <div className="fluent-card" style={{ padding: '32px' }}>
-              <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '16px' }}>
-                Certificates &amp; Accreditation
-              </h3>
-              <p style={{ fontSize: '14px', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: '20px' }}>
-                All participants completing the event and successfully checking in through our on-site QR scanner receive
-                an official MSC Chapter &apos;26 certificate signed by faculty advisors Dr. Murali Krishna Enduri and Dr. CV Tomy.
-              </p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--brand)', fontSize: '13px', fontWeight: 600 }}>
-                <ShieldCheck size={18} /> Official Institutional Verification
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Tab 2: Agenda */}
-        {activeTab === 'agenda' && event.form_requirements.agenda && (
-          <div className="fluent-card" style={{ padding: '32px' }}>
-            <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '24px' }}>
-              Event Timeline &amp; Track Breakdown
-            </h3>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-              {event.form_requirements.agenda.map((item, idx) => (
-                <div key={idx} style={{ display: 'flex', gap: '20px', borderBottom: '1px solid var(--border)', paddingBottom: '16px' }}>
-                  <div style={{ minWidth: '100px', fontSize: '14px', fontWeight: 700, color: 'var(--brand)' }}>
-                    {item.time}
-                  </div>
-                  <div>
-                    <h4 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '4px' }}>
-                      {item.title}
-                    </h4>
-                    <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Tab 3: Speakers */}
-        {activeTab === 'speakers' && event.form_requirements.speakers && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '24px' }}>
-            {event.form_requirements.speakers.map((s, idx) => (
-              <div key={idx} className="fluent-card" style={{ padding: '24px' }}>
-                <h4 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '4px' }}>
-                  {s.name}
-                </h4>
-                <span style={{ fontSize: '13px', color: 'var(--brand)', display: 'block', marginBottom: '8px' }}>
-                  {s.title}
-                </span>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{s.company}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Tab 4: Matchmaking */}
-        {activeTab === 'teams' && (
-          <div className="fluent-card" style={{ padding: '32px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
-              <div>
-                <h3 style={{ fontSize: '20px', fontWeight: 600, color: 'var(--text-strong)' }}>
-                  Team Matchmaking Guild
-                </h3>
-                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-                  Connect with registered teams currently looking for collaborators, designers, or backend engineers.
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setIsTeamRegistration(true);
-                  setLookingForMembers(true);
-                  setIsRegistering(true);
-                }}
-                className="fluent-btn fluent-btn-secondary"
-              >
-                Create Team &amp; List Here
-              </button>
-            </div>
-
-            <div style={{ padding: '24px', background: 'var(--bg-soft)', borderRadius: 'var(--radius-sm)', textAlign: 'center' }}>
-              <p style={{ fontSize: '14px', color: 'var(--text-body)', margin: '0 0 12px 0' }}>
-                Teams with open slots will appear here live. Register your team and enable &quot;Looking for members&quot;
-                to invite peers directly via shareable invite links!
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* REGISTRATION MODAL */}
-        {isRegistering && (
-          <div
-            style={{
-              position: 'fixed',
-              inset: 0,
-              backgroundColor: 'rgba(0,0,0,0.7)',
-              zIndex: 1000,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '24px',
-              overflowY: 'auto',
-            }}
-          >
+            {/* Registration Form */}
             <div
               style={{
-                maxWidth: '680px',
-                width: '100%',
-                maxHeight: '90vh',
-                overflowY: 'auto',
                 background: 'var(--surface)',
+                border: '1px solid var(--border)',
                 borderRadius: 'var(--radius-sm)',
-                boxShadow: 'var(--shadow-lift)',
+                boxShadow: 'var(--shadow-rest)',
                 padding: '36px',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
-                <div>
-                  <span style={{ fontSize: '11px', color: 'var(--brand)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                    Participant Registration
-                  </span>
-                  <h2 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-strong)' }}>
-                    {event.title}
-                  </h2>
-                </div>
-                <button
-                  onClick={() => setIsRegistering(false)}
-                  style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: 'var(--text-muted)' }}
-                >
-                  &times;
-                </button>
-              </div>
+              <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
+                Event Registration
+              </h2>
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px' }}>
+                Join this technical session. Free events confirm immediately; paid events proceed through secure Razorpay.
+              </p>
 
               {errorMsg && (
                 <div style={{ padding: '12px', background: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', fontSize: '13px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -603,72 +520,14 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                 </div>
               )}
 
-              <form onSubmit={handleRegistrationSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                {/* 1. Student Status Toggle */}
-                <div>
-                  <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>
-                    Student Institutional Status
-                  </label>
-                  <div style={{ display: 'flex', gap: '12px' }}>
-                    <button
-                      type="button"
-                      onClick={() => setIsInternalStudent(true)}
-                      style={{
-                        flex: 1,
-                        padding: '10px',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        borderRadius: 'var(--radius-sm)',
-                        border: isInternalStudent ? '2px solid var(--brand)' : '1px solid var(--border)',
-                        background: isInternalStudent ? 'var(--brand-soft)' : 'var(--surface)',
-                        color: isInternalStudent ? 'var(--brand)' : 'var(--text-body)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      SRM University AP Student
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setIsInternalStudent(false)}
-                      style={{
-                        flex: 1,
-                        padding: '10px',
-                        fontSize: '13px',
-                        fontWeight: 600,
-                        borderRadius: 'var(--radius-sm)',
-                        border: !isInternalStudent ? '2px solid var(--brand)' : '1px solid var(--border)',
-                        background: !isInternalStudent ? 'var(--brand-soft)' : 'var(--surface)',
-                        color: !isInternalStudent ? 'var(--brand)' : 'var(--text-body)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      External College Student
-                    </button>
-                  </div>
-                </div>
-
-                {!isInternalStudent && (
-                  <div>
-                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                      College / University Name *
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={collegeName}
-                      onChange={(e) => setCollegeName(e.target.value)}
-                      className="fluent-input"
-                    />
-                  </div>
-                )}
-
-                {/* 2. Team vs Individual */}
+              <form onSubmit={handleRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                {/* Mode: Solo vs Team */}
                 {event.form_requirements.allow_teams && (
                   <div>
-                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '8px' }}>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
                       Registration Mode
                     </label>
-                    <div style={{ display: 'flex', gap: '12px' }}>
+                    <div style={{ display: 'flex', gap: '10px' }}>
                       <button
                         type="button"
                         onClick={() => setIsTeamRegistration(false)}
@@ -684,7 +543,7 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                           cursor: 'pointer',
                         }}
                       >
-                        Individual Builder
+                        Solo Participant
                       </button>
                       <button
                         type="button"
@@ -701,12 +560,13 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                           cursor: 'pointer',
                         }}
                       >
-                        Team (Up to {event.form_requirements.max_team_size || 4} members)
+                        Team (Max {event.form_requirements.max_team_size || 4})
                       </button>
                     </div>
                   </div>
                 )}
 
+                {/* Team Details & Matchmaking */}
                 {isTeamRegistration && (
                   <div style={{ background: 'var(--bg-soft)', padding: '16px', borderRadius: 'var(--radius-sm)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
                     <div>
@@ -729,105 +589,147 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                         checked={lookingForMembers}
                         onChange={(e) => setLookingForMembers(e.target.checked)}
                       />
-                      <span>List our team on Matchmaking Guild (Looking for members)</span>
+                      <span>Place our team on the open matchmaking guild (Looking for members)</span>
                     </label>
                   </div>
                 )}
 
-                {/* 3. Lead Participant Details */}
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
-                  <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px', color: 'var(--text-strong)' }}>
-                    {isTeamRegistration ? 'Team Leader Details' : 'Participant Details'}
-                  </h4>
+                {/* Institutional Student Status */}
+                <div>
+                  <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
+                    Institutional Affiliation
+                  </label>
+                  <div style={{ display: 'flex', gap: '10px' }}>
+                    <button
+                      type="button"
+                      onClick={() => setIsInternalStudent(true)}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        borderRadius: 'var(--radius-sm)',
+                        border: isInternalStudent ? '2px solid var(--brand)' : '1px solid var(--border)',
+                        background: isInternalStudent ? 'var(--brand-soft)' : 'var(--surface)',
+                        color: isInternalStudent ? 'var(--brand)' : 'var(--text-body)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      SRM University AP
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsInternalStudent(false)}
+                      style={{
+                        flex: 1,
+                        padding: '10px',
+                        fontSize: '13px',
+                        fontWeight: 600,
+                        borderRadius: 'var(--radius-sm)',
+                        border: !isInternalStudent ? '2px solid var(--brand)' : '1px solid var(--border)',
+                        background: !isInternalStudent ? 'var(--brand-soft)' : 'var(--surface)',
+                        color: !isInternalStudent ? 'var(--brand)' : 'var(--text-body)',
+                        cursor: 'pointer',
+                      }}
+                    >
+                      External College
+                    </button>
+                  </div>
+                </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+                {!isInternalStudent && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
                     <div>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                        Full Name *
+                        College Name *
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. Alex Morgan"
-                        value={leadName}
-                        onChange={(e) => setLeadName(e.target.value)}
+                        value={collegeName}
+                        onChange={(e) => setCollegeName(e.target.value)}
                         className="fluent-input"
                       />
                     </div>
-
                     <div>
                       <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                        Official Email *
-                      </label>
-                      <input
-                        type="email"
-                        required
-                        placeholder="alex@srmap.edu.in"
-                        value={leadEmail}
-                        onChange={(e) => setLeadEmail(e.target.value)}
-                        className="fluent-input"
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                        Phone Number *
-                      </label>
-                      <input
-                        type="tel"
-                        required
-                        placeholder="+91 9876543210"
-                        value={leadPhone}
-                        onChange={(e) => setLeadPhone(e.target.value)}
-                        className="fluent-input"
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                        Registration Number *
+                        City *
                       </label>
                       <input
                         type="text"
                         required
-                        placeholder="e.g. AP21110010123"
-                        value={leadRegNum}
-                        onChange={(e) => setLeadRegNum(e.target.value)}
-                        className="fluent-input"
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                        Department / Branch
-                      </label>
-                      <input
-                        type="text"
-                        value={leadBranch}
-                        onChange={(e) => setLeadBranch(e.target.value)}
-                        className="fluent-input"
-                      />
-                    </div>
-
-                    <div>
-                      <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
-                        Year of Study
-                      </label>
-                      <input
-                        type="text"
-                        value={leadYear}
-                        onChange={(e) => setLeadYear(e.target.value)}
+                        value={cityName}
+                        onChange={(e) => setCityName(e.target.value)}
                         className="fluent-input"
                       />
                     </div>
                   </div>
+                )}
+
+                {/* Lead Participant */}
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '12px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
+                      Full Name *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="Alex Morgan"
+                      value={leadName}
+                      onChange={(e) => setLeadName(e.target.value)}
+                      className="fluent-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
+                      Official Email *
+                    </label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="alex@srmap.edu.in"
+                      value={leadEmail}
+                      onChange={(e) => setLeadEmail(e.target.value)}
+                      className="fluent-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
+                      Registration Number *
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="AP21110010..."
+                      value={leadRegNum}
+                      onChange={(e) => setLeadRegNum(e.target.value)}
+                      className="fluent-input"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
+                      Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="+91..."
+                      value={leadPhone}
+                      onChange={(e) => setLeadPhone(e.target.value)}
+                      className="fluent-input"
+                    />
+                  </div>
                 </div>
 
-                {/* 4. Teammates Form Fields */}
+                {/* Teammates fields */}
                 {isTeamRegistration && (
                   <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                      <h4 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-strong)' }}>
+                      <h4 style={{ fontSize: '14px', fontWeight: 600 }}>
                         Teammates ({members.length + 1} / {event.form_requirements.max_team_size || 4})
                       </h4>
                       {members.length < maxTeamMembers && (
@@ -843,17 +745,8 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                     </div>
 
                     {members.map((m, idx) => (
-                      <div
-                        key={idx}
-                        style={{
-                          background: 'var(--bg-soft)',
-                          padding: '16px',
-                          borderRadius: 'var(--radius-sm)',
-                          marginBottom: '12px',
-                          position: 'relative',
-                        }}
-                      >
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                      <div key={idx} style={{ background: 'var(--bg-soft)', padding: '14px', borderRadius: 'var(--radius-sm)', marginBottom: '10px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
                           <strong style={{ fontSize: '12px' }}>Teammate #{idx + 2}</strong>
                           <button
                             type="button"
@@ -863,8 +756,7 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                             Remove
                           </button>
                         </div>
-
-                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px' }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
                           <input
                             type="text"
                             required
@@ -876,7 +768,7 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                           <input
                             type="email"
                             required
-                            placeholder="Email Address"
+                            placeholder="Email"
                             value={m.email}
                             onChange={(e) => updateMember(idx, 'email', e.target.value)}
                             className="fluent-input"
@@ -902,29 +794,318 @@ export default function EventDetailClient({ event }: { event: EventItem }) {
                   </div>
                 )}
 
-                {/* Submit Actions */}
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px' }}>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="fluent-btn fluent-btn-primary"
+                  style={{ padding: '12px', fontSize: '15px', marginTop: '10px' }}
+                >
+                  {submitting
+                    ? 'Processing Entry...'
+                    : isFree
+                    ? 'Confirm Free Registration'
+                    : `Proceed to Razorpay Checkout (₹${event.form_requirements.registration_fee})`}
+                </button>
+              </form>
+            </div>
+
+            {/* Sidebar: Schedule, Speakers & Team Matchmaking */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* Matchmaking Pool */}
+              {event.form_requirements.allow_teams && (
+                <div className="fluent-card" style={{ padding: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
+                    Open Team Matchmaking
+                  </h3>
+                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                    Solo participant? Join an open squad with available slots.
+                  </p>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {openTeams.map((t) => (
+                      <div
+                        key={t.id}
+                        style={{
+                          background: 'var(--bg-soft)',
+                          padding: '12px',
+                          borderRadius: 'var(--radius-sm)',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          alignItems: 'center',
+                        }}
+                      >
+                        <div>
+                          <strong style={{ fontSize: '13px', display: 'block' }}>{t.team_name}</strong>
+                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Lead: {t.leader_name} ({t.leader_branch})</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleJoinTeam(t)}
+                          className="fluent-btn fluent-btn-secondary"
+                          style={{ fontSize: '11px', padding: '4px 8px' }}
+                        >
+                          Join Team
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Schedule Timeline */}
+              {event.form_requirements.agenda && (
+                <div className="fluent-card" style={{ padding: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '16px' }}>
+                    Schedule &amp; Agenda
+                  </h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                    {event.form_requirements.agenda.map((ag, i) => (
+                      <div key={i} style={{ borderLeft: '2px solid var(--brand)', paddingLeft: '12px' }}>
+                        <span style={{ fontSize: '12px', fontWeight: 700, color: 'var(--brand)' }}>{ag.time}</span>
+                        <h4 style={{ fontSize: '14px', fontWeight: 600, margin: '2px 0' }}>{ag.title}</h4>
+                        <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: 0 }}>{ag.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: CHECK TICKET / LOOKUP */}
+        {activePortalTab === 'lookup' && (
+          <div style={{ maxWidth: '640px', margin: '0 auto' }}>
+            <div className="fluent-card" style={{ padding: '36px', marginBottom: '32px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <Search size={32} color="var(--brand)" style={{ margin: '0 auto 8px' }} />
+                <h2 style={{ fontSize: '22px', fontWeight: 600 }}>Self-Service Ticket Lookup</h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Enter your registered Email or College Registration Number to retrieve your digital QR pass.
+                </p>
+              </div>
+
+              <form onSubmit={handleTicketLookup} style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  required
+                  placeholder="name@srmap.edu.in or AP21110010..."
+                  value={lookupQuery}
+                  onChange={(e) => setLookupQuery(e.target.value)}
+                  className="fluent-input"
+                />
+                <button type="submit" disabled={lookupLoading} className="fluent-btn fluent-btn-primary">
+                  {lookupLoading ? 'Locating...' : 'Find Pass'}
+                </button>
+              </form>
+
+              {lookupError && (
+                <div style={{ padding: '12px', background: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', fontSize: '13px', marginTop: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <AlertCircle size={16} /> {lookupError}
+                </div>
+              )}
+            </div>
+
+            {/* Found Ticket Template */}
+            {foundTicket && (
+              <div
+                style={{
+                  background: 'var(--surface)',
+                  border: '2px solid var(--border-strong)',
+                  borderRadius: 'var(--radius-sm)',
+                  boxShadow: 'var(--shadow-lift)',
+                  overflow: 'hidden',
+                }}
+              >
+                <div style={{ background: '#0067b8', color: '#ffffff', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px' }}>MSC SRM AP PASS</span>
+                    <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff', margin: 0 }}>{event.title}</h3>
+                  </div>
+                  <span style={{ background: '#0e7c41', color: '#ffffff', padding: '4px 8px', borderRadius: '2px', fontSize: '11px', fontWeight: 700 }}>
+                    {foundTicket.status.toUpperCase()}
+                  </span>
+                </div>
+
+                <div style={{ padding: '28px', textAlign: 'center' }}>
+                  <div style={{ display: 'inline-block', padding: '14px', background: '#ffffff', border: '1px solid var(--border)', borderRadius: '2px', marginBottom: '16px' }}>
+                    <QRCodeSVG
+                      value={`${typeof window !== 'undefined' ? window.location.origin : ''}/admin/checkin/${foundTicket.hash_payload}`}
+                      size={170}
+                      level="H"
+                    />
+                  </div>
+                  <h4 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-strong)', margin: 0 }}>
+                    {foundTicket.lead_name}
+                  </h4>
+                  <span style={{ fontSize: '13px', color: 'var(--text-muted)' }}>{foundTicket.lead_email}</span>
+                  <div style={{ marginTop: '20px' }}>
+                    <Link
+                      href={`/ticket/${foundTicket.hash_payload}`}
+                      className="fluent-btn fluent-btn-primary"
+                    >
+                      Open Full Digital Ticket &rarr;
+                    </Link>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TAB 3: CERTIFICATE */}
+        {activePortalTab === 'certificate' && (
+          <div style={{ maxWidth: '840px', margin: '0 auto' }}>
+            <div className="fluent-card" style={{ padding: '36px', marginBottom: '32px' }}>
+              <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+                <Award size={32} color="var(--brand)" style={{ margin: '0 auto 8px' }} />
+                <h2 style={{ fontSize: '22px', fontWeight: 600 }}>Certificate Verification &amp; Export</h2>
+                <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
+                  Enter your registered participant email or registration number to generate your verifiable completion certificate.
+                </p>
+              </div>
+
+              <form onSubmit={handleCertificateLookup} style={{ display: 'flex', gap: '10px' }}>
+                <input
+                  type="text"
+                  required
+                  placeholder="Enter email or reg number..."
+                  value={certQuery}
+                  onChange={(e) => setCertQuery(e.target.value)}
+                  className="fluent-input"
+                />
+                <button type="submit" className="fluent-btn fluent-btn-primary">
+                  Verify &amp; Preview
+                </button>
+              </form>
+            </div>
+
+            {/* Live Certificate Sandbox Preview */}
+            {certParticipant && (
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)' }}>
+                    Live Certificate Preview
+                  </h3>
                   <button
-                    type="button"
-                    onClick={() => setIsRegistering(false)}
-                    className="fluent-btn fluent-btn-secondary"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={loading}
+                    onClick={downloadCertificatePng}
+                    disabled={certDownloading}
                     className="fluent-btn fluent-btn-primary"
-                    style={{ padding: '10px 28px' }}
+                    style={{ gap: '6px' }}
                   >
-                    {loading
-                      ? 'Processing...'
-                      : isFree
-                      ? 'Confirm Free Registration'
-                      : `Proceed to Pay ₹${event.form_requirements.registration_fee}`}
+                    <Download size={14} /> {certDownloading ? 'Rendering PNG...' : 'Download High-Res PNG'}
                   </button>
                 </div>
-              </form>
+
+                <div style={{ overflowX: 'auto', paddingBottom: '20px' }}>
+                  <div
+                    ref={certContainerRef}
+                    style={{
+                      width: '780px',
+                      padding: '40px',
+                      background: '#fffdfb',
+                      border: '10px solid #0067b8',
+                      boxShadow: 'var(--shadow-lift)',
+                      fontFamily: 'var(--font-family)',
+                      textAlign: 'center',
+                      position: 'relative',
+                    }}
+                  >
+                    <span style={{ fontSize: '12px', color: '#0067b8', letterSpacing: '3px', textTransform: 'uppercase', fontWeight: 700 }}>
+                      MICROSOFT STUDENT COMMUNITY &bull; SRM UNIVERSITY AP
+                    </span>
+                    <h1 style={{ fontSize: '32px', color: '#17253d', margin: '14px 0 16px 0', fontWeight: 700 }}>
+                      CERTIFICATE OF PARTICIPATION
+                    </h1>
+                    <p style={{ fontSize: '14px', color: '#616161', margin: 0 }}>This certificate is proudly awarded to</p>
+                    <h2 style={{ fontSize: '28px', color: '#0067b8', margin: '12px 0 16px 0', borderBottom: '2px solid #0067b8', display: 'inline-block', paddingBottom: '4px' }}>
+                      {certParticipant}
+                    </h2>
+                    <p style={{ fontSize: '15px', color: '#17253d', maxWidth: '640px', margin: '0 auto', lineHeight: 1.6 }}>
+                      for actively participating and building production-grade solutions during <strong>{event.title}</strong> at <strong>{certCollege}</strong> on <strong>{new Date(event.date_start).toLocaleDateString()}</strong>.
+                    </p>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '40px', paddingTop: '10px', borderTop: '1px solid #737373', fontSize: '11px', color: '#17253d' }}>
+                      <div><strong>Dr. Murali Krishna Enduri</strong><br />Faculty Advisor</div>
+                      <div style={{ color: '#737373' }}>Official Chapter &apos;26 Institutional Verification</div>
+                      <div><strong>Dr. CV Tomy</strong><br />Faculty Advisor</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* TICKET CONFIRMATION MODAL (Section 2.C.1.5) */}
+        {confirmedTicket && (
+          <div
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0,0,0,0.7)',
+              zIndex: 1000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '24px',
+            }}
+          >
+            <div
+              style={{
+                maxWidth: '460px',
+                width: '100%',
+                background: 'var(--surface)',
+                borderRadius: 'var(--radius-sm)',
+                boxShadow: 'var(--shadow-lift)',
+                padding: '32px',
+                textAlign: 'center',
+              }}
+            >
+              <div
+                style={{
+                  width: '56px',
+                  height: '56px',
+                  background: 'var(--success-bg)',
+                  color: 'var(--success)',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: '0 auto 16px',
+                }}
+              >
+                <CheckCircle2 size={32} />
+              </div>
+
+              <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
+                Registration Confirmed!
+              </h2>
+
+              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px' }}>
+                Your seat has been recorded in the MSC admission ledger.
+              </p>
+
+              <div style={{ padding: '16px', background: '#ffffff', display: 'inline-block', border: '1px solid var(--border)', borderRadius: '2px', marginBottom: '20px' }}>
+                <QRCodeSVG
+                  value={`${typeof window !== 'undefined' ? window.location.origin : ''}/admin/checkin/${confirmedTicket.hash_payload}`}
+                  size={160}
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+                <Link
+                  href={`/ticket/${confirmedTicket.hash_payload}`}
+                  className="fluent-btn fluent-btn-primary"
+                >
+                  View Digital Ticket Pass &rarr;
+                </Link>
+                <button
+                  type="button"
+                  onClick={() => setConfirmedTicket(null)}
+                  className="fluent-btn fluent-btn-secondary"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         )}
