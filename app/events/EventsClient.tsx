@@ -84,10 +84,11 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
         {/* FEATURED EVENT SHOWCASE (Microsoft Fluent 2 Hero Card) */}
         {featuredEvent && (() => {
           const startDate = new Date(featuredEvent.date_start);
-          const monthShort = startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase();
-          const dayNum = startDate.toLocaleDateString('en-US', { day: '2-digit' });
+          const isValidDate = !isNaN(startDate.getTime());
+          const monthShort = isValidDate ? startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase() : 'UPCOMING';
+          const dayNum = isValidDate ? startDate.toLocaleDateString('en-US', { day: '2-digit' }) : '01';
           const isPaid = featuredEvent.form_requirements?.event_pricing === 'paid';
-          const priceLabel = isPaid ? `₹${featuredEvent.form_requirements.registration_fee}` : 'Free Entry';
+          const priceLabel = isPaid ? `₹${featuredEvent.form_requirements?.registration_fee || 0}` : 'Free Entry';
           const isCompleted = featuredEvent.status === 'completed';
 
           return (
@@ -415,8 +416,17 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
             {filteredEvents.map((evt) => {
               const isCompleted = evt.status === 'completed';
               const isPaid = evt.form_requirements?.event_pricing === 'paid';
-              const priceLabel = isPaid ? `₹${evt.form_requirements.registration_fee}` : 'Free Entry';
+              const priceLabel = isPaid ? `₹${evt.form_requirements?.registration_fee || 0}` : 'Free Entry';
               const evtDate = new Date(evt.date_start);
+              const isDateValid = !isNaN(evtDate.getTime());
+              const formattedDate = isDateValid
+                ? evtDate.toLocaleDateString('en-US', {
+                    weekday: 'short',
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })
+                : 'Date to be announced';
 
               return (
                 <div
@@ -434,7 +444,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                   {/* Thumbnail */}
                   <div style={{ height: '190px', position: 'relative', overflow: 'hidden', background: 'var(--bg-soft)' }}>
                     <img
-                      src={evt.image_url}
+                      src={evt.image_url || '/images/hero-bg.png'}
                       alt={evt.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
@@ -534,14 +544,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                     >
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <Calendar size={13} color="var(--brand)" />
-                        <span>
-                          {evtDate.toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            month: 'short',
-                            day: 'numeric',
-                            year: 'numeric',
-                          })}
-                        </span>
+                        <span>{formattedDate}</span>
                       </div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
                         <MapPin size={13} color="var(--brand)" />

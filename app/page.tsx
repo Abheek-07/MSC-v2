@@ -220,7 +220,7 @@ export default async function HomePage() {
       </section>
 
       {/* 2. INFINITE TELEMETRY MARQUEE */}
-      <TelemetryMarquee />
+      <TelemetryMarquee activeEventTitle={flagship?.title} />
 
       {/* 3. ENGINEERING PILLARS - Microsoft Solution Architecture Style */}
       <section id="ecosystem" style={{ padding: '80px 0', background: 'var(--bg)' }}>
@@ -399,87 +399,156 @@ export default async function HomePage() {
           </div>
 
           {/* Spotlight Card */}
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
-              borderRadius: '8px',
-              border: '1px solid var(--border)',
-              boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
-              overflow: 'hidden',
-              background: 'var(--surface)',
-            }}
-          >
-            <div style={{ minHeight: '260px', position: 'relative', overflow: 'hidden', background: '#0a0a0c' }}>
-              <img
-                src={flagship.image_url}
-                alt={flagship.title}
-                style={{ width: '100%', height: '100%', minHeight: '260px', objectFit: 'cover' }}
-              />
+          {flagship && (() => {
+            const startDate = new Date(flagship.date_start);
+            const isValidDate = !isNaN(startDate.getTime());
+            const monthShort = isValidDate
+              ? startDate.toLocaleDateString('en-US', { month: 'short' }).toUpperCase()
+              : 'UPCOMING';
+            const dayNum = isValidDate
+              ? startDate.toLocaleDateString('en-US', { day: '2-digit' })
+              : '01';
+            const formattedDate = isValidDate
+              ? startDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+              : 'Date to be announced';
+            const isPaid = flagship.form_requirements?.event_pricing === 'paid';
+            const priceLabel = isPaid ? `₹${flagship.form_requirements.registration_fee}` : 'Free Entry';
+            const isCompleted = flagship.status === 'completed';
+
+            return (
               <div
                 style={{
-                  position: 'absolute',
-                  top: '14px',
-                  left: '14px',
-                  background: 'rgba(0, 0, 0, 0.85)',
-                  backdropFilter: 'blur(6px)',
-                  color: '#ffffff',
-                  padding: '5px 12px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  fontWeight: 700,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.06em',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 340px), 1fr))',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border)',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.05)',
+                  overflow: 'hidden',
+                  background: 'var(--surface)',
                 }}
               >
-                SEP 17
-              </div>
-            </div>
+                <div style={{ minHeight: '260px', position: 'relative', overflow: 'hidden', background: '#0a0a0c' }}>
+                  <img
+                    src={flagship.image_url || '/images/hero-bg.png'}
+                    alt={flagship.title}
+                    style={{ width: '100%', height: '100%', minHeight: '260px', objectFit: 'cover' }}
+                  />
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: '14px',
+                      left: '14px',
+                      background: 'rgba(0, 0, 0, 0.85)',
+                      backdropFilter: 'blur(6px)',
+                      color: '#ffffff',
+                      padding: '5px 12px',
+                      borderRadius: '4px',
+                      fontSize: '12px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <span>{monthShort}</span>
+                    <span>{dayNum}</span>
+                  </div>
 
-            <div style={{ padding: 'clamp(24px, 4vw, 36px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
-                <span className="fluent-badge badge-success" style={{ borderRadius: '4px' }}>Registration Open</span>
-                <span className="fluent-badge badge-info" style={{ borderRadius: '4px' }}>&#8377; 30,000+ Bounty Pool</span>
-              </div>
-
-              <h3 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '10px' }}>
-                SYNORA
-              </h3>
-
-              <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '20px' }}>
-                An 18-hour technology sprint combining foundational talks with a 12-hour intensive hackathon, giving students a complete experience of learning, collaboration, and shipping software.
-              </p>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: 'var(--text-body)', marginBottom: '24px' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <Calendar size={15} color="var(--brand)" />
-                  <span>September 17, 2026 &bull; 18-Hour Sprint</span>
+                  <div
+                    style={{
+                      position: 'absolute',
+                      bottom: '14px',
+                      right: '14px',
+                      background: 'rgba(0, 103, 184, 0.90)',
+                      backdropFilter: 'blur(6px)',
+                      color: '#ffffff',
+                      padding: '4px 10px',
+                      borderRadius: '4px',
+                      fontSize: '11.5px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    {priceLabel}
+                  </div>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <MapPin size={15} color="var(--brand)" />
-                  <span>{flagship.location}</span>
+
+                <div style={{ padding: 'clamp(24px, 4vw, 36px)', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <span
+                      className={`fluent-badge ${isCompleted ? 'badge-neutral' : 'badge-success'}`}
+                      style={{ borderRadius: '4px' }}
+                    >
+                      {isCompleted ? 'Completed' : (flagship.registration_open ? 'Registration Open' : 'Opening Soon')}
+                    </span>
+                    {flagship.type && (
+                      <span className="fluent-badge badge-info" style={{ borderRadius: '4px' }}>
+                        {flagship.type.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  <h3 style={{ fontSize: '24px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '10px' }}>
+                    {flagship.title}
+                  </h3>
+
+                  <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '20px' }}>
+                    {flagship.description}
+                  </p>
+
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', fontSize: '13px', color: 'var(--text-body)', marginBottom: '24px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <Calendar size={15} color="var(--brand)" />
+                      <span>{formattedDate}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <MapPin size={15} color="var(--brand)" />
+                      <span>{flagship.location}</span>
+                    </div>
+                    {flagship.max_capacity && (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <Users size={15} color="var(--brand)" />
+                        <span>{flagship.max_capacity} Confirmed Attendee Seats</span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                    <Link
+                      href={`/events/${flagship.slug}`}
+                      className="fluent-btn fluent-btn-primary"
+                      style={{ padding: '9px 24px', fontSize: '13.5px', borderRadius: '4px' }}
+                    >
+                      Enter Event Portal &rarr;
+                    </Link>
+                    {(flagship.slug === 'synora-26' || flagship.slug === 'synora') && (
+                      <Link
+                        href="/custom-events/synora"
+                        className="fluent-btn fluent-btn-secondary"
+                        style={{ padding: '9px 18px', fontSize: '13.5px', borderRadius: '4px' }}
+                      >
+                        F1 Interactive Microsite
+                      </Link>
+                    )}
+                    <Link
+                      href="/events"
+                      style={{
+                        fontSize: '13px',
+                        color: 'var(--brand)',
+                        textDecoration: 'none',
+                        fontWeight: 600,
+                        marginLeft: '4px',
+                      }}
+                    >
+                      Browse All Events &rarr;
+                    </Link>
+                  </div>
                 </div>
               </div>
-
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <Link
-                  href={`/events/${flagship.slug}`}
-                  className="fluent-btn fluent-btn-primary"
-                  style={{ padding: '9px 24px', fontSize: '13.5px', borderRadius: '4px' }}
-                >
-                  Enter Event Portal &rarr;
-                </Link>
-                <Link
-                  href="/custom-events/synora"
-                  className="fluent-btn fluent-btn-secondary"
-                  style={{ padding: '9px 18px', fontSize: '13.5px', borderRadius: '4px' }}
-                >
-                  F1 Interactive Microsite
-                </Link>
-              </div>
-            </div>
-          </div>
+            );
+          })()}
         </div>
       </section>
 

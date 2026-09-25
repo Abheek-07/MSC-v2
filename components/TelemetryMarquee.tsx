@@ -3,13 +3,14 @@
 import React from 'react';
 import { Sparkles, Terminal, Cloud, Award, Users, Trophy, GitBranch } from 'lucide-react';
 
-export default function TelemetryMarquee() {
+export default function TelemetryMarquee({ activeEventTitle }: { activeEventTitle?: string }) {
+  const featuredTitle = activeEventTitle ? activeEventTitle.toUpperCase() : "SYNORA '26";
   const items = [
-    { text: "01 // SYNORA '26 // 18-Hr National Hackathon [LIVE]", icon: Trophy },
+    { text: `01 // ${featuredTitle} // Chapter '26 [FEATURED]`, icon: Trophy },
     { text: "02 // Azure & Cloud // Distributed Scale", icon: Cloud },
     { text: "03 // Applied AI // LLMs & Cognitive Services", icon: Terminal },
     { text: "04 // 50+ Engineers // Active Campus Guild", icon: Users },
-    { text: "05 // ₹30,000+ // Hackathon Prize Pool", icon: Sparkles },
+    { text: "05 // Technical Sprints // Hackathon Bounty Pool", icon: Sparkles },
     { text: "06 // Open Source // Production Tooling", icon: GitBranch },
     { text: "07 // MLSA Chapter // Microsoft Ambassadors", icon: Award },
   ];

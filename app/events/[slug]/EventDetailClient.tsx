@@ -73,7 +73,7 @@ export default function EventDetailClient({
   const [cityName, setCityName] = useState('Amaravati');
 
   // Additional team members
-  const maxTeamMembers = (event.form_requirements.max_team_size || 4) - 1;
+  const maxTeamMembers = (event.form_requirements?.max_team_size || 4) - 1;
   const [members, setMembers] = useState<MemberData[]>([]);
 
   // Open matchmaking teams pool
@@ -322,7 +322,7 @@ export default function EventDetailClient({
     }
   };
 
-  const isFree = event.form_requirements.event_pricing !== 'paid';
+  const isFree = event.form_requirements?.event_pricing !== 'paid';
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh', padding: '40px 0 100px 0' }}>
@@ -348,10 +348,10 @@ export default function EventDetailClient({
             position: 'relative',
           }}
         >
-          {event.banner_url && (
+          {(event.banner_url || event.image_url) && (
             <div style={{ height: '260px', width: '100%', position: 'relative', overflow: 'hidden' }}>
               <img
-                src={event.banner_url}
+                src={event.banner_url || event.image_url}
                 alt={event.title}
                 style={{ width: '100%', height: '100%', objectFit: 'cover', filter: 'brightness(0.9)' }}
               />
@@ -365,7 +365,7 @@ export default function EventDetailClient({
                 {event.status === 'upcoming' ? 'Active / Upcoming' : 'Archived / Completed'}
               </span>
               <span className="fluent-badge" style={{ background: 'var(--bg-soft)', color: 'var(--text-strong)' }}>
-                {isFree ? 'Free Entry' : `₹${event.form_requirements.registration_fee}`}
+                {isFree ? 'Free Entry' : `₹${event.form_requirements?.registration_fee || 0}`}
               </span>
             </div>
 
@@ -424,7 +424,7 @@ export default function EventDetailClient({
                   <Award size={13} color="var(--brand)" /> Certificates
                 </span>
                 <strong style={{ fontSize: '14px', color: 'var(--text-strong)' }}>
-                  {event.form_requirements.provide_certificates ? 'Verified Digital' : 'None'}
+                  {event.form_requirements?.provide_certificates ? 'Verified Digital' : 'None'}
                 </strong>
               </div>
             </div>
@@ -529,7 +529,7 @@ export default function EventDetailClient({
 
               <form onSubmit={handleRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 {/* Mode: Solo vs Team */}
-                {event.form_requirements.allow_teams && (
+                {event.form_requirements?.allow_teams && (
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
                       Registration Mode
@@ -567,7 +567,7 @@ export default function EventDetailClient({
                           cursor: 'pointer',
                         }}
                       >
-                        Team (Max {event.form_requirements.max_team_size || 4})
+                        Team (Max {event.form_requirements?.max_team_size || 4})
                       </button>
                     </div>
                   </div>
@@ -811,7 +811,7 @@ export default function EventDetailClient({
                     ? 'Processing Entry...'
                     : isFree
                     ? 'Confirm Free Registration'
-                    : `Proceed to Razorpay Checkout (₹${event.form_requirements.registration_fee})`}
+                    : `Proceed to Razorpay Checkout (₹${event.form_requirements?.registration_fee || 0})`}
                 </button>
               </form>
             </div>
@@ -819,7 +819,7 @@ export default function EventDetailClient({
             {/* Sidebar: Schedule, Speakers & Team Matchmaking */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
               {/* Matchmaking Pool */}
-              {event.form_requirements.allow_teams && (
+              {event.form_requirements?.allow_teams && (
                 <div className="fluent-card" style={{ padding: '24px' }}>
                   <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
                     Open Team Matchmaking
@@ -859,7 +859,7 @@ export default function EventDetailClient({
               )}
 
               {/* Schedule Timeline */}
-              {event.form_requirements.agenda && (
+              {event.form_requirements?.agenda && (
                 <div className="fluent-card" style={{ padding: '24px' }}>
                   <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '16px' }}>
                     Schedule &amp; Agenda
