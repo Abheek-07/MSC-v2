@@ -12,16 +12,25 @@ import {
   TrendingUp,
 } from 'lucide-react';
 import { EMAIL_DAILY_CAP } from '@/lib/email';
-import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
+import { getAdminClient } from '@/lib/supabase/admin';
 
 export default async function AdminDashboardPage() {
-  // Aggregate live metrics
-  const totalEvents = FALLBACK_EVENTS.length;
-  const activeEvents = FALLBACK_EVENTS.filter((e) => e.status === 'upcoming').length;
-  const mockTotalRegistrations = 428;
-  const mockCheckedIn = 312;
-  const attendanceRate = Math.round((mockCheckedIn / mockTotalRegistrations) * 100);
-  const mockRevenueInRupees = 48500;
+  const supabase = getAdminClient();
+
+  // 1. Live Events query
+  const { data: events } = await supabase.from('events').select('id, status');
+  const totalEvents = events?.length || 0;
+  const activeEvents = events?.filter((e: any) => e.status === 'upcoming').length || 0;
+
+  // 2. Live Registrations query
+  const { data: registrations } = await supabase.from('registrations').select('id, checked_in');
+  const totalRegistrations = registrations?.length || 0;
+  const checkedInCount = registrations?.filter((r: any) => r.checked_in).length || 0;
+  const attendanceRate = totalRegistrations > 0 ? Math.round((checkedInCount / totalRegistrations) * 100) : 0;
+
+  // 3. Live Payments / Revenue query
+  const { data: payments } = await supabase.from('payments').select('amount').eq('status', 'captured');
+  const revenueInRupees = payments?.reduce((acc: number, p: any) => acc + (p.amount || 0), 0) || 0;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -71,7 +80,7 @@ export default async function AdminDashboardPage() {
             <Users size={18} color="var(--brand)" />
           </div>
           <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)' }}>
-            {mockTotalRegistrations}
+            {totalRegistrations}
           </div>
           <span style={{ fontSize: '11px', color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '4px', marginTop: '4px' }}>
             <TrendingUp size={12} /> Across all active sessions
@@ -87,7 +96,7 @@ export default async function AdminDashboardPage() {
             {attendanceRate}%
           </div>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
-            {mockCheckedIn} / {mockTotalRegistrations} checked in
+            {checkedInCount} / {totalRegistrations} checked in
           </span>
         </div>
 
@@ -97,7 +106,7 @@ export default async function AdminDashboardPage() {
             <IndianRupee size={18} color="var(--warning)" />
           </div>
           <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)' }}>
-            &#8377; {mockRevenueInRupees.toLocaleString('en-IN')}
+            &#8377; {revenueInRupees.toLocaleString('en-IN')}
           </div>
           <span style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '4px', display: 'block' }}>
             Captured through Razorpay
@@ -134,7 +143,7 @@ export default async function AdminDashboardPage() {
               Launch full-screen camera QR scanner to check in participants and individual team members at the entrance.
             </p>
             <Link
-              href="/admin/events/e1000000-0000-0000-0000-000000000001/scanner"
+              href="/admin/scanner"
               className="fluent-btn fluent-btn-primary"
               style={{ alignSelf: 'flex-start', fontSize: '13px' }}
             >

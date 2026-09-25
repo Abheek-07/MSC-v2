@@ -1,16 +1,43 @@
 import React from 'react';
-import { notFound, redirect } from 'next/navigation';
-import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
+import { notFound } from 'next/navigation';
+import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
+import { getAdminClient } from '@/lib/supabase/admin';
 import EventDetailClient from './EventDetailClient';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface EventPageProps {
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ view?: string; invite?: string; tab?: string }>;
 }
 
+async function getEventBySlug(slug: string): Promise<EventItem | null> {
+  try {
+    const supabase = getAdminClient();
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .or(`slug.eq.${slug},id.eq.${slug}`)
+      .maybeSingle();
+
+    if (!error && data) {
+      return data as EventItem;
+    }
+  } catch (err) {
+    console.warn('Event detail query fallback:', err);
+  }
+
+  return (
+    FALLBACK_EVENTS.find(
+      (e) => e.slug === slug || e.id === slug || (slug === 'synora' && e.slug === 'synora-26')
+    ) || null
+  );
+}
+
 export async function generateMetadata({ params }: EventPageProps) {
   const { slug } = await params;
-  const event = FALLBACK_EVENTS.find((e) => e.slug === slug || (slug === 'synora' && e.slug === 'synora-26'));
+  const event = await getEventBySlug(slug);
   if (!event) return { title: 'Event Not Found' };
 
   return {
@@ -70,7 +97,7 @@ export default async function EventDetailPage({ params, searchParams }: EventPag
     );
   }
 
-  const event = FALLBACK_EVENTS.find((e) => e.slug === slug || (slug === 'synora' && e.slug === 'synora-26'));
+  const event = await getEventBySlug(slug);
 
   if (!event) {
     notFound();

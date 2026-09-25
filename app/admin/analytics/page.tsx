@@ -33,64 +33,74 @@ interface EventAnalytics {
 export default function AdminAnalyticsPage() {
   const [isLive, setIsLive] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
-  const [liveStreamEvents, setLiveStreamEvents] = useState<Array<{ id: string; text: string; time: string; type: 'checkin' | 'reg' }>>([
-    { id: '1', text: "Alex Morgan checked in to SYNORA '26 (Turnstile Gate A)", time: 'Just now', type: 'checkin' },
-    { id: '2', text: 'Team "Azure Titans" (3 members) completed registration', time: '2m ago', type: 'reg' },
-    { id: '3', text: 'Priya Sharma checked in to Cloud Workshop (Lab 4)', time: '5m ago', type: 'checkin' },
-    { id: '4', text: 'Kiran Patel verified ticket pass at Turnstile Gate B', time: '11m ago', type: 'checkin' },
-  ]);
+  const [liveStreamEvents, setLiveStreamEvents] = useState<Array<{ id: string; text: string; time: string; type: 'checkin' | 'reg' }>>([]);
 
-  // Global aggregate metrics
+  // Global aggregate metrics (Live computed)
   const [kpiMetrics, setKpiMetrics] = useState({
-    totalCoreUsers: 54,
-    totalEvents: FALLBACK_EVENTS.length,
-    totalRegistrations: 684,
-    totalHeadcount: 1142,
-    globalCheckinRate: 76.8,
+    totalCoreUsers: 0,
+    totalEvents: 0,
+    totalRegistrations: 0,
+    totalHeadcount: 0,
+    globalCheckinRate: 0,
   });
 
-  // Per-event metrics
-  const [eventBreakdown, setEventBreakdown] = useState<EventAnalytics[]>([
-    {
-      id: FALLBACK_EVENTS[0].id,
-      title: FALLBACK_EVENTS[0].title,
-      category: 'Hackathon',
-      date_start: FALLBACK_EVENTS[0].date_start,
-      max_capacity: 500,
-      total_registrations: 382,
-      total_headcount: 760,
-      teams_count: 88,
-      solo_count: 120,
-      checked_in_count: 592,
-    },
-    {
-      id: FALLBACK_EVENTS[1].id,
-      title: FALLBACK_EVENTS[1].title,
-      category: 'Workshop',
-      date_start: FALLBACK_EVENTS[1].date_start,
-      max_capacity: 120,
-      total_registrations: 118,
-      total_headcount: 118,
-      teams_count: 0,
-      solo_count: 118,
-      checked_in_count: 94,
-    },
-    {
-      id: FALLBACK_EVENTS[2].id,
-      title: FALLBACK_EVENTS[2].title,
-      category: 'Conference',
-      date_start: FALLBACK_EVENTS[2].date_start,
-      max_capacity: 250,
-      total_registrations: 184,
-      total_headcount: 264,
-      teams_count: 24,
-      solo_count: 112,
-      checked_in_count: 191,
-    },
-  ]);
+  // Per-event metrics (Live computed)
+  const [eventBreakdown, setEventBreakdown] = useState<EventAnalytics[]>([]);
+
+  const fetchRealData = async () => {
+    try {
+      const supabase = createClient();
+      const [eventsRes, regsRes, usersRes] = await Promise.all([
+        supabase.from('events').select('*').order('date_start', { ascending: false }),
+        supabase.from('registrations').select('*'),
+        supabase.from('member_profiles').select('id, role'),
+      ]);
+
+      const eventsData = eventsRes.data || [];
+      const regsData = regsRes.data || [];
+      const usersData = usersRes.data || [];
+
+      const totalRegistrations = regsData.length;
+      const checkedInCount = regsData.filter((r) => r.checked_in).length;
+      const checkinRate = totalRegistrations > 0 ? Number(((checkedInCount / totalRegistrations) * 100).toFixed(1)) : 0;
+
+      setKpiMetrics({
+        totalCoreUsers: usersData.filter((u) => u.role === 'admin' || u.role === 'core_member').length,
+        totalEvents: eventsData.length,
+        totalRegistrations,
+        totalHeadcount: totalRegistrations,
+        globalCheckinRate: checkinRate,
+      });
+
+      const breakdown: EventAnalytics[] = eventsData.map((ev: any) => {
+        const evRegs = regsData.filter((r: any) => r.event_id === ev.id);
+        const evCheckedIn = evRegs.filter((r: any) => r.checked_in).length;
+        const teams = evRegs.filter((r: any) => r.team_data && r.team_data.team_name).length;
+        const solo = evRegs.length - teams;
+
+        return {
+          id: ev.id,
+          title: ev.title,
+          category: ev.type || 'Workshop',
+          date_start: ev.date_start,
+          max_capacity: ev.max_capacity || 100,
+          total_registrations: evRegs.length,
+          total_headcount: evRegs.length,
+          teams_count: teams,
+          solo_count: solo,
+          checked_in_count: evCheckedIn,
+        };
+      });
+
+      setEventBreakdown(breakdown);
+      setLastUpdated(new Date().toLocaleTimeString());
+    } catch (err) {
+      console.error('Error fetching analytics from Supabase:', err);
+    }
+  };
 
   useEffect(() => {
-    setLastUpdated(new Date().toLocaleTimeString());
+    fetchRealData();
 
     // Connect to Supabase Realtime channel if available
     let channel: any;
@@ -102,11 +112,11 @@ export default function AdminAnalyticsPage() {
           'postgres_changes',
           { event: '*', schema: 'public', table: 'registrations' },
           (payload: any) => {
-            setLastUpdated(new Date().toLocaleTimeString());
+            fetchRealData();
             const newText =
               payload.eventType === 'INSERT'
-                ? `New registration: ${(payload.new as any)?.lead_name || 'Participant'}`
-                : `Status update: ${(payload.new as any)?.lead_name || 'Participant'}`;
+                ? `New registration: ${(payload.new as any)?.lead_email || 'Participant'}`
+                : `Check-in updated: ${(payload.new as any)?.lead_email || 'Participant'}`;
 
             setLiveStreamEvents((prev) => [
               { id: String(Date.now()), text: newText, time: 'Just now', type: 'reg' },
@@ -116,11 +126,11 @@ export default function AdminAnalyticsPage() {
         )
         .subscribe();
     } catch {
-      // Fallback to local simulated heartbeat
+      // Fallback
     }
 
     const interval = setInterval(() => {
-      setLastUpdated(new Date().toLocaleTimeString());
+      fetchRealData();
     }, 15000);
 
     return () => {

@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Key, CheckCircle2, XCircle, Clock, ShieldCheck, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Key, CheckCircle2, XCircle, Clock, ShieldCheck, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface ResetRequest {
   id: string;
@@ -11,23 +11,29 @@ interface ResetRequest {
 }
 
 export default function PasswordResetQueuePage() {
-  const [requests, setRequests] = useState<ResetRequest[]>([
-    {
-      id: 'req-1',
-      email: 'student.dev@srmap.edu.in',
-      status: 'pending',
-      created_at: '2026-09-24T18:20:00Z',
-    },
-    {
-      id: 'req-2',
-      email: 'lead.designer@srmap.edu.in',
-      status: 'pending',
-      created_at: '2026-09-25T08:15:00Z',
-    },
-  ]);
-
+  const [requests, setRequests] = useState<ResetRequest[]>([]);
+  const [loading, setLoading] = useState(true);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  const fetchRequests = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/passwords');
+      const data = await res.json();
+      if (data.requests) {
+        setRequests(data.requests);
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch password requests:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRequests();
+  }, []);
 
   const handleAction = async (id: string, action: 'approve' | 'reject') => {
     setLoadingId(id);
@@ -51,18 +57,12 @@ export default function PasswordResetQueuePage() {
 
       setMessage({
         type: 'success',
-        text: `Request successfully ${action === 'approve' ? 'approved & applied' : 'rejected'}.`,
+        text: `Request successfully ${action === 'approve' ? 'approved & password updated in database' : 'rejected'}.`,
       });
     } catch (err: any) {
-      // Local fallback simulation
-      setRequests(
-        requests.map((r) =>
-          r.id === id ? { ...r, status: action === 'approve' ? 'approved' : 'rejected' } : r
-        )
-      );
       setMessage({
-        type: 'success',
-        text: `Action executed: ${action} request for ${id}.`,
+        type: 'error',
+        text: `Error processing request: ${err.message}`,
       });
     } finally {
       setLoadingId(null);
@@ -141,7 +141,20 @@ export default function PasswordResetQueuePage() {
             </tr>
           </thead>
           <tbody>
-            {requests.map((r) => (
+            {loading ? (
+              <tr>
+                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  Loading password reset queue...
+                </td>
+              </tr>
+            ) : requests.length === 0 ? (
+              <tr>
+                <td colSpan={6} style={{ padding: '24px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                  No pending password reset requests. Queue is clean.
+                </td>
+              </tr>
+            ) : (
+              requests.map((r) => (
               <tr key={r.id} style={{ borderBottom: '1px solid var(--border)' }}>
                 <td style={{ padding: '14px 16px', fontFamily: 'monospace' }}>{r.id}</td>
                 <td style={{ padding: '14px 16px' }}>
@@ -193,7 +206,7 @@ export default function PasswordResetQueuePage() {
                   )}
                 </td>
               </tr>
-            ))}
+            )))}
           </tbody>
         </table>
       </div>

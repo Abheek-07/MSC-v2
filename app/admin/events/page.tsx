@@ -1,65 +1,101 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Edit2, Calendar, MapPin, Users, Check, X, ShieldAlert } from 'lucide-react';
-import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
+import { Plus, Edit2, Calendar, MapPin, Users, Check, X, ShieldAlert, Trash2 } from 'lucide-react';
+import { EventItem } from '@/lib/data/mock-fallback';
+import { createClient } from '@/lib/supabase/client';
 
 export default function AdminEventsPage() {
-  const [events, setEvents] = useState<EventItem[]>(FALLBACK_EVENTS);
+  const supabase = createClient();
+  const [events, setEvents] = useState<EventItem[]>([]);
+  const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState<Partial<EventItem> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const handleTogglePublish = (id: string) => {
-    setEvents(
-      events.map((e) => (e.id === id ? { ...e, is_published: !e.is_published } : e))
-    );
+  const fetchEvents = async () => {
+    try {
+      const res = await fetch('/api/admin/events');
+      const data = await res.json();
+      if (data.events) {
+        setEvents(data.events as EventItem[]);
+      }
+    } catch (err) {
+      console.error('Failed to load events:', err);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleToggleRegistration = (id: string) => {
-    setEvents(
-      events.map((e) => (e.id === id ? { ...e, registration_open: !e.registration_open } : e))
-    );
+  useEffect(() => {
+    fetchEvents();
+  }, []);
+
+  const handleTogglePublish = async (id: string) => {
+    const target = events.find((e) => e.id === id);
+    if (!target) return;
+    const nextVal = !target.is_published;
+    setEvents(events.map((e) => (e.id === id ? { ...e, is_published: nextVal } : e)));
+    try {
+      await fetch('/api/admin/events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, is_published: nextVal }),
+      });
+    } catch (err) {
+      console.error('Failed to toggle publish:', err);
+    }
   };
 
-  const handleSaveEvent = (e: React.FormEvent) => {
+  const handleToggleRegistration = async (id: string) => {
+    const target = events.find((e) => e.id === id);
+    if (!target) return;
+    const nextVal = !target.registration_open;
+    setEvents(events.map((e) => (e.id === id ? { ...e, registration_open: nextVal } : e)));
+    try {
+      await fetch('/api/admin/events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, registration_open: nextVal }),
+      });
+    } catch (err) {
+      console.error('Failed to toggle registration:', err);
+    }
+  };
+
+  const handleDeleteEvent = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this event? This will also remove associated registrations.')) return;
+    setEvents(events.filter((e) => e.id !== id));
+    try {
+      await fetch(`/api/admin/events?id=${id}`, { method: 'DELETE' });
+    } catch (err) {
+      console.error('Failed to delete event:', err);
+    }
+  };
+
+  const handleSaveEvent = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingEvent) return;
 
-    if (editingEvent.id) {
-      // Update
-      setEvents(
-        events.map((ev) => (ev.id === editingEvent.id ? ({ ...ev, ...editingEvent } as EventItem) : ev))
-      );
-    } else {
-      // Create new
-      const newEv: EventItem = {
-        id: crypto.randomUUID(),
-        title: editingEvent.title || 'Untitled Event',
-        slug: (editingEvent.title || 'new-event').toLowerCase().replace(/\s+/g, '-'),
-        description: editingEvent.description || '',
-        location: editingEvent.location || 'SRM University AP',
-        type: editingEvent.type || 'Workshop',
-        status: (editingEvent.status as any) || 'upcoming',
-        date_start: editingEvent.date_start || new Date().toISOString(),
-        date_end: editingEvent.date_end || new Date().toISOString(),
-        image_url:
-          editingEvent.image_url ||
-          'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
-        registration_open: editingEvent.registration_open ?? true,
-        show_opening_soon: false,
-        is_published: true,
-        max_capacity: editingEvent.max_capacity || 100,
-        form_requirements: {
-          event_pricing: editingEvent.form_requirements?.event_pricing || 'free',
-          registration_fee: editingEvent.form_requirements?.registration_fee || 0,
-          allow_teams: editingEvent.form_requirements?.allow_teams ?? false,
-          max_team_size: editingEvent.form_requirements?.max_team_size || 4,
-          provide_certificates: true,
-        },
-        gallery_urls: [],
-      };
-      setEvents([newEv, ...events]);
+    try {
+      if (editingEvent.id) {
+        // Update existing
+        await fetch('/api/admin/events', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(editingEvent),
+        });
+      } else {
+        // Create new
+        await fetch('/api/admin/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(editingEvent),
+        });
+      }
+      await fetchEvents();
+    } catch (err) {
+      console.error('Failed to save event:', err);
     }
 
     setIsModalOpen(false);
@@ -199,6 +235,14 @@ export default function AdminEventsPage() {
                     >
                       View
                     </Link>
+                    <button
+                      onClick={() => handleDeleteEvent(ev.id)}
+                      className="fluent-btn fluent-btn-subtle"
+                      style={{ padding: '4px 8px', fontSize: '12px', color: 'var(--danger)' }}
+                      title="Delete Event"
+                    >
+                      <Trash2 size={13} />
+                    </button>
                   </div>
                 </td>
               </tr>

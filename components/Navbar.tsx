@@ -21,7 +21,7 @@ export default function Navbar() {
       document.documentElement.setAttribute('data-theme', savedTheme);
     }
 
-    // Check user auth state
+    // Check user auth state via Supabase session
     const supabase = createClient();
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) {
@@ -37,6 +37,16 @@ export default function Navbar() {
       }
     });
   }, []);
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    try {
+      await supabase.auth.signOut();
+    } catch {}
+    setIsLoggedIn(false);
+    setUserRole('user');
+    window.location.href = '/login';
+  };
 
   const toggleTheme = () => {
     const nextTheme = theme === 'light' ? 'dark' : 'light';
@@ -55,6 +65,11 @@ export default function Navbar() {
 
   const isStaff = userRole === 'admin' || userRole === 'core_member';
 
+  // Do not render public navbar on admin portal
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
+
   return (
     <header style={{
       backgroundColor: 'var(--surface)',
@@ -64,33 +79,6 @@ export default function Navbar() {
       zIndex: 50,
       boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
     }}>
-      {/* Top chapter banner */}
-      <div style={{
-        background: 'var(--bg-soft)',
-        borderBottom: '1px solid var(--border)',
-        padding: '4px 24px',
-        fontSize: '12px',
-        color: 'var(--text-muted)',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center'
-      }}>
-        <span>SRM UNIVERSITY AP &bull; CHAPTER &apos;26</span>
-        <div style={{ display: 'flex', gap: '16px' }}>
-          <a
-            href="https://discord.gg/K5NC5wAhg"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'var(--brand)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
-          >
-            Join Discord Guild <ArrowRight size={12} />
-          </a>
-          <Link href="/ticket" style={{ color: 'var(--text-body)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-            <Ticket size={12} /> Find Ticket
-          </Link>
-        </div>
-      </div>
-
       <div className="container" style={{ display: 'flex', height: '64px', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* Brand & Logo */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
@@ -166,21 +154,39 @@ export default function Navbar() {
 
           {/* Admin / Login links */}
           {isStaff ? (
-            <Link
-              href="/admin"
-              className="fluent-btn fluent-btn-secondary"
-              style={{ fontSize: '13px', padding: '6px 14px', gap: '6px' }}
-            >
-              <Shield size={14} /> Admin Portal
-            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Link
+                href="/admin"
+                className="fluent-btn fluent-btn-secondary"
+                style={{ fontSize: '13px', padding: '6px 14px', gap: '6px' }}
+              >
+                <Shield size={14} /> Admin Portal
+              </Link>
+              <button
+                onClick={handleSignOut}
+                className="fluent-btn fluent-btn-subtle"
+                style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--text-muted)' }}
+              >
+                Sign Out
+              </button>
+            </div>
           ) : isLoggedIn ? (
-            <Link
-              href="/onboarding"
-              className="fluent-btn fluent-btn-secondary"
-              style={{ fontSize: '13px', padding: '6px 14px' }}
-            >
-              Profile
-            </Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <Link
+                href="/onboarding"
+                className="fluent-btn fluent-btn-secondary"
+                style={{ fontSize: '13px', padding: '6px 14px' }}
+              >
+                Profile
+              </Link>
+              <button
+                onClick={handleSignOut}
+                className="fluent-btn fluent-btn-subtle"
+                style={{ fontSize: '12px', padding: '6px 10px', color: 'var(--text-muted)' }}
+              >
+                Sign Out
+              </button>
+            </div>
           ) : (
             <Link
               href="/login"

@@ -1,17 +1,35 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useParams } from 'next/navigation';
 import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
+import { createClient } from '@/lib/supabase/client';
 import QRScanner from '@/components/QRScanner';
 import { ArrowLeft } from 'lucide-react';
 
 export default function EventSpecificScannerPage() {
   const params = useParams();
   const eventId = params?.id as string;
+  const supabase = createClient();
+  const [eventTitle, setEventTitle] = useState('Event Scanner');
 
-  const currentEvent = FALLBACK_EVENTS.find((e) => e.id === eventId) || FALLBACK_EVENTS[0];
+  useEffect(() => {
+    if (!eventId) return;
+    supabase
+      .from('events')
+      .select('title')
+      .eq('id', eventId)
+      .single()
+      .then(({ data }) => {
+        if (data?.title) {
+          setEventTitle(data.title);
+        } else {
+          const fallback = FALLBACK_EVENTS.find((e) => e.id === eventId);
+          if (fallback) setEventTitle(fallback.title);
+        }
+      });
+  }, [eventId]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -24,7 +42,7 @@ export default function EventSpecificScannerPage() {
         </Link>
       </div>
 
-      <QRScanner eventId={eventId || currentEvent.id} eventTitle={currentEvent.title} />
+      <QRScanner eventId={eventId} eventTitle={eventTitle} />
     </div>
   );
 }

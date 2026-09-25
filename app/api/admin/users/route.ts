@@ -1,37 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 
-// In-memory fallback directory for initial state or fallback mode
-let memoryUsers = [
-  {
-    id: 'u-001',
-    email: 'president@msc-srmap.in',
-    full_name: 'Aravind S.',
-    role: 'admin',
-    department: 'CSE',
-    year: '4th Year',
-    created_at: '2026-08-01T10:00:00Z',
-  },
-  {
-    id: 'u-002',
-    email: 'operations@msc-srmap.in',
-    full_name: 'Sneha Reddy',
-    role: 'core_member',
-    department: 'CSE AI & ML',
-    year: '3rd Year',
-    created_at: '2026-08-05T12:00:00Z',
-  },
-  {
-    id: 'u-003',
-    email: 'tech.lead@msc-srmap.in',
-    full_name: 'Karthik Rao',
-    role: 'core_member',
-    department: 'CSE Cloud Systems',
-    year: '3rd Year',
-    created_at: '2026-08-10T14:30:00Z',
-  },
-];
-
 export async function GET() {
   try {
     const supabase = getAdminClient();
@@ -40,14 +9,13 @@ export async function GET() {
       .select('*')
       .order('created_at', { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      return NextResponse.json({ users: data });
-    }
-  } catch {
-    // Graceful fallback
-  }
+    if (error) throw error;
 
-  return NextResponse.json({ users: memoryUsers });
+    return NextResponse.json({ success: true, users: data || [] });
+  } catch (err: any) {
+    console.error('Error fetching admin users:', err);
+    return NextResponse.json({ error: err.message, users: [] }, { status: 500 });
+  }
 }
 
 export async function POST(req: Request) {
@@ -62,50 +30,47 @@ export async function POST(req: Request) {
     }
 
     const assignedRole = role === 'admin' ? 'admin' : 'core_member';
+    const supabase = getAdminClient();
 
-    try {
-      const supabase = getAdminClient();
-      // Provision via Supabase Auth Admin API
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email,
-        password,
-        email_confirm: true,
-        user_metadata: { full_name, role: assignedRole },
-      });
+    // Provision user via Supabase Auth Admin API
+    const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name, role: assignedRole },
+    });
 
-      if (authError) throw authError;
-
-      if (authUser?.user) {
-        await supabase.from('member_profiles').insert({
-          id: authUser.user.id,
-          email,
-          full_name,
-          role: assignedRole,
-          department: department || 'CSE',
-          year: year || '3rd Year',
-          is_onboarded: true,
-        });
-
-        return NextResponse.json({ success: true, user: authUser.user });
-      }
-    } catch (err: any) {
-      console.warn('Supabase Auth user creation fallback to memory:', err.message);
+    if (authError) {
+      console.error('Supabase Auth user creation error:', authError);
+      return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    // In-memory fallback
-    const newUser = {
-      id: `u-${Date.now()}`,
-      email,
-      full_name: full_name || email.split('@')[0],
-      role: assignedRole,
-      department: department || 'CSE',
-      year: year || '3rd Year',
-      created_at: new Date().toISOString(),
-    };
-    memoryUsers.unshift(newUser);
+    if (authUser?.user) {
+      const { data: profile, error: profError } = await supabase
+        .from('member_profiles')
+        .upsert({
+          id: authUser.user.id,
+          email,
+          full_name: full_name || email.split('@')[0],
+          role: assignedRole,
+          department: department || 'CSE',
+          year_of_study: year || '3rd Year',
+          is_onboarded: true,
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
 
-    return NextResponse.json({ success: true, user: newUser, fallback: true });
+      if (profError) {
+        console.error('Profile creation error:', profError);
+      }
+
+      return NextResponse.json({ success: true, user: profile || authUser.user });
+    }
+
+    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
   } catch (err: any) {
+    console.error('Admin provision user error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
@@ -121,22 +86,24 @@ export async function PUT(req: Request) {
     const supabase = getAdminClient();
 
     if (action === 'update_role' && role) {
-      try {
-        await supabase.from('member_profiles').update({ role }).eq('id', user_id);
-      } catch {}
-      memoryUsers = memoryUsers.map((u) => (u.id === user_id ? { ...u, role } : u));
+      const { error } = await supabase
+        .from('member_profiles')
+        .update({ role, updated_at: new Date().toISOString() })
+        .eq('id', user_id);
+
+      if (error) throw error;
       return NextResponse.json({ success: true, message: 'Role updated successfully' });
     }
 
     if (action === 'reset_password' && new_password) {
-      try {
-        await supabase.auth.admin.updateUserById(user_id, { password: new_password });
-      } catch {}
+      const { error } = await supabase.auth.admin.updateUserById(user_id, { password: new_password });
+      if (error) throw error;
       return NextResponse.json({ success: true, message: 'Password reset successfully' });
     }
 
     return NextResponse.json({ error: 'Invalid action specified' }, { status: 400 });
   } catch (err: any) {
+    console.error('Admin user update error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
@@ -150,16 +117,19 @@ export async function DELETE(req: Request) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
 
-    try {
-      const supabase = getAdminClient();
-      await supabase.auth.admin.deleteUser(userId);
-      await supabase.from('member_profiles').delete().eq('id', userId);
-    } catch {}
-
-    memoryUsers = memoryUsers.filter((u) => u.id !== userId);
+    const supabase = getAdminClient();
+    const { error: authErr } = await supabase.auth.admin.deleteUser(userId);
+    if (authErr) {
+      console.warn('Auth user delete warning:', authErr.message);
+    }
+    const { error: profErr } = await supabase.from('member_profiles').delete().eq('id', userId);
+    if (profErr) {
+      console.warn('Profile delete warning:', profErr.message);
+    }
 
     return NextResponse.json({ success: true, message: 'Account deleted' });
   } catch (err: any) {
+    console.error('Admin user delete error:', err);
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }

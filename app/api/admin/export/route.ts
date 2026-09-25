@@ -1,59 +1,49 @@
 import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
-import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
+import Papa from 'papaparse';
+import { getAdminClient } from '@/lib/supabase/admin';
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
     const format = searchParams.get('format') || 'xlsx';
+    const eventId = searchParams.get('event_id');
 
-    // In production, fetch live registrations from Supabase registrations table
-    const mockData = [
-      {
-        name: 'Alex Morgan',
-        email: 'alex.m@srmap.edu.in',
-        regNum: 'AP21110010123',
-        phone: '+91 9876543210',
-        college: 'SRM University AP',
-        event: "SYNORA '26 — National Hackathon",
-        status: 'confirmed',
-        checkedIn: 'YES',
-        team: 'Azure Titans',
-      },
-      {
-        name: 'Priya Sharma',
-        email: 'priya.s@srmap.edu.in',
-        regNum: 'AP21110010456',
-        phone: '+91 9876543211',
-        college: 'SRM University AP',
-        event: "SYNORA '26 — National Hackathon",
-        status: 'confirmed',
-        checkedIn: 'NO',
-        team: 'Binary Beats',
-      },
-      {
-        name: 'Rahul K.',
-        email: 'rahul.k@vit.ac.in',
-        regNum: '21BCE1089',
-        phone: '+91 9876543212',
-        college: 'VIT Vellore',
-        event: "SYNORA '26 — National Hackathon",
-        status: 'confirmed',
-        checkedIn: 'NO',
-        team: 'Cloud Runners',
-      },
-      {
-        name: 'Neha Verma',
-        email: 'neha.v@srmap.edu.in',
-        regNum: 'AP21110010789',
-        phone: '+91 9876543213',
-        college: 'SRM University AP',
-        event: 'Azure Cloud & Distributed Systems BootCamp',
-        status: 'confirmed',
-        checkedIn: 'YES',
-        team: 'Individual',
-      },
-    ];
+    const supabase = getAdminClient();
+    let query = supabase
+      .from('registrations')
+      .select('*, events(title)')
+      .order('created_at', { ascending: false });
+
+    if (eventId) {
+      query = query.eq('event_id', eventId);
+    }
+
+    const { data: rawRows, error } = await query;
+    if (error) throw error;
+
+    const data = (rawRows || []).map((r: any) => ({
+      name: r.form_data?.full_name || r.form_data?.name || r.lead_email.split('@')[0],
+      email: r.lead_email,
+      regNum: r.form_data?.registration_number || r.form_data?.reg_num || 'N/A',
+      phone: r.form_data?.phone || 'N/A',
+      college: r.form_data?.college || 'SRM University AP',
+      event: r.events?.title || 'SYNORA',
+      status: (r.status || 'confirmed').toUpperCase(),
+      checkedIn: r.checked_in ? 'YES' : 'NO',
+      team: r.team_data?.team_name || 'Individual',
+      registeredAt: new Date(r.created_at).toLocaleString(),
+    }));
+
+    if (format === 'csv') {
+      const csv = Papa.unparse(data);
+      return new NextResponse(csv, {
+        headers: {
+          'Content-Type': 'text/csv; charset=utf-8',
+          'Content-Disposition': `attachment; filename="MSC_Registrations_${new Date().toISOString().slice(0, 10)}.csv"`,
+        },
+      });
+    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Microsoft Student Community SRM AP';
@@ -61,7 +51,6 @@ export async function GET(req: Request) {
 
     const sheet = workbook.addWorksheet('Registrations');
 
-    // Styled header row
     sheet.columns = [
       { header: 'Full Name', key: 'name', width: 22 },
       { header: 'Official Email', key: 'email', width: 26 },
@@ -72,16 +61,17 @@ export async function GET(req: Request) {
       { header: 'Status', key: 'status', width: 14 },
       { header: 'Checked In', key: 'checkedIn', width: 12 },
       { header: 'Team Name', key: 'team', width: 20 },
+      { header: 'Registered At', key: 'registeredAt', width: 22 },
     ];
 
     sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
     sheet.getRow(1).fill = {
       type: 'pattern',
       pattern: 'solid',
-      fgColor: { argb: 'FF0067B8' }, // Microsoft cobalt blue
+      fgColor: { argb: 'FF0067B8' },
     };
 
-    mockData.forEach((row) => {
+    data.forEach((row: Record<string, any>) => {
       sheet.addRow(row);
     });
 
@@ -95,6 +85,6 @@ export async function GET(req: Request) {
     });
   } catch (err: any) {
     console.error('[Excel export error]:', err);
-    return NextResponse.json({ error: 'Failed to generate spreadsheet' }, { status: 500 });
+    return NextResponse.json({ error: 'Failed to generate spreadsheet: ' + err.message }, { status: 500 });
   }
 }

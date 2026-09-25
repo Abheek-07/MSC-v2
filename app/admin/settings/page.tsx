@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import {
   User,
   Camera,
@@ -14,16 +15,18 @@ import {
 } from 'lucide-react';
 
 export default function AdminSettingsPage() {
+  const supabase = createClient();
+  const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState({
-    fullName: 'Jayanth Ramakrishnan',
-    email: 'msc.community@srmap.edu.in',
-    regNumber: 'AP21110010001',
+    fullName: '',
+    email: '',
+    regNumber: '',
     department: 'Computer Science & Engineering',
     year: '4th Year',
-    specialization: 'Distributed Systems & Azure Cloud Architectures',
-    bio: 'Founder and Community Lead at Microsoft Student Community — SRM University AP. Passionate about systems engineering, cloud infrastructure, and empowering student builders.',
-    linkedin: 'https://linkedin.com/in/jayanthramakrishnan',
-    github: 'https://github.com/jayanthramakrishnan',
+    specialization: '',
+    bio: '',
+    linkedin: '',
+    github: '',
     avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80',
   });
 
@@ -36,6 +39,33 @@ export default function AdminSettingsPage() {
   const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setUserId(user.id);
+        supabase
+          .from('member_profiles')
+          .select('*')
+          .eq('id', user.id)
+          .single()
+          .then(({ data }) => {
+            if (data) {
+              setProfile((prev) => ({
+                ...prev,
+                fullName: data.full_name || '',
+                email: data.email || user.email || '',
+                regNumber: data.registration_number || '',
+                department: data.department || 'Computer Science & Engineering',
+                year: data.year_of_study || '4th Year',
+                bio: data.bio || '',
+                avatarUrl: data.profile_picture_url || prev.avatarUrl,
+              }));
+            }
+          });
+      }
+    });
+  }, []);
 
   // Client-side HTML5 Canvas Image Compressor to WebP
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,10 +137,30 @@ export default function AdminSettingsPage() {
     }
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 4000);
+    if (!userId) return;
+
+    try {
+      const { error } = await supabase
+        .from('member_profiles')
+        .update({
+          full_name: profile.fullName,
+          registration_number: profile.regNumber,
+          department: profile.department,
+          year_of_study: profile.year,
+          bio: profile.bio,
+          profile_picture_url: profile.avatarUrl,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', userId);
+
+      if (error) throw error;
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 4000);
+    } catch (err: any) {
+      alert('Failed to update profile: ' + err.message);
+    }
   };
 
   return (

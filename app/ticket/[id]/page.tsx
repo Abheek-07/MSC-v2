@@ -1,7 +1,6 @@
 import React from 'react';
-import { notFound } from 'next/navigation';
 import TicketClient from './TicketClient';
-import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
+import { getAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -13,33 +12,37 @@ interface TicketPageProps {
 export default async function TicketPage({ params }: TicketPageProps) {
   const { id } = await params;
 
-  // UUID validation check
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(id);
-
-  if (!isUUID) {
+  if (!id) {
     return <TicketClient invalid={true} />;
   }
 
-  // Construct realistic ticket record for demonstration & live database
-  const demoEvent = FALLBACK_EVENTS[0];
-  const ticketData = {
-    hash_payload: id,
-    event_id: demoEvent.id,
-    event_title: demoEvent.title,
-    event_date: demoEvent.date_start,
-    event_location: demoEvent.location,
-    lead_name: 'Verified Participant',
-    lead_email: 'participant@srmap.edu.in',
-    status: 'confirmed',
-    checked_in: false,
-    team_data: {
-      team_name: 'Azure Titans',
-      members: [
-        { fullName: 'Verified Participant', email: 'participant@srmap.edu.in', checked_in: false },
-        { fullName: 'Teammate 2', email: 'teammate2@srmap.edu.in', checked_in: false },
-      ],
-    },
-  };
+  try {
+    const supabase = getAdminClient();
+    const { data: reg, error } = await supabase
+      .from('registrations')
+      .select('*, events(title, date_start, location)')
+      .or(`hash_payload.eq.${id},id.eq.${id}`)
+      .maybeSingle();
 
-  return <TicketClient ticket={ticketData} invalid={false} />;
+    if (!error && reg) {
+      const ticketData = {
+        hash_payload: reg.hash_payload || reg.id,
+        event_id: reg.event_id,
+        event_title: reg.events?.title || 'SYNORA',
+        event_date: reg.events?.date_start || new Date().toISOString(),
+        event_location: reg.events?.location || 'SRM University AP',
+        lead_name: reg.form_data?.full_name || reg.form_data?.name || reg.lead_email.split('@')[0],
+        lead_email: reg.lead_email,
+        status: reg.status,
+        checked_in: Boolean(reg.checked_in),
+        team_data: reg.team_data,
+      };
+
+      return <TicketClient ticket={ticketData} invalid={false} />;
+    }
+  } catch (err) {
+    console.error('Ticket lookup error:', err);
+  }
+
+  return <TicketClient invalid={true} />;
 }

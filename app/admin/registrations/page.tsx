@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createClient } from '@/lib/supabase/client';
 import {
   Search,
   Download,
@@ -31,77 +32,49 @@ interface RegistrationRecord {
 }
 
 export default function AdminRegistrationsPage() {
+  const supabase = createClient();
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBadge, setSelectedBadge] = useState<RegistrationRecord | null>(null);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
+  const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
 
-  // Initial mock / live registration records
-  const [registrations, setRegistrations] = useState<RegistrationRecord[]>([
-    {
-      id: 'reg-001',
-      lead_name: 'Alex Morgan',
-      lead_email: 'alex.m@srmap.edu.in',
-      reg_number: 'AP21110010123',
-      phone: '+91 9876543210',
-      college: 'SRM University AP',
-      event_title: "SYNORA '26 — National Hackathon",
-      status: 'confirmed',
-      checked_in: true,
-      team_name: 'Azure Titans',
-      created_at: '2026-09-20T10:15:00Z',
-    },
-    {
-      id: 'reg-002',
-      lead_name: 'Priya Sharma',
-      lead_email: 'priya.s@srmap.edu.in',
-      reg_number: 'AP21110010456',
-      phone: '+91 9876543211',
-      college: 'SRM University AP',
-      event_title: "SYNORA '26 — National Hackathon",
-      status: 'confirmed',
-      checked_in: false,
-      team_name: 'Binary Beats',
-      created_at: '2026-09-21T14:30:00Z',
-    },
-    {
-      id: 'reg-003',
-      lead_name: 'Rahul K.',
-      lead_email: 'rahul.k@vit.ac.in',
-      reg_number: '21BCE1089',
-      phone: '+91 9876543212',
-      college: 'VIT Vellore',
-      event_title: "SYNORA '26 — National Hackathon",
-      status: 'confirmed',
-      checked_in: false,
-      team_name: 'Cloud Runners',
-      created_at: '2026-09-22T09:45:00Z',
-    },
-    {
-      id: 'reg-004',
-      lead_name: 'Neha Verma',
-      lead_email: 'neha.v@srmap.edu.in',
-      reg_number: 'AP21110010789',
-      phone: '+91 9876543213',
-      college: 'SRM University AP',
-      event_title: 'Azure Cloud & Distributed Systems BootCamp',
-      status: 'confirmed',
-      checked_in: true,
-      created_at: '2026-09-23T11:20:00Z',
-    },
-    {
-      id: 'reg-005',
-      lead_name: 'Vikram Joshi',
-      lead_email: 'vikram.j@srmap.edu.in',
-      reg_number: 'AP21110010999',
-      phone: '+91 9876543214',
-      college: 'SRM University AP',
-      event_title: 'Azure Cloud & Distributed Systems BootCamp',
-      status: 'pending_payment',
-      checked_in: false,
-      created_at: '2026-09-24T16:00:00Z',
-    },
-  ]);
+  const fetchRegistrations = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('*, events(title)')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        const mapped: RegistrationRecord[] = data.map((r: any) => ({
+          id: r.id,
+          lead_name: r.form_data?.full_name || r.form_data?.name || r.lead_email.split('@')[0],
+          lead_email: r.lead_email,
+          reg_number: r.form_data?.registration_number || r.form_data?.reg_num || 'N/A',
+          phone: r.form_data?.phone || 'N/A',
+          college: r.form_data?.college || 'SRM University AP',
+          event_title: r.events?.title || 'SYNORA',
+          status: r.status,
+          checked_in: r.checked_in,
+          team_name: r.team_data?.team_name || '',
+          created_at: r.created_at,
+        }));
+        setRegistrations(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to load registrations:', err);
+    }
+  };
+
+  useEffect(() => {
+    fetchRegistrations();
+  }, []);
+
+  const handleToggleCheckin = async (id: string, currentVal: boolean) => {
+    setRegistrations(registrations.map((item) => (item.id === id ? { ...item, checked_in: !currentVal } : item)));
+    await supabase.from('registrations').update({ checked_in: !currentVal }).eq('id', id);
+  };
 
   // Form states for at-the-door manual registration
   const [manualName, setManualName] = useState('');
@@ -121,50 +94,77 @@ export default function AdminRegistrationsPage() {
     return matchesSearch && matchesStatus;
   });
 
-  const handleManualRegistration = (e: React.FormEvent) => {
+  const handleManualRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
-    const newReg: RegistrationRecord = {
-      id: `reg-${Date.now()}`,
-      lead_name: manualName,
+    const { data: firstEvent } = await supabase.from('events').select('id, title').limit(1).single();
+    if (!firstEvent) {
+      alert('Please create an event first.');
+      return;
+    }
+
+    const { error } = await supabase.from('registrations').insert({
+      event_id: firstEvent.id,
       lead_email: manualEmail,
-      reg_number: manualRegNum,
-      phone: manualPhone,
-      college: manualCollege,
-      event_title: "SYNORA '26 — National Hackathon",
       status: 'confirmed',
-      checked_in: true, // Walk-in checked in immediately
-      created_at: new Date().toISOString(),
-    };
-    setRegistrations([newReg, ...registrations]);
-    setIsManualModalOpen(false);
-    setManualName('');
-    setManualEmail('');
-    setManualRegNum('');
-    setManualPhone('');
+      checked_in: true,
+      form_data: {
+        full_name: manualName,
+        registration_number: manualRegNum,
+        phone: manualPhone,
+        college: manualCollege,
+      },
+    });
+
+    if (!error) {
+      await fetchRegistrations();
+      setIsManualModalOpen(false);
+      setManualName('');
+      setManualEmail('');
+      setManualRegNum('');
+      setManualPhone('');
+    } else {
+      alert('Failed to register: ' + error.message);
+    }
   };
 
   // CSV Import via PapaParse
-  const handleCSVImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCSVImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const { data: firstEvent } = await supabase.from('events').select('id, title').limit(1).single();
+    if (!firstEvent) {
+      alert('Please create an event first before importing registrations.');
+      return;
+    }
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
-        const imported: RegistrationRecord[] = results.data.map((row: any, i) => ({
-          id: `imp-${Date.now()}-${i}`,
-          lead_name: row.Name || row.name || 'Imported Participant',
-          lead_email: row.Email || row.email || `imported-${i}@srmap.edu.in`,
-          reg_number: row.RegNum || row.reg_num || 'AP0000000000',
-          phone: row.Phone || row.phone || '',
-          college: row.College || row.college || 'SRM University AP',
-          event_title: "SYNORA '26 — National Hackathon",
+      complete: async (results) => {
+        const rows = results.data as any[];
+        const toInsert = rows.map((row, i) => ({
+          event_id: firstEvent.id,
+          lead_email: row.Email || row.email || `imported-${Date.now()}-${i}@srmap.edu.in`,
           status: 'confirmed',
           checked_in: false,
-          created_at: new Date().toISOString(),
+          form_data: {
+            full_name: row.Name || row.name || 'Imported Participant',
+            registration_number: row.RegNum || row.reg_num || 'AP0000000000',
+            phone: row.Phone || row.phone || '',
+            college: row.College || row.college || 'SRM University AP',
+          },
+          team_data: (row.Team || row.team) ? { team_name: row.Team || row.team } : null,
         }));
-        setRegistrations([...imported, ...registrations]);
+
+        if (toInsert.length > 0) {
+          const { error } = await supabase.from('registrations').insert(toInsert);
+          if (error) {
+            alert('Failed to import into database: ' + error.message);
+          } else {
+            await fetchRegistrations();
+          }
+        }
       },
     });
   };
@@ -340,13 +340,7 @@ export default function AdminRegistrationsPage() {
                 </td>
                 <td style={{ padding: '14px 16px' }}>
                   <button
-                    onClick={() => {
-                      setRegistrations(
-                        registrations.map((item) =>
-                          item.id === r.id ? { ...item, checked_in: !item.checked_in } : item
-                        )
-                      );
-                    }}
+                    onClick={() => handleToggleCheckin(r.id, r.checked_in)}
                     style={{
                       background: r.checked_in ? 'var(--success-bg)' : 'var(--bg-soft)',
                       color: r.checked_in ? 'var(--success)' : 'var(--text-muted)',

@@ -161,31 +161,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
         records = data.registrations || [];
       }
 
-      // If empty or offline mock, seed fallback attendees for demonstration
-      if (records.length === 0) {
-        records = [
-          {
-            hash_payload: 'tkt-synora-001',
-            event_id: eventId,
-            lead_name: 'Alex Morgan',
-            reg_number: 'AP21110010123',
-            team_name: 'Azure Titans',
-            checked_in: false,
-            team_members: [
-              { name: 'Alex Morgan', email: 'alex@srmap.edu.in', reg_number: 'AP21110010123', checked_in: false },
-              { name: 'Kiran Patel', email: 'kiran@srmap.edu.in', reg_number: 'AP21110010124', checked_in: false },
-            ],
-          },
-          {
-            hash_payload: 'tkt-synora-002',
-            event_id: eventId,
-            lead_name: 'Priya Sharma',
-            reg_number: 'AP21110010456',
-            team_name: '',
-            checked_in: false,
-          },
-        ];
-      }
+      // Cache real records without injecting mock data
 
       const db = await openDB();
       const tx = db.transaction('cached_registrations', 'readwrite');

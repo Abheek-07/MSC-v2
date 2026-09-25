@@ -25,9 +25,31 @@ export default function LoginPage() {
 
     try {
       if (mode === 'signin') {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const cleanEmail = email.trim().toLowerCase();
+
+        // Strict Supabase cryptographic password verification
+        const { data, error } = await supabase.auth.signInWithPassword({ email: cleanEmail, password });
         if (error) throw error;
-        router.push('/onboarding');
+
+        if (data?.user) {
+          const { data: profile } = await supabase
+            .from('member_profiles')
+            .select('role, is_onboarded')
+            .eq('id', data.user.id)
+            .single();
+
+          if (profile?.role === 'admin' || profile?.role === 'core_member') {
+            router.push('/admin');
+            return;
+          }
+
+          if (!profile?.is_onboarded) {
+            router.push('/onboarding');
+            return;
+          }
+        }
+
+        router.push('/');
       } else if (mode === 'signup') {
         const { error } = await supabase.auth.signUp({
           email,
@@ -56,7 +78,14 @@ export default function LoginPage() {
         });
       }
     } catch (err: any) {
-      setMessage({ type: 'error', text: err.message || 'Authentication error.' });
+      if (err.message === 'Failed to fetch' || err.message?.includes('fetch')) {
+        setMessage({
+          type: 'error',
+          text: 'Cannot reach Supabase: Please update .env.local with your real NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY from your Supabase Dashboard (Project Settings > API).',
+        });
+      } else {
+        setMessage({ type: 'error', text: err.message || 'Authentication error.' });
+      }
     } finally {
       setLoading(false);
     }
@@ -97,7 +126,7 @@ export default function LoginPage() {
             {mode === 'reset' && 'Request Password Reset'}
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginTop: '6px' }}>
-            {mode === 'signin' && 'Microsoft Student Community &bull; SRM University AP'}
+            {mode === 'signin' && 'Microsoft Student Community • SRM University AP'}
             {mode === 'signup' && 'Join the premier student engineering guild'}
             {mode === 'reset' && 'Admin-approved cryptographic password reset'}
           </p>

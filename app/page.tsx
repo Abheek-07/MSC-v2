@@ -16,11 +16,35 @@ import {
 } from 'lucide-react';
 import RingLoader from '@/components/RingLoader';
 import TelemetryMarquee from '@/components/TelemetryMarquee';
-import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
+import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
+import { getAdminClient } from '@/lib/supabase/admin';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export default async function HomePage() {
-  const upcomingEvents = FALLBACK_EVENTS.filter((e) => e.status === 'upcoming');
-  const flagship = FALLBACK_EVENTS.find((e) => e.slug === 'synora-26') || FALLBACK_EVENTS[0];
+  let allEvents: EventItem[] = FALLBACK_EVENTS;
+
+  try {
+    const supabase = getAdminClient();
+    const { data, error } = await supabase
+      .from('events')
+      .select('*')
+      .eq('is_published', true)
+      .order('date_start', { ascending: false });
+
+    if (!error && data && data.length > 0) {
+      allEvents = data as EventItem[];
+    }
+  } catch (err) {
+    console.warn('Home events query fallback:', err);
+  }
+
+  const upcomingEvents = allEvents.filter((e) => e.status === 'upcoming');
+  const flagship =
+    allEvents.find((e) => e.slug === 'synora-26' || e.slug === 'synora') ||
+    upcomingEvents[0] ||
+    allEvents[0];
 
   return (
     <div>

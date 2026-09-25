@@ -1,8 +1,16 @@
+'use client';
+
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { Mail, Linkedin, Instagram, MessageSquare, Disc as DiscordIcon, MapPin, Globe } from 'lucide-react';
 
 export default function Footer() {
+  const pathname = usePathname();
+
+  if (pathname?.startsWith('/admin')) {
+    return null;
+  }
   const socialLinks = [
     {
       name: 'LinkedIn',

@@ -2,6 +2,23 @@ import { NextResponse } from 'next/server';
 import { decryptSecret } from '@/lib/security';
 import { getAdminClient } from '@/lib/supabase/admin';
 
+export async function GET() {
+  try {
+    const supabase = getAdminClient();
+    const { data, error } = await supabase
+      .from('password_reset_requests')
+      .select('id, email, status, created_at, updated_at')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, requests: data || [] });
+  } catch (err: any) {
+    console.error('Error fetching password requests:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   try {
     const { request_id, action } = await req.json();
@@ -13,51 +30,55 @@ export async function POST(req: Request) {
     const supabase = getAdminClient();
 
     if (action === 'approve') {
-      try {
-        const { data: resetReq } = await supabase
-          .from('password_reset_requests')
-          .select('*')
-          .eq('id', request_id)
-          .single();
+      const { data: resetReq, error: fetchErr } = await supabase
+        .from('password_reset_requests')
+        .select('*')
+        .eq('id', request_id)
+        .single();
 
-        if (resetReq && resetReq.new_password) {
-          // Decrypt ciphertext using DB_ENCRYPTION_KEY
-          const decryptedPassword = decryptSecret(resetReq.new_password);
+      if (fetchErr || !resetReq) {
+        return NextResponse.json({ error: 'Reset request not found' }, { status: 404 });
+      }
 
-          // Find user by email and update password
-          const { data: usersData } = await supabase.auth.admin.listUsers();
-          const targetUser = usersData?.users.find(
-            (u: any) => u.email?.toLowerCase() === resetReq.email.toLowerCase()
-          );
+      if (resetReq.new_password) {
+        // Decrypt ciphertext using DB_ENCRYPTION_KEY
+        const decryptedPassword = decryptSecret(resetReq.new_password);
 
-          if (targetUser) {
-            await supabase.auth.admin.updateUserById(targetUser.id, {
-              password: decryptedPassword,
-            });
+        // Find user by email and update password in Supabase Auth
+        const { data: usersData } = await supabase.auth.admin.listUsers();
+        const targetUser = usersData?.users.find(
+          (u: any) => u.email?.toLowerCase() === resetReq.email.toLowerCase()
+        );
+
+        if (targetUser) {
+          const { error: pwdErr } = await supabase.auth.admin.updateUserById(targetUser.id, {
+            password: decryptedPassword,
+          });
+          if (pwdErr) {
+            console.error('Failed to update Supabase Auth user password:', pwdErr);
+            return NextResponse.json({ error: 'Failed to update auth password: ' + pwdErr.message }, { status: 500 });
           }
         }
+      }
 
-        await supabase
-          .from('password_reset_requests')
-          .update({ status: 'approved', updated_at: new Date().toISOString() })
-          .eq('id', request_id);
-      } catch (dbErr) {
-        console.warn('[Admin passwords approve DB]:', dbErr);
-      }
+      const { error: updateErr } = await supabase
+        .from('password_reset_requests')
+        .update({ status: 'approved', updated_at: new Date().toISOString() })
+        .eq('id', request_id);
+
+      if (updateErr) throw updateErr;
     } else {
-      try {
-        await supabase
-          .from('password_reset_requests')
-          .update({ status: 'rejected', updated_at: new Date().toISOString() })
-          .eq('id', request_id);
-      } catch {
-        // Fallback
-      }
+      const { error: updateErr } = await supabase
+        .from('password_reset_requests')
+        .update({ status: 'rejected', updated_at: new Date().toISOString() })
+        .eq('id', request_id);
+
+      if (updateErr) throw updateErr;
     }
 
     return NextResponse.json({ success: true, request_id, action });
   } catch (err: any) {
     console.error('[Admin passwords route error]:', err);
-    return NextResponse.json({ error: 'Failed to process password request' }, { status: 500 });
+    return NextResponse.json({ error: err.message || 'Failed to process password request' }, { status: 500 });
   }
 }

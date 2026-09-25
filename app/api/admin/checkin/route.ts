@@ -1,51 +1,84 @@
 import { NextResponse } from 'next/server';
-import { isValidUUID } from '@/lib/security';
 import { getAdminClient } from '@/lib/supabase/admin';
-
-// In-memory checked in set for fallback/offline demo
-const checkedInTokens = new Set<string>();
 
 export async function POST(req: Request) {
   try {
-    const { event_id, hash_payload } = await req.json();
+    const { event_id, hash_payload, team_mode } = await req.json();
 
-    if (!isValidUUID(hash_payload)) {
-      return NextResponse.json({ success: false, error: 'Invalid QR ticket token' }, { status: 400 });
+    if (!hash_payload) {
+      return NextResponse.json({ success: false, error: 'QR ticket token is required' }, { status: 400 });
     }
 
-    // Check duplicate check-in
-    if (checkedInTokens.has(hash_payload)) {
+    const supabase = getAdminClient();
+
+    // 1. Look up registration by hash_payload or id
+    let query = supabase
+      .from('registrations')
+      .select('*, events(title)')
+      .or(`hash_payload.eq.${hash_payload},id.eq.${hash_payload}`);
+
+    if (event_id) {
+      query = query.eq('event_id', event_id);
+    }
+
+    const { data: reg, error } = await query.maybeSingle();
+
+    if (error) {
+      console.error('Checkin query error:', error);
+      return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+    }
+
+    if (!reg) {
+      return NextResponse.json(
+        { success: false, error: 'Ticket not found in registration database for this event.' },
+        { status: 404 }
+      );
+    }
+
+    const participantName =
+      reg.form_data?.full_name || reg.form_data?.name || reg.lead_email.split('@')[0];
+    const registrationNumber =
+      reg.form_data?.registration_number || reg.form_data?.reg_num || 'N/A';
+    const teamName = reg.team_data?.team_name || '';
+    const teamMembers = reg.team_data?.members || [];
+
+    // 2. Check if already checked in
+    if (reg.checked_in) {
       return NextResponse.json({
         success: true,
         already_checked_in: true,
-        participant_name: 'Alex Morgan',
-        registration_number: 'AP21110010123',
-        team_name: 'Azure Titans',
-        checked_in_at: 'earlier today',
+        participant_name: participantName,
+        registration_number: registrationNumber,
+        team_name: teamName,
+        team_members: teamMembers,
+        checked_in_at: new Date(reg.updated_at || reg.created_at).toLocaleTimeString(),
       });
     }
 
-    // Try Supabase update
-    const supabase = getAdminClient();
-    try {
-      await supabase
-        .from('registrations')
-        .update({ checked_in: true, updated_at: new Date().toISOString() })
-        .eq('hash_payload', hash_payload);
-    } catch {
-      // Memory fallback
-    }
+    // 3. Mark checked in in Supabase
+    const { error: updateError } = await supabase
+      .from('registrations')
+      .update({
+        checked_in: true,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', reg.id);
 
-    checkedInTokens.add(hash_payload);
+    if (updateError) {
+      console.error('Checkin update error:', updateError);
+      return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
+    }
 
     return NextResponse.json({
       success: true,
       already_checked_in: false,
-      participant_name: 'Alex Morgan',
-      registration_number: 'AP21110010123',
-      team_name: 'Azure Titans',
+      participant_name: participantName,
+      registration_number: registrationNumber,
+      team_name: teamName,
+      team_members: teamMembers,
     });
   } catch (err: any) {
+    console.error('Checkin API error:', err);
     return NextResponse.json({ success: false, error: err.message }, { status: 500 });
   }
 }

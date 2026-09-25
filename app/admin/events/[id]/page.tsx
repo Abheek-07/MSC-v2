@@ -1,9 +1,10 @@
 'use client';
 
-import React, { useState, use } from 'react';
+import React, { useState, useEffect, use } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
+import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
+import { createClient } from '@/lib/supabase/client';
 import {
   ArrowLeft,
   Calendar,
@@ -43,85 +44,77 @@ interface AttendeeRecord {
 export default function PerEventManagementPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const eventId = resolvedParams.id;
+  const supabase = createClient();
 
-  const event = FALLBACK_EVENTS.find((e) => e.id === eventId) || FALLBACK_EVENTS[0];
-
+  const [event, setEvent] = useState<EventItem | null>(null);
+  const [attendees, setAttendees] = useState<AttendeeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBadge, setSelectedBadge] = useState<AttendeeRecord | null>(null);
   const [selectedTeamRoster, setSelectedTeamRoster] = useState<AttendeeRecord | null>(null);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
-  // Initial event-scoped attendees
-  const [attendees, setAttendees] = useState<AttendeeRecord[]>([
-    {
-      id: 'reg-001',
-      hash_payload: 'tkt-synora-001',
-      lead_name: 'Alex Morgan',
-      lead_email: 'alex.m@srmap.edu.in',
-      reg_number: 'AP21110010123',
-      phone: '+91 9876543210',
-      college: 'SRM University AP',
-      status: 'confirmed',
-      checked_in: true,
-      team_name: 'Azure Titans',
-      team_members: [
-        { name: 'Alex Morgan', email: 'alex.m@srmap.edu.in', reg_number: 'AP21110010123' },
-        { name: 'Kiran Patel', email: 'kiran.p@srmap.edu.in', reg_number: 'AP21110010124' },
-        { name: 'David Kim', email: 'david.k@srmap.edu.in', reg_number: 'AP21110010125' },
-      ],
-      created_at: '2026-09-20T10:15:00Z',
-    },
-    {
-      id: 'reg-002',
-      hash_payload: 'tkt-synora-002',
-      lead_name: 'Priya Sharma',
-      lead_email: 'priya.s@srmap.edu.in',
-      reg_number: 'AP21110010456',
-      phone: '+91 9876543211',
-      college: 'SRM University AP',
-      status: 'confirmed',
-      checked_in: false,
-      team_name: '',
-      created_at: '2026-09-21T14:30:00Z',
-    },
-    {
-      id: 'reg-003',
-      hash_payload: 'tkt-synora-003',
-      lead_name: 'Rahul Varma',
-      lead_email: 'rahul.v@vit.ac.in',
-      reg_number: '21BCE0452',
-      phone: '+91 9876543212',
-      college: 'VIT Vellore',
-      status: 'confirmed',
-      checked_in: false,
-      team_name: 'Neural Racers',
-      team_members: [
-        { name: 'Rahul Varma', email: 'rahul.v@vit.ac.in', reg_number: '21BCE0452' },
-        { name: 'Aakash Verma', email: 'aakash@vit.ac.in', reg_number: '21BCE0453' },
-      ],
-      created_at: '2026-09-22T09:45:00Z',
-    },
-    {
-      id: 'reg-004',
-      hash_payload: 'tkt-synora-004',
-      lead_name: 'Sneha Kapur',
-      lead_email: 'sneha.k@srmap.edu.in',
-      reg_number: 'AP21110010890',
-      phone: '+91 9876543213',
-      college: 'SRM University AP',
-      status: 'waitlisted',
-      checked_in: false,
-      team_name: '',
-      created_at: '2026-09-23T11:20:00Z',
-    },
-  ]);
+  const fetchEventAndAttendees = async () => {
+    try {
+      // 1. Fetch Event
+      const { data: evData, error: evError } = await supabase
+        .from('events')
+        .select('*')
+        .eq('id', eventId)
+        .single();
 
-  // Toggle Attendance
-  const toggleCheckIn = (id: string) => {
+      if (!evError && evData) {
+        setEvent(evData as EventItem);
+      } else {
+        const fallback = FALLBACK_EVENTS.find((e) => e.id === eventId) || FALLBACK_EVENTS[0];
+        setEvent(fallback);
+      }
+
+      // 2. Fetch Attendees
+      const { data: regData, error: regError } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('event_id', eventId)
+        .order('created_at', { ascending: false });
+
+      if (!regError && regData) {
+        const mapped: AttendeeRecord[] = regData.map((r: any) => ({
+          id: r.id,
+          hash_payload: r.hash_payload || r.id,
+          lead_name: r.form_data?.full_name || r.form_data?.name || r.lead_email.split('@')[0],
+          lead_email: r.lead_email,
+          reg_number: r.form_data?.registration_number || r.form_data?.reg_num || 'N/A',
+          phone: r.form_data?.phone || 'N/A',
+          college: r.form_data?.college || 'SRM University AP',
+          status: r.status,
+          checked_in: Boolean(r.checked_in),
+          team_name: r.team_data?.team_name || '',
+          team_members: r.team_data?.members || [],
+          created_at: r.created_at,
+        }));
+        setAttendees(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to load event or attendees:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchEventAndAttendees();
+  }, [eventId]);
+
+  // Toggle Attendance with real Supabase persistence
+  const toggleCheckIn = async (id: string) => {
+    const target = attendees.find((a) => a.id === id);
+    if (!target) return;
+    const nextVal = !target.checked_in;
     setAttendees((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, checked_in: !item.checked_in } : item))
+      prev.map((item) => (item.id === id ? { ...item, checked_in: nextVal } : item))
     );
+    await supabase.from('registrations').update({ checked_in: nextVal, updated_at: new Date().toISOString() }).eq('id', id);
   };
 
   // Filter attendees
@@ -166,7 +159,7 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${event.slug}-attendees-${new Date().toISOString().slice(0, 10)}.csv`;
+    link.download = `${event?.slug || 'event'}-attendees-${new Date().toISOString().slice(0, 10)}.csv`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -218,40 +211,51 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `${event.slug}-roster-${new Date().toISOString().slice(0, 10)}.xlsx`;
+    link.download = `${event?.slug || 'event'}-roster-${new Date().toISOString().slice(0, 10)}.xlsx`;
     link.click();
     URL.revokeObjectURL(url);
   };
 
   // Handle CSV Import
-  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCSVUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
-      complete: (results) => {
+      complete: async (results) => {
         const parsedRows = results.data as any[];
-        const newAttendees: AttendeeRecord[] = parsedRows.map((row, idx) => ({
-          id: `imp-${Date.now()}-${idx}`,
-          hash_payload: `tkt-${Date.now()}-${idx}`,
-          lead_name: row['Name'] || row['lead_name'] || 'Imported Attendee',
-          lead_email: row['Email'] || row['lead_email'] || 'attendee@srmap.edu.in',
-          reg_number: row['Registration Number'] || row['reg_number'] || 'AP21110000000',
-          phone: row['Phone'] || row['phone'] || '+91 9999999999',
-          college: row['College'] || row['college'] || 'SRM University AP',
+        const toInsert = parsedRows.map((row) => ({
+          event_id: eventId,
+          lead_email: row['Email'] || row['lead_email'] || `attendee-${Date.now()}@srmap.edu.in`,
           status: 'confirmed',
           checked_in: false,
-          team_name: row['Team'] || row['team_name'] || '',
-          created_at: new Date().toISOString(),
+          form_data: {
+            full_name: row['Name'] || row['lead_name'] || 'Imported Attendee',
+            registration_number: row['Registration Number'] || row['reg_number'] || 'AP0000000000',
+            phone: row['Phone'] || row['phone'] || '',
+            college: row['College'] || row['college'] || 'SRM University AP',
+          },
+          team_data: (row['Team'] || row['team_name']) ? { team_name: row['Team'] || row['team_name'] } : null,
         }));
 
-        setAttendees((prev) => [...newAttendees, ...prev]);
+        if (toInsert.length > 0) {
+          await supabase.from('registrations').insert(toInsert);
+          await fetchEventAndAttendees();
+        }
         setIsImportModalOpen(false);
       },
     });
   };
+
+  if (!event) {
+    return (
+      <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+        Loading event workspace...
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>

@@ -1,15 +1,31 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
+import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
+import { createClient } from '@/lib/supabase/client';
 import QRScanner from '@/components/QRScanner';
 import { ArrowLeft, Calendar } from 'lucide-react';
 
 export default function AdminGlobalScannerPage() {
+  const supabase = createClient();
+  const [events, setEvents] = useState<EventItem[]>(FALLBACK_EVENTS);
   const [selectedEventId, setSelectedEventId] = useState<string>(FALLBACK_EVENTS[0].id);
 
-  const currentEvent = FALLBACK_EVENTS.find((e) => e.id === selectedEventId) || FALLBACK_EVENTS[0];
+  useEffect(() => {
+    supabase
+      .from('events')
+      .select('*')
+      .order('date_start', { ascending: false })
+      .then(({ data, error }) => {
+        if (!error && data && data.length > 0) {
+          setEvents(data as EventItem[]);
+          setSelectedEventId(data[0].id);
+        }
+      });
+  }, []);
+
+  const currentEvent = events.find((e) => e.id === selectedEventId) || events[0] || FALLBACK_EVENTS[0];
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
@@ -41,7 +57,7 @@ export default function AdminGlobalScannerPage() {
             className="fluent-input"
             style={{ width: 'auto', minWidth: '220px', padding: '6px 12px', fontSize: '13px' }}
           >
-            {FALLBACK_EVENTS.map((e) => (
+            {events.map((e) => (
               <option key={e.id} value={e.id}>
                 {e.title}
               </option>

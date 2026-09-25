@@ -104,14 +104,14 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Protected route check for /admin
+  // Protected route check for /admin - Strict Cryptographic Gate
   if (pathname.startsWith('/admin')) {
-    // Exclude public checkin URL if needed or handle direct
     const {
-      data: { session },
-    } = await supabase.auth.getSession();
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser();
 
-    if (!session) {
+    if (userError || !user) {
       const loginUrl = new URL('/login', request.url);
       loginUrl.searchParams.set('redirect', pathname);
       return NextResponse.redirect(loginUrl);
@@ -121,12 +121,14 @@ export async function middleware(request: NextRequest) {
     const { data: profile } = await supabase
       .from('member_profiles')
       .select('role, is_onboarded')
-      .eq('id', session.user.id)
+      .eq('id', user.id)
       .single();
 
     if (!profile || (profile.role !== 'admin' && profile.role !== 'core_member')) {
-      // Access denied
-      return NextResponse.redirect(new URL('/?error=unauthorized', request.url));
+      // Access denied - not an authorized administrator
+      const unauthorizedUrl = new URL('/login', request.url);
+      unauthorizedUrl.searchParams.set('error', 'unauthorized');
+      return NextResponse.redirect(unauthorizedUrl);
     }
   }
 

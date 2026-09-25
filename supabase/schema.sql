@@ -512,3 +512,80 @@ create policy "password_reset_requests_admin_update" on public.password_reset_re
 -- 8. payments & payment_orders: Revoke all from anon & authenticated
 revoke all on public.payments from anon, authenticated;
 revoke all on public.payment_orders from anon, authenticated;
+
+-- ==============================================================================
+-- 9. FIXED LEAD ADMIN ACCOUNT SEED
+-- Lead Admin Credentials:
+--   Email:    msc.community@srmap.edu.in
+--   Password: MSC@2026
+-- ==============================================================================
+do $$
+declare
+  v_admin_id uuid;
+begin
+  select id into v_admin_id from auth.users where email = 'msc.community@srmap.edu.in';
+
+  if v_admin_id is null then
+    v_admin_id := gen_random_uuid();
+    insert into auth.users (
+      instance_id,
+      id,
+      aud,
+      role,
+      email,
+      encrypted_password,
+      email_confirmed_at,
+      raw_app_meta_data,
+      raw_user_meta_data,
+      created_at,
+      updated_at,
+      confirmation_token
+    ) values (
+      '00000000-0000-0000-0000-000000000000',
+      v_admin_id,
+      'authenticated',
+      'authenticated',
+      'msc.community@srmap.edu.in',
+      crypt('MSC@2026', gen_salt('bf')),
+      now(),
+      '{"provider":"email","providers":["email"]}',
+      '{"full_name":"MSC Lead Administrator"}',
+      now(),
+      now(),
+      encode(gen_random_bytes(32), 'hex')
+    );
+  else
+    update auth.users
+    set encrypted_password = crypt('MSC@2026', gen_salt('bf')),
+        email_confirmed_at = coalesce(email_confirmed_at, now()),
+        updated_at = now()
+    where id = v_admin_id;
+  end if;
+
+  -- Ensure matching profile exists in public.member_profiles with 'admin' role
+  insert into public.member_profiles (
+    id,
+    email,
+    full_name,
+    role,
+    department,
+    year_of_study,
+    is_onboarded,
+    updated_at
+  ) values (
+    v_admin_id,
+    'msc.community@srmap.edu.in',
+    'MSC Lead Administrator',
+    'admin',
+    'CSE',
+    'Chapter Lead',
+    true,
+    now()
+  )
+  on conflict (id) do update
+  set role = 'admin',
+      is_onboarded = true,
+      full_name = 'MSC Lead Administrator',
+      updated_at = now();
+end $$;
+
