@@ -95,10 +95,9 @@ export default function AboutPage() {
         <div
           className="fluent-showcase-card"
           style={{
-            position: 'relative',
             borderRadius: '24px',
             overflow: 'hidden',
-            boxShadow: '0 12px 36px rgba(0, 0, 0, 0.08)',
+            boxShadow: '0 8px 30px rgba(0, 0, 0, 0.06)',
             marginBottom: '60px',
             border: '1px solid var(--border)',
             background: 'var(--surface)',
@@ -110,44 +109,9 @@ export default function AboutPage() {
             style={{
               width: '100%',
               height: 'auto',
-              maxHeight: '520px',
-              objectFit: 'cover',
               display: 'block',
             }}
           />
-          {/* Acrylic Glass Floating Information Card */}
-          <div
-            style={{
-              position: 'absolute',
-              bottom: '16px',
-              left: '16px',
-              right: '16px',
-              padding: 'clamp(12px, 3vw, 16px) clamp(14px, 3vw, 24px)',
-              background: 'rgba(10, 17, 28, 0.82)',
-              backdropFilter: 'blur(16px)',
-              WebkitBackdropFilter: 'blur(16px)',
-              border: '1px solid rgba(255, 255, 255, 0.15)',
-              borderRadius: '14px',
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '10px',
-              color: '#ffffff',
-            }}
-          >
-            <div>
-              <span style={{ fontSize: '11px', color: '#58a6ff', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                Engineering Collective
-              </span>
-              <h3 style={{ fontSize: 'clamp(15px, 3vw, 18px)', color: '#ffffff', fontWeight: 600, margin: '2px 0 0 0' }}>
-                Microsoft Student Community &bull; Chapter &apos;26
-              </h3>
-            </div>
-            <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)' }}>
-              SRM University AP &bull; Amaravati, Andhra Pradesh
-            </span>
-          </div>
         </div>
 
         {/* Community Genesis & Provenance Block */}
