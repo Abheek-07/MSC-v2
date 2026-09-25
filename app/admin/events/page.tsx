@@ -141,9 +141,10 @@ export default function AdminEventsPage() {
           borderRadius: 'var(--radius-sm)',
           boxShadow: 'var(--shadow-rest)',
           overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+        <table style={{ width: '100%', minWidth: '780px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', color: 'var(--text-strong)' }}>
               <th style={{ padding: '12px 16px' }}>Event Name</th>
@@ -262,7 +263,7 @@ export default function AdminEventsPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '24px',
+            padding: 'clamp(12px, 3vw, 24px)',
             overflowY: 'auto',
           }}
         >
@@ -270,12 +271,12 @@ export default function AdminEventsPage() {
             style={{
               maxWidth: '640px',
               width: '100%',
-              maxHeight: '90vh',
+              maxHeight: '92vh',
               overflowY: 'auto',
               background: 'var(--surface)',
               borderRadius: 'var(--radius-sm)',
               boxShadow: 'var(--shadow-lift)',
-              padding: '32px',
+              padding: 'clamp(16px, 4vw, 32px)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
@@ -317,7 +318,7 @@ export default function AdminEventsPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
                     Event Type
@@ -349,7 +350,7 @@ export default function AdminEventsPage() {
                 </div>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
                     Location / Venue
@@ -380,7 +381,7 @@ export default function AdminEventsPage() {
               {/* Pricing section */}
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
                 <h4 style={{ fontSize: '14px', fontWeight: 600, marginBottom: '12px' }}>Pricing &amp; Teams</h4>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
                   <div>
                     <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
                       Pricing Tier

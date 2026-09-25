@@ -218,7 +218,7 @@ export default function AdminUsersPage() {
           gap: '12px',
         }}
       >
-        <div style={{ position: 'relative', width: '300px' }}>
+        <div style={{ position: 'relative', width: '300px', maxWidth: '100%' }}>
           <Search size={16} style={{ position: 'absolute', left: '12px', top: '10px', color: 'var(--text-muted)' }} />
           <input
             type="text"
@@ -259,11 +259,12 @@ export default function AdminUsersPage() {
           background: 'var(--surface)',
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-sm)',
-          overflow: 'hidden',
+          overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
           boxShadow: 'var(--shadow-rest)',
         }}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+        <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
               <th style={{ padding: '12px 16px' }}>Member Profile</th>
@@ -360,16 +361,18 @@ export default function AdminUsersPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '20px',
+            padding: 'clamp(12px, 3vw, 20px)',
           }}
         >
           <div
             style={{
               maxWidth: '480px',
               width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
               background: 'var(--surface)',
               borderRadius: 'var(--radius-sm)',
-              padding: '28px',
+              padding: 'clamp(16px, 4vw, 28px)',
               boxShadow: 'var(--shadow-lift)',
             }}
           >
@@ -435,7 +438,7 @@ export default function AdminUsersPage() {
                 />
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))', gap: '12px' }}>
                 <div>
                   <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '4px' }}>
                     Access Role *

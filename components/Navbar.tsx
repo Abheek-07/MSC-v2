@@ -8,7 +8,6 @@ import {
   X,
   Sun,
   Moon,
-  Ticket,
   Shield,
   Home,
   Info,
@@ -220,33 +219,6 @@ export default function Navbar() {
 
           {/* Action Controls */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexShrink: 0 }}>
-            {/* Tickets quick link (Desktop) */}
-            <Link
-              href="/ticket"
-              className="desktop-ticket-link"
-              style={{
-                display: 'none',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '6px 12px',
-                fontSize: '13px',
-                fontWeight: 500,
-                color: 'var(--text-body)',
-                borderRadius: '6px',
-                textDecoration: 'none',
-                transition: 'background-color 0.15s ease',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor =
-                  theme === 'dark' ? 'rgba(255, 255, 255, 0.06)' : 'rgba(0, 0, 0, 0.04)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = 'transparent';
-              }}
-            >
-              <Ticket size={15} color="var(--brand)" />
-              <span>Tickets</span>
-            </Link>
 
             {/* Theme Toggle */}
             <button
@@ -406,7 +378,6 @@ export default function Navbar() {
         <style>{`
           @media (min-width: 820px) {
             .desktop-nav { display: flex !important; }
-            .desktop-ticket-link { display: inline-flex !important; }
             .desktop-auth-controls { display: flex !important; }
             .mobile-toggle-btn { display: none !important; }
           }
@@ -485,26 +456,6 @@ export default function Navbar() {
               );
             })}
 
-            {/* Digital Tickets */}
-            <Link
-              href="/ticket"
-              onClick={() => setMobileMenuOpen(false)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '12px',
-                padding: '12px 14px',
-                fontSize: '16px',
-                fontWeight: 500,
-                color: 'var(--brand)',
-                borderRadius: '8px',
-                textDecoration: 'none',
-                marginTop: '4px',
-              }}
-            >
-              <Ticket size={18} color="var(--brand)" />
-              <span>Digital Ticket &amp; QR</span>
-            </Link>
           </div>
 
           {/* Bottom user action controls */}

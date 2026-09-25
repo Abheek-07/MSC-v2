@@ -298,9 +298,10 @@ export default function AdminRegistrationsPage() {
           borderRadius: 'var(--radius-sm)',
           boxShadow: 'var(--shadow-rest)',
           overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+        <table style={{ width: '100%', minWidth: '850px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', color: 'var(--text-strong)' }}>
               <th style={{ padding: '12px 16px' }}>Attendee</th>
@@ -491,17 +492,19 @@ export default function AdminRegistrationsPage() {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            padding: '24px',
+            padding: 'clamp(12px, 3vw, 24px)',
           }}
         >
           <div
             style={{
               maxWidth: '500px',
               width: '100%',
+              maxHeight: '92vh',
+              overflowY: 'auto',
               background: 'var(--surface)',
               borderRadius: 'var(--radius-sm)',
               boxShadow: 'var(--shadow-lift)',
-              padding: '32px',
+              padding: 'clamp(16px, 4vw, 32px)',
             }}
           >
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>

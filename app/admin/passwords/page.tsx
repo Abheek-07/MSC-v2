@@ -127,9 +127,10 @@ export default function PasswordResetQueuePage() {
           borderRadius: 'var(--radius-sm)',
           boxShadow: 'var(--shadow-rest)',
           overflowX: 'auto',
+          WebkitOverflowScrolling: 'touch',
         }}
       >
-        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
+        <table style={{ width: '100%', minWidth: '680px', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', color: 'var(--text-strong)' }}>
               <th style={{ padding: '12px 16px' }}>Request ID</th>

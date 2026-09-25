@@ -326,7 +326,7 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
       </div>
 
       {/* KPI Stats Strip */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 150px), 1fr))', gap: '16px' }}>
         <div className="fluent-card" style={{ padding: '16px 20px' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Total Registrations</span>
           <div style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)', marginTop: '4px' }}>
@@ -415,8 +415,8 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
           boxShadow: 'var(--shadow-rest)',
         }}
       >
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
+        <div style={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+          <table style={{ width: '100%', minWidth: '780px', borderCollapse: 'collapse', fontSize: '13px', textAlign: 'left' }}>
             <thead>
               <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
                 <th style={{ padding: '12px 16px' }}>Participant</th>

@@ -200,7 +200,7 @@ export default function AdminSettingsPage() {
           border: '1px solid var(--border)',
           borderRadius: 'var(--radius-sm)',
           boxShadow: 'var(--shadow-rest)',
-          padding: '32px',
+          padding: 'clamp(16px, 4vw, 32px)',
         }}
       >
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
@@ -292,7 +292,7 @@ export default function AdminSettingsPage() {
           </div>
 
           {/* Academic Coordinates */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
                 Full Name *
@@ -354,7 +354,7 @@ export default function AdminSettingsPage() {
           </div>
 
           {/* Department & Specialization */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: '16px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px' }}>
                 Department / Branch *
