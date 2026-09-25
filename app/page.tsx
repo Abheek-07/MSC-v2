@@ -87,7 +87,7 @@ export default async function HomePage() {
                 fontWeight: 600,
               }}
             >
-              Where Student Builders Engineer Production Scale.
+              Where Student Builders Architect the Future.
             </h1>
 
             {/* Sub-headline */}
@@ -100,8 +100,7 @@ export default async function HomePage() {
                 marginBottom: '40px',
               }}
             >
-              SRM University AP&apos;s premier engineering guild. We build distributed cloud systems on Azure,
-              ship autonomous agentic AI workflows, and organize high-octane national hackathons.
+              SRM University AP&apos;s premier engineering collective powered by Microsoft Learn Student Ambassadors. We engineer scalable cloud platforms, accelerate applied AI, and compete across national hackathons.
             </p>
 
             {/* Primary Action Buttons */}
@@ -120,7 +119,7 @@ export default async function HomePage() {
               </a>
 
               <a
-                href="https://discord.gg/microsoft"
+                href="https://discord.gg/K5NC5wAhg"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="fluent-btn fluent-btn-secondary"
@@ -181,7 +180,7 @@ export default async function HomePage() {
               Guiding Engineering Framework
             </span>
             <h2 style={{ fontSize: '32px', fontWeight: 600, color: 'var(--text-strong)', marginTop: '4px' }}>
-              Ecosystem Pillars
+              Built for serious student developers.
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '15px', maxWidth: '640px', marginTop: '8px' }}>
               Three specialized engineering disciplines elevating student developers from local experiments into production-grade systems.
@@ -214,7 +213,7 @@ export default async function HomePage() {
                 Applied Cloud &amp; AI
               </h3>
               <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
-                Hands-on immersion with Azure Kubernetes Service, serverless event-driven architectures, cognitive services, and autonomous agentic workflows using Azure OpenAI.
+                Hands-on systems engineering, Microsoft Azure deployments, and production LLM orchestration workshops built for real scale.
               </p>
               <Link href="/events" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 Explore Cloud Workshops <ArrowRight size={14} />
@@ -246,7 +245,7 @@ export default async function HomePage() {
                 National Hackathons
               </h3>
               <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
-                Home of flagship hackathon brand <strong>SYNORA</strong>. Fast-paced, high-octane 36-hour sprints solving real industry challenges with top technical talent from across India.
+                Organizing high-stakes hackathons like Solutions for Smart India, uniting hundreds of student innovators to solve hard problems.
               </p>
               <Link href="/events/synora-26" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 SYNORA &apos;26 Details <ArrowRight size={14} />
@@ -278,7 +277,7 @@ export default async function HomePage() {
                 Mentorship &amp; Open Source
               </h3>
               <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '24px' }}>
-                Dedicated mentoring pipeline for Microsoft Learn Student Ambassadors (MLSA), architectural code reviews, and contributing to open-source developer infrastructure.
+                Direct mentorship from Microsoft MVP alumni, senior student engineers, and peer code reviews for production open-source tools.
               </p>
               <Link href="/about" style={{ fontSize: '13px', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                 Our Chapter Mission <ArrowRight size={14} />
@@ -327,39 +326,43 @@ export default async function HomePage() {
                   position: 'absolute',
                   top: '16px',
                   left: '16px',
-                  background: 'rgba(0,0,0,0.8)',
+                  background: 'rgba(0,0,0,0.85)',
                   backdropFilter: 'blur(4px)',
                   color: '#ffffff',
-                  padding: '4px 12px',
+                  padding: '6px 14px',
                   borderRadius: 'var(--radius-sm)',
-                  fontSize: '12px',
-                  fontWeight: 700,
+                  fontSize: '13px',
+                  fontWeight: 800,
                   textTransform: 'uppercase',
-                  letterSpacing: '0.05em',
+                  letterSpacing: '0.08em',
+                  border: '1px solid rgba(255,255,255,0.2)',
                 }}
               >
-                {flagship.type} &bull; Active Sprint
+                SEP 17
               </div>
             </div>
 
             <div style={{ padding: '40px', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px' }}>
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center' }}>
+                <span className="fluent-badge badge-warning" style={{ fontWeight: 800, letterSpacing: '0.05em' }}>
+                  SEP 17
+                </span>
                 <span className="fluent-badge badge-success">Registration Open</span>
-                <span className="fluent-badge badge-info">&#8377; 1,50,000+ Bounty</span>
+                <span className="fluent-badge badge-info">&#8377; 30,000+ Bounty Pool</span>
               </div>
 
               <h3 style={{ fontSize: '28px', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '12px' }}>
-                {flagship.title}
+                SYNORA
               </h3>
 
               <p style={{ fontSize: '15px', color: 'var(--text-muted)', lineHeight: 1.6, marginBottom: '24px' }}>
-                {flagship.description}
+                It is a fresher-oriented 18-hour technology event that combines 6 hours of orientation and technical talks with a 12-hour intensive hackathon, giving students a complete experience of learning, collaboration, and hands-on project building.
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', fontSize: '13px', color: 'var(--text-body)', marginBottom: '28px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <Calendar size={16} color="var(--brand)" />
-                  <span>{new Date(flagship.date_start).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                  <span>September 17, 2026 &bull; 18-Hour Sprint</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <MapPin size={16} color="var(--brand)" />

@@ -1,6 +1,6 @@
 import React from 'react';
 import { FALLBACK_TEAM, TeamMemberItem } from '@/lib/data/mock-fallback';
-import { Linkedin, Github, Twitter, Instagram, Globe } from 'lucide-react';
+import { Linkedin, Github, Twitter, Instagram, Globe, Mail } from 'lucide-react';
 
 export const metadata = {
   title: 'Team Roster — Microsoft Student Community | SRM University AP',
@@ -53,9 +53,26 @@ export default async function TeamPage() {
         <h4 style={{ fontSize: '17px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '4px' }}>
           {member.name}
         </h4>
-        <span style={{ fontSize: '13px', color: 'var(--brand)', fontWeight: 500, marginBottom: '16px' }}>
+        <span style={{ fontSize: '13px', color: 'var(--brand)', fontWeight: 500, marginBottom: member.email ? '6px' : '16px' }}>
           {member.role}
         </span>
+        {member.email && (
+          <a
+            href={`mailto:${member.email}`}
+            style={{
+              fontSize: '12px',
+              color: 'var(--text-muted)',
+              textDecoration: 'none',
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              marginBottom: '16px',
+            }}
+          >
+            <Mail size={13} color="var(--brand)" />
+            <span>{member.email}</span>
+          </a>
+        )}
 
         {/* Social Icons row */}
         <div style={{ display: 'flex', gap: '10px', marginTop: 'auto' }}>

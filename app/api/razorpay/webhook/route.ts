@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { verifyWebhookSignature } from '@/lib/razorpay';
 import { getAdminClient } from '@/lib/supabase/admin';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
     const rawBody = await req.text();

@@ -13,6 +13,7 @@ export default function GalleryPage() {
     { id: 'all', label: 'All Archives' },
     { id: 'hackathons', label: 'Hackathons' },
     { id: 'workshops', label: 'Workshops' },
+    { id: 'festivals', label: 'Festivals' },
     { id: 'community', label: 'Community' },
     { id: 'awards', label: 'Awards' },
   ];

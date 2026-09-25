@@ -78,7 +78,7 @@ export default function Navbar() {
         <span>SRM UNIVERSITY AP &bull; CHAPTER &apos;26</span>
         <div style={{ display: 'flex', gap: '16px' }}>
           <a
-            href="https://discord.gg/microsoft"
+            href="https://discord.gg/K5NC5wAhg"
             target="_blank"
             rel="noopener noreferrer"
             style={{ color: 'var(--brand)', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px' }}
@@ -94,21 +94,16 @@ export default function Navbar() {
       <div className="container" style={{ display: 'flex', height: '64px', alignItems: 'center', justifyContent: 'space-between' }}>
         {/* Brand & Logo */}
         <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: '12px', textDecoration: 'none' }}>
-          <div style={{
-            width: '28px',
-            height: '28px',
-            background: 'var(--brand)',
-            display: 'grid',
-            gridTemplateColumns: 'repeat(2, 1fr)',
-            gap: '2px',
-            padding: '4px',
-            borderRadius: '2px'
-          }}>
-            <div style={{ background: '#f25022' }} />
-            <div style={{ background: '#7fba00' }} />
-            <div style={{ background: '#00a4ef' }} />
-            <div style={{ background: '#ffb900' }} />
-          </div>
+          <img
+            src="https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png"
+            alt="MSC SRM AP Logo"
+            style={{
+              width: '32px',
+              height: '32px',
+              objectFit: 'contain',
+              borderRadius: '2px',
+            }}
+          />
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text-strong)', letterSpacing: '-0.01em', lineHeight: 1.2 }}>
               Microsoft Student Community
