@@ -3,6 +3,9 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
+  devIndicators: {
+    buildActivity: false,
+  },
   eslint: {
     ignoreDuringBuilds: true,
   },

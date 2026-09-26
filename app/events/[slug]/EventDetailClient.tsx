@@ -21,6 +21,8 @@ import {
   Shield,
   CreditCard,
   UserPlus,
+  Lock,
+  CalendarCheck,
 } from 'lucide-react';
 import { EventItem } from '@/lib/data/mock-fallback';
 
@@ -50,6 +52,16 @@ export default function EventDetailClient({
   initialTab?: string;
 }) {
   const router = useRouter();
+
+  const isCompleted =
+    event.status === 'completed' ||
+    Boolean(
+      event.date_end &&
+        !isNaN(new Date(event.date_end).getTime()) &&
+        new Date(event.date_end).getTime() < Date.now()
+    );
+
+  const isRegistrationClosed = isCompleted || event.registration_open === false;
 
   // 3-in-1 Portal Tabs
   const [activePortalTab, setActivePortalTab] = useState<'register' | 'lookup' | 'certificate'>(
@@ -131,6 +143,10 @@ export default function EventDetailClient({
   // Handle Register Form Submission
   const handleRegistration = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isRegistrationClosed) {
+      setErrorMsg('Registrations are closed for this event.');
+      return;
+    }
     setSubmitting(true);
     setErrorMsg(null);
 
@@ -260,7 +276,7 @@ export default function EventDetailClient({
       const res = await fetch('/api/ticket/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: lookupQuery }),
+        body: JSON.stringify({ query: lookupQuery.trim() }),
       });
 
       const data = await res.json();
@@ -269,12 +285,13 @@ export default function EventDetailClient({
       if (data.tickets && data.tickets.length > 0) {
         setFoundTicket({
           hash_payload: data.tickets[0].hash_payload,
-          event_title: event.title,
-          event_date: event.date_start,
-          event_location: event.location,
-          lead_name: 'Verified Attendee',
-          lead_email: lookupQuery,
-          status: 'confirmed',
+          event_title: data.tickets[0].event_title || event.title,
+          event_date: data.tickets[0].date_start || event.date_start,
+          event_location: data.tickets[0].location || event.location,
+          lead_name: data.tickets[0].lead_name || 'Verified Attendee',
+          lead_email: data.tickets[0].lead_email || lookupQuery,
+          team_name: data.tickets[0].team_name,
+          status: data.tickets[0].status || 'confirmed',
           checked_in: false,
         });
       } else {
@@ -361,8 +378,29 @@ export default function EventDetailClient({
           <div style={{ padding: '36px' }}>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', flexWrap: 'wrap' }}>
               <span className="fluent-badge badge-info">{event.type}</span>
-              <span className={`fluent-badge ${event.status === 'upcoming' ? 'badge-success' : 'badge-warning'}`}>
-                {event.status === 'upcoming' ? 'Active / Upcoming' : 'Archived / Completed'}
+              <span
+                className="fluent-badge"
+                style={{
+                  background: isCompleted
+                    ? 'rgba(239, 68, 68, 0.1)'
+                    : isRegistrationClosed
+                    ? 'rgba(245, 158, 11, 0.1)'
+                    : 'rgba(16, 185, 129, 0.1)',
+                  color: isCompleted ? '#dc2626' : isRegistrationClosed ? '#d97706' : '#059669',
+                  border: `1px solid ${
+                    isCompleted
+                      ? 'rgba(239, 68, 68, 0.25)'
+                      : isRegistrationClosed
+                      ? 'rgba(245, 158, 11, 0.25)'
+                      : 'rgba(16, 185, 129, 0.25)'
+                  }`,
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: 600,
+                }}
+              >
+                {isCompleted ? 'Event Completed' : isRegistrationClosed ? 'Registration Closed' : 'Active / Upcoming'}
               </span>
               <span className="fluent-badge" style={{ background: 'var(--bg-soft)', color: 'var(--text-strong)' }}>
                 {isFree ? 'Free Entry' : `₹${event.form_requirements?.registration_fee || 0}`}
@@ -373,9 +411,32 @@ export default function EventDetailClient({
               {event.title}
             </h1>
 
-            <p style={{ fontSize: '16px', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '820px', marginBottom: '28px' }}>
+            <p style={{ fontSize: '16px', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '820px', marginBottom: '24px' }}>
               {event.description}
             </p>
+
+            {/* Prominent Admissions Notice if Closed */}
+            {isRegistrationClosed && (
+              <div
+                style={{
+                  background: isCompleted ? 'rgba(239, 68, 68, 0.05)' : 'rgba(245, 158, 11, 0.05)',
+                  border: `1px solid ${isCompleted ? 'rgba(239, 68, 68, 0.2)' : 'rgba(245, 158, 11, 0.2)'}`,
+                  borderRadius: '6px',
+                  padding: '12px 16px',
+                  marginBottom: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  fontSize: '13px',
+                  color: isCompleted ? '#b91c1c' : '#b45309',
+                }}
+              >
+                <Lock size={16} style={{ flexShrink: 0 }} />
+                <span>
+                  <strong>Admissions Closed:</strong> Public registrations for this event are closed {isCompleted ? 'as this event has officially concluded' : 'at this time'}. Registered delegates can still view confirmed passes and claim participation certificates using the portal tabs below.
+                </span>
+              </div>
+            )}
 
             {/* Quick Metadata Strip */}
             <div
@@ -457,9 +518,14 @@ export default function EventDetailClient({
               background: activePortalTab === 'register' ? 'var(--brand)' : 'transparent',
               color: activePortalTab === 'register' ? '#ffffff' : 'var(--text-body)',
               transition: 'all 0.15s ease',
+              display: 'inline-flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '6px',
             }}
           >
-            1. REGISTER TAB
+            {isRegistrationClosed && <Lock size={13} />}
+            <span>1. {isRegistrationClosed ? 'REGISTRATION CLOSED' : 'REGISTER TAB'}</span>
           </button>
           <button
             onClick={() => setActivePortalTab('lookup')}
@@ -501,10 +567,10 @@ export default function EventDetailClient({
           </button>
         </div>
 
-        {/* TAB 1: REGISTER */}
+        {/* TAB 1: REGISTER / CLOSED VIEW */}
         {activePortalTab === 'register' && (
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '32px' }}>
-            {/* Registration Form */}
+            {/* Registration Card (Closed view or Active form) */}
             <div
               style={{
                 background: 'var(--surface)',
@@ -514,20 +580,161 @@ export default function EventDetailClient({
                 padding: 'clamp(20px, 4vw, 36px)',
               }}
             >
-              <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
-                Event Registration
-              </h2>
-              <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px' }}>
-                Join this technical session. Free events confirm immediately; paid events proceed through secure Razorpay.
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px', flexWrap: 'wrap', gap: '8px' }}>
+                <h2 style={{ fontSize: '22px', fontWeight: 600, color: 'var(--text-strong)', margin: 0 }}>
+                  Event Registration
+                </h2>
+                {isRegistrationClosed && (
+                  <span
+                    style={{
+                      background: isCompleted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                      color: isCompleted ? '#dc2626' : '#d97706',
+                      border: `1px solid ${isCompleted ? 'rgba(239, 68, 68, 0.25)' : 'rgba(245, 158, 11, 0.25)'}`,
+                      padding: '4px 10px',
+                      borderRadius: '20px',
+                      fontSize: '11px',
+                      fontWeight: 700,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.05em',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                    }}
+                  >
+                    <Lock size={12} /> {isCompleted ? 'Event Completed' : 'Registration Closed'}
+                  </span>
+                )}
+              </div>
 
-              {errorMsg && (
-                <div style={{ padding: '12px', background: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', fontSize: '13px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <AlertCircle size={16} /> {errorMsg}
+              {isRegistrationClosed ? (
+                <div>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '20px', lineHeight: 1.5 }}>
+                    {isCompleted
+                      ? 'This technical session has officially concluded. Public attendee registrations are no longer accepted.'
+                      : 'Public admissions for this session are currently closed.'}
+                  </p>
+
+                  <div
+                    style={{
+                      background: 'var(--bg-soft)',
+                      border: '1px solid var(--border)',
+                      borderRadius: '8px',
+                      padding: '32px 24px',
+                      textAlign: 'center',
+                      marginBottom: '24px',
+                    }}
+                  >
+                    <div
+                      style={{
+                        width: '56px',
+                        height: '56px',
+                        borderRadius: '50%',
+                        background: isCompleted ? 'rgba(239, 68, 68, 0.1)' : 'rgba(245, 158, 11, 0.1)',
+                        color: isCompleted ? '#dc2626' : '#d97706',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        margin: '0 auto 16px auto',
+                      }}
+                    >
+                      <CalendarCheck size={28} />
+                    </div>
+
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-strong)', marginBottom: '8px' }}>
+                      {isCompleted ? 'Registrations Are Closed' : 'Admissions Currently Closed'}
+                    </h3>
+                    <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6, maxWidth: '480px', margin: '0 auto 24px auto' }}>
+                      {isCompleted
+                        ? `Registrations for "${event.title}" have concluded as the event has ended. Thank you to all participants, mentors, and partners who joined us!`
+                        : `Public registrations for "${event.title}" are closed. Please verify back later or check your registered pass below.`}
+                    </p>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', maxWidth: '420px', margin: '0 auto' }}>
+                      <button
+                        type="button"
+                        onClick={() => setActivePortalTab('lookup')}
+                        className="fluent-btn fluent-btn-primary"
+                        style={{
+                          width: '100%',
+                          padding: '12px 18px',
+                          fontSize: '13.5px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                        }}
+                      >
+                        <Search size={16} /> Look Up Registered Ticket / Pass
+                      </button>
+
+                      {event.form_requirements?.provide_certificates && (
+                        <button
+                          type="button"
+                          onClick={() => setActivePortalTab('certificate')}
+                          className="fluent-btn fluent-btn-secondary"
+                          style={{
+                            width: '100%',
+                            padding: '12px 18px',
+                            fontSize: '13.5px',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            gap: '8px',
+                          }}
+                        >
+                          <Award size={16} color="var(--brand)" /> Claim Participation Certificate
+                        </button>
+                      )}
+
+                      <Link
+                        href="/events"
+                        className="fluent-btn fluent-btn-secondary"
+                        style={{
+                          width: '100%',
+                          padding: '10px 18px',
+                          fontSize: '13px',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          gap: '8px',
+                          color: 'var(--text-muted)',
+                        }}
+                      >
+                        Explore Other Community Events <ArrowRight size={14} />
+                      </Link>
+                    </div>
+                  </div>
+
+                  <div
+                    style={{
+                      background: 'rgba(0, 103, 184, 0.04)',
+                      border: '1px solid rgba(0, 103, 184, 0.15)',
+                      borderRadius: '6px',
+                      padding: '14px 18px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                    }}
+                  >
+                    <Shield size={20} color="var(--brand)" style={{ flexShrink: 0 }} />
+                    <div style={{ fontSize: '12.5px', color: 'var(--text-body)', lineHeight: 1.5 }}>
+                      <strong>Need to verify previous attendance?</strong> All registered tickets, check-in records, and certificates remain permanently archived. Switch to the <strong>Ticket Lookup</strong> or <strong>Certificate</strong> tab above.
+                    </div>
+                  </div>
                 </div>
-              )}
+              ) : (
+                <>
+                  <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '24px' }}>
+                    Join this technical session. Free events confirm immediately; paid events proceed through secure Razorpay.
+                  </p>
 
-              <form onSubmit={handleRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                  {errorMsg && (
+                    <div style={{ padding: '12px', background: 'var(--danger-bg)', color: 'var(--danger)', borderRadius: 'var(--radius-sm)', fontSize: '13px', marginBottom: '20px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <AlertCircle size={16} /> {errorMsg}
+                    </div>
+                  )}
+
+                  <form onSubmit={handleRegistration} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
                 {/* Mode: Solo vs Team */}
                 {event.form_requirements?.allow_teams && (
                   <div>
@@ -814,49 +1021,72 @@ export default function EventDetailClient({
                     : `Proceed to Razorpay Checkout (₹${event.form_requirements?.registration_fee || 0})`}
                 </button>
               </form>
-            </div>
+            </>
+          )}
+        </div>
 
-            {/* Sidebar: Schedule, Speakers & Team Matchmaking */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-              {/* Matchmaking Pool */}
-              {event.form_requirements?.allow_teams && (
-                <div className="fluent-card" style={{ padding: '24px' }}>
-                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
-                    Open Team Matchmaking
-                  </h3>
-                  <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-                    Solo participant? Join an open squad with available slots.
-                  </p>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                    {openTeams.map((t) => (
-                      <div
-                        key={t.id}
-                        style={{
-                          background: 'var(--bg-soft)',
-                          padding: '12px',
-                          borderRadius: 'var(--radius-sm)',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                        }}
-                      >
-                        <div>
-                          <strong style={{ fontSize: '13px', display: 'block' }}>{t.team_name}</strong>
-                          <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Lead: {t.leader_name} ({t.leader_branch})</span>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={() => handleJoinTeam(t)}
-                          className="fluent-btn fluent-btn-secondary"
-                          style={{ fontSize: '11px', padding: '4px 8px' }}
-                        >
-                          Join Team
-                        </button>
+        {/* Sidebar: Schedule, Speakers & Team Matchmaking */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+          {/* Matchmaking Pool */}
+          {event.form_requirements?.allow_teams && (
+            <div className="fluent-card" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', margin: 0 }}>
+                  Open Team Matchmaking
+                </h3>
+                {isRegistrationClosed && (
+                  <span
+                    style={{
+                      fontSize: '11px',
+                      color: 'var(--text-muted)',
+                      background: 'var(--bg-soft)',
+                      border: '1px solid var(--border)',
+                      padding: '2px 8px',
+                      borderRadius: '12px',
+                      fontWeight: 600,
+                    }}
+                  >
+                    Closed
+                  </span>
+                )}
+              </div>
+              <p style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '16px' }}>
+                {isRegistrationClosed
+                  ? 'Team matchmaking is closed as event admissions have concluded.'
+                  : 'Solo participant? Join an open squad with available slots.'}
+              </p>
+              {!isRegistrationClosed && (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {openTeams.map((t) => (
+                    <div
+                      key={t.id}
+                      style={{
+                        background: 'var(--bg-soft)',
+                        padding: '12px',
+                        borderRadius: 'var(--radius-sm)',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                      }}
+                    >
+                      <div>
+                        <strong style={{ fontSize: '13px', display: 'block' }}>{t.team_name}</strong>
+                        <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Lead: {t.leader_name} ({t.leader_branch})</span>
                       </div>
-                    ))}
-                  </div>
+                      <button
+                        type="button"
+                        onClick={() => handleJoinTeam(t)}
+                        className="fluent-btn fluent-btn-secondary"
+                        style={{ fontSize: '11px', padding: '4px 8px' }}
+                      >
+                        Join Team
+                      </button>
+                    </div>
+                  ))}
                 </div>
               )}
+            </div>
+          )}
 
               {/* Schedule Timeline */}
               {event.form_requirements?.agenda && (
@@ -923,18 +1153,48 @@ export default function EventDetailClient({
                   overflow: 'hidden',
                 }}
               >
-                <div style={{ background: '#0067b8', color: '#ffffff', padding: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <span style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '2px' }}>MSC SRM AP PASS</span>
-                    <h3 style={{ fontSize: '18px', fontWeight: 600, color: '#ffffff', margin: 0 }}>{event.title}</h3>
+                <div
+                  style={{
+                    background: 'linear-gradient(135deg, #0067b8 0%, #004c87 100%)',
+                    color: '#ffffff',
+                    padding: '16px 20px',
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    alignItems: 'center',
+                    gap: '12px',
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img
+                      src="https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png"
+                      alt="MSC Logo"
+                      style={{
+                        width: '40px',
+                        height: '40px',
+                        objectFit: 'contain',
+                        background: '#ffffff',
+                        borderRadius: '6px',
+                        padding: '3px',
+                        flexShrink: 0,
+                      }}
+                    />
+                    <div>
+                      <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.12em', opacity: 0.9, fontWeight: 700 }}>
+                        Official Admission Pass &bull; Chapter &apos;26
+                      </span>
+                      <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#ffffff', margin: '2px 0 0 0' }}>
+                        Microsoft Student Community
+                      </h3>
+                      <div style={{ fontSize: '11px', opacity: 0.85 }}>SRM University-AP &bull; {event.title}</div>
+                    </div>
                   </div>
-                  <span style={{ background: '#0e7c41', color: '#ffffff', padding: '4px 8px', borderRadius: '2px', fontSize: '11px', fontWeight: 700 }}>
+                  <span style={{ background: '#0e7c41', color: '#ffffff', padding: '4px 10px', borderRadius: '4px', fontSize: '11px', fontWeight: 700, textTransform: 'uppercase' }}>
                     {foundTicket.status.toUpperCase()}
                   </span>
                 </div>
 
                 <div style={{ padding: '28px', textAlign: 'center' }}>
-                  <div style={{ display: 'inline-block', padding: '14px', background: '#ffffff', border: '1px solid var(--border)', borderRadius: '2px', marginBottom: '16px' }}>
+                  <div style={{ display: 'inline-block', padding: '14px', background: '#ffffff', border: '2px solid #0067b8', borderRadius: '8px', marginBottom: '16px', boxShadow: '0 4px 12px rgba(0, 103, 184, 0.08)' }}>
                     <QRCodeSVG
                       value={`${typeof window !== 'undefined' ? window.location.origin : ''}/admin/checkin/${foundTicket.hash_payload}`}
                       size={170}

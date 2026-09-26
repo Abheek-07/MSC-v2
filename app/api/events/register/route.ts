@@ -70,13 +70,25 @@ export async function POST(req: Request) {
     // Check event capacity & status
     const { data: event } = await supabase
       .from('events')
-      .select('id, registration_open, max_capacity, form_requirements')
+      .select('id, status, registration_open, date_end, max_capacity, form_requirements')
       .eq('id', event_id)
       .single();
 
     if (!event) return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
-    if (!event.registration_open)
-      return NextResponse.json({ error: 'Registrations are currently closed for this event.' }, { status: 400 });
+
+    const isEventCompleted =
+      event.status === 'completed' ||
+      Boolean(
+        event.date_end &&
+          !isNaN(new Date(event.date_end).getTime()) &&
+          new Date(event.date_end).getTime() < Date.now()
+      );
+
+    if (isEventCompleted || !event.registration_open)
+      return NextResponse.json(
+        { error: 'Registrations are closed as this event has concluded.' },
+        { status: 400 }
+      );
 
     // Count existing registrations
     const { count } = await supabase

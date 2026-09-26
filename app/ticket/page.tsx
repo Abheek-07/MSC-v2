@@ -29,7 +29,7 @@ export default function TicketLookupPage() {
       const res = await fetch('/api/ticket/lookup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
+        body: JSON.stringify({ query: email.trim() }),
       });
 
       const data = await res.json();
@@ -39,7 +39,7 @@ export default function TicketLookupPage() {
 
       setResults(data.tickets || []);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Lookup failed. Please check the email entered.');
+      setErrorMsg(err.message || 'Lookup failed. Please check the email or registration number entered.');
     } finally {
       setLoading(false);
     }
@@ -68,7 +68,7 @@ export default function TicketLookupPage() {
             Find Your Digital Ticket
           </h1>
           <p style={{ fontSize: '15px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            Lost your pass link? Enter your registered email address below. We match both lead registrants and named teammates.
+            Lost your pass link? Enter your registered email address or college registration number below. We match individual attendees, team leaders, and named teammates.
           </p>
         </div>
 
@@ -86,12 +86,12 @@ export default function TicketLookupPage() {
           <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
-                Registered Email Address
+                Registered Email Address or College Registration Number
               </label>
               <input
-                type="email"
+                type="text"
                 required
-                placeholder="name@srmap.edu.in"
+                placeholder="name@srmap.edu.in or AP26110010..."
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="fluent-input"

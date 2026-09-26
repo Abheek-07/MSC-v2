@@ -478,8 +478,14 @@ create policy "registrations_read" on public.registrations
     public.current_user_role() in ('admin', 'core_member')
   );
 
+create policy "registrations_staff_insert" on public.registrations
+  for insert with check (public.current_user_role() in ('admin', 'core_member'));
+
 create policy "registrations_staff_update" on public.registrations
   for update using (public.current_user_role() in ('admin', 'core_member'));
+
+create policy "registrations_staff_delete" on public.registrations
+  for delete using (public.current_user_role() in ('admin', 'core_member'));
 
 -- 4. teams
 create policy "teams_public_read" on public.teams

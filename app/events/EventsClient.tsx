@@ -89,7 +89,14 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
           const dayNum = isValidDate ? startDate.toLocaleDateString('en-US', { day: '2-digit' }) : '01';
           const isPaid = featuredEvent.form_requirements?.event_pricing === 'paid';
           const priceLabel = isPaid ? `₹${featuredEvent.form_requirements?.registration_fee || 0}` : 'Free Entry';
-          const isCompleted = featuredEvent.status === 'completed';
+          const isCompleted =
+            featuredEvent.status === 'completed' ||
+            Boolean(
+              featuredEvent.date_end &&
+                !isNaN(new Date(featuredEvent.date_end).getTime()) &&
+                new Date(featuredEvent.date_end).getTime() < Date.now()
+            );
+          const isRegOpen = !isCompleted && featuredEvent.registration_open;
 
           return (
             <div
@@ -181,16 +188,30 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                 <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
                   <span
                     style={{
-                      background: isCompleted ? 'var(--bg-soft)' : 'var(--success-bg)',
-                      color: isCompleted ? 'var(--text-muted)' : 'var(--success)',
-                      border: `1px solid ${isCompleted ? 'var(--border)' : 'rgba(14, 124, 65, 0.2)'}`,
+                      background: isCompleted
+                        ? 'var(--bg-soft)'
+                        : isRegOpen
+                        ? 'var(--success-bg)'
+                        : 'rgba(245, 158, 11, 0.1)',
+                      color: isCompleted
+                        ? 'var(--text-muted)'
+                        : isRegOpen
+                        ? 'var(--success)'
+                        : '#d97706',
+                      border: `1px solid ${
+                        isCompleted
+                          ? 'var(--border)'
+                          : isRegOpen
+                          ? 'rgba(14, 124, 65, 0.2)'
+                          : 'rgba(245, 158, 11, 0.3)'
+                      }`,
                       padding: '3px 10px',
                       borderRadius: '4px',
                       fontSize: '12px',
                       fontWeight: 600,
                     }}
                   >
-                    {isCompleted ? 'Completed' : 'Registration Open'}
+                    {isCompleted ? 'Completed' : (isRegOpen ? 'Registration Open' : 'Registration Closed')}
                   </span>
                   {featuredEvent.type && (
                     <span
@@ -414,7 +435,14 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
             }}
           >
             {filteredEvents.map((evt) => {
-              const isCompleted = evt.status === 'completed';
+              const isCompleted =
+                evt.status === 'completed' ||
+                Boolean(
+                  evt.date_end &&
+                    !isNaN(new Date(evt.date_end).getTime()) &&
+                    new Date(evt.date_end).getTime() < Date.now()
+                );
+              const isRegOpen = !isCompleted && evt.registration_open;
               const isPaid = evt.form_requirements?.event_pricing === 'paid';
               const priceLabel = isPaid ? `₹${evt.form_requirements?.registration_fee || 0}` : 'Free Entry';
               const evtDate = new Date(evt.date_start);
@@ -453,7 +481,11 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                     <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px' }}>
                       <span
                         style={{
-                          background: isCompleted ? 'rgba(50, 49, 48, 0.85)' : 'rgba(14, 124, 65, 0.90)',
+                          background: isCompleted
+                            ? 'rgba(50, 49, 48, 0.85)'
+                            : isRegOpen
+                            ? 'rgba(14, 124, 65, 0.90)'
+                            : 'rgba(217, 119, 6, 0.90)',
                           backdropFilter: 'blur(4px)',
                           color: '#ffffff',
                           padding: '3px 8px',
@@ -464,7 +496,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                           letterSpacing: '0.04em',
                         }}
                       >
-                        {isCompleted ? 'Completed' : 'Upcoming'}
+                        {isCompleted ? 'Completed' : isRegOpen ? 'Open' : 'Closed'}
                       </span>
                       <span
                         style={{
