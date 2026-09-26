@@ -52,6 +52,7 @@ export default function Footer() {
     { label: 'Gallery', href: '/gallery' },
     { label: 'Team', href: '/team' },
     { label: 'Tickets', href: '/ticket' },
+    
   ];
 
   return (

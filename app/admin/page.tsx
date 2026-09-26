@@ -1,5 +1,8 @@
-import React from 'react';
+'use client';
+
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Users,
   Calendar,
@@ -13,27 +16,79 @@ import {
   Plus,
   FileSpreadsheet,
   BarChart3,
+  Loader2,
 } from 'lucide-react';
+import { createClient } from '@/lib/supabase/client';
 import { EMAIL_DAILY_CAP } from '@/lib/email';
-import { getAdminClient } from '@/lib/supabase/admin';
 
-export default async function AdminDashboardPage() {
-  const supabase = getAdminClient();
+export default function AdminDashboardPage() {
+  const router = useRouter();
+  const supabase = createClient();
+  const [loading, setLoading] = useState(true);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [metrics, setMetrics] = useState({
+    totalEvents: 0,
+    activeEvents: 0,
+    totalRegistrations: 0,
+    checkedInCount: 0,
+    attendanceRate: 0,
+    revenueInRupees: 0,
+  });
 
-  // 1. Live Events query
-  const { data: events } = await supabase.from('events').select('id, status');
-  const totalEvents = events?.length || 0;
-  const activeEvents = events?.filter((e: any) => e.status === 'upcoming').length || 0;
+  useEffect(() => {
+    const checkAuthAndFetch = async () => {
+      try {
+        // Check session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) {
+          router.push('/login');
+          return;
+        }
 
-  // 2. Live Registrations query
-  const { data: registrations } = await supabase.from('registrations').select('id, checked_in');
-  const totalRegistrations = registrations?.length || 0;
-  const checkedInCount = registrations?.filter((r: any) => r.checked_in).length || 0;
-  const attendanceRate = totalRegistrations > 0 ? Math.round((checkedInCount / totalRegistrations) * 100) : 0;
+        // Verify admin/core_member role
+        const { data: profile } = await supabase
+          .from('member_profiles')
+          .select('role')
+          .eq('id', session.user.id)
+          .single();
 
-  // 3. Live Payments / Revenue query
-  const { data: payments } = await supabase.from('payments').select('amount').eq('status', 'captured');
-  const revenueInRupees = payments?.reduce((acc: number, p: any) => acc + (p.amount || 0), 0) || 0;
+        if (!profile || (profile.role !== 'admin' && profile.role !== 'core_member')) {
+          router.push('/login?error=unauthorized');
+          return;
+        }
+
+        setIsAuthorized(true);
+
+        // Fetch metrics using admin client via API (since we can't use service-role on client)
+        const res = await fetch('/api/admin/metrics');
+        if (res.ok) {
+          const data = await res.json();
+          setMetrics(data);
+        }
+      } catch (err) {
+        console.error('Admin auth check failed:', err);
+        router.push('/login');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    checkAuthAndFetch();
+  }, [router, supabase]);
+
+  if (loading) {
+    return (
+      <div style={{ minHeight: '70vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <Loader2 className="h-8 w-8 animate-spin text-brand" />
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return null;
+  }
+
+  const { totalEvents, activeEvents, totalRegistrations, checkedInCount, attendanceRate, revenueInRupees } = metrics;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

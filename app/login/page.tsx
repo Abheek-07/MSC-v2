@@ -8,11 +8,11 @@ import { Lock, Mail, ArrowRight, AlertCircle, CheckCircle, ArrowLeft } from 'luc
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
+  const [mode, setMode] = useState<'signin' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fullName, setFullName] = useState('');
-  const [proposedPassword, setProposedPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
@@ -50,25 +50,18 @@ export default function LoginPage() {
         }
 
         router.push('/');
-      } else if (mode === 'signup') {
-        const { error } = await supabase.auth.signUp({
-          email,
-          password,
-          options: {
-            data: { full_name: fullName },
-          },
-        });
-        if (error) throw error;
-        setMessage({
-          type: 'success',
-          text: 'Account created! Please check your email to confirm registration or sign in directly.',
-        });
       } else if (mode === 'reset') {
         // Submit admin-approved password reset request
-        const res = await fetch('/api/auth/reset-request', {
+        if (newPassword !== confirmPassword) {
+          setMessage({ type: 'error', text: 'Passwords do not match.' });
+          setLoading(false);
+          return;
+        }
+
+        const res = await fetch('/api/auth/request-password-reset', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, proposedPassword }),
+          body: JSON.stringify({ email, new_password: newPassword }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to submit reset request.');
@@ -152,12 +145,10 @@ export default function LoginPage() {
           }}
         >
           {mode === 'signin' && 'Sign in'}
-          {mode === 'signup' && 'Create account'}
           {mode === 'reset' && 'Reset password'}
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 24px 0' }}>
           {mode === 'signin' && 'to continue to Microsoft Student Community SRM AP'}
-          {mode === 'signup' && 'Join the SRM AP Microsoft Student Community guild'}
           {mode === 'reset' && 'Submit an encrypted password update for approval'}
         </p>
 
@@ -183,23 +174,6 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {mode === 'signup' && (
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
-                Full Name
-              </label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Alex Morgan"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                className="fluent-input"
-                style={{ width: '100%' }}
-              />
-            </div>
-          )}
-
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
               Email, phone, or Skype
@@ -215,29 +189,27 @@ export default function LoginPage() {
             />
           </div>
 
-          {mode !== 'reset' && (
+          {mode === 'signin' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-strong)' }}>Password</label>
-                {mode === 'signin' && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMode('reset');
-                      setMessage(null);
-                    }}
-                    style={{
-                      background: 'none',
-                      border: 'none',
-                      color: 'var(--brand)',
-                      fontSize: '12px',
-                      cursor: 'pointer',
-                      padding: 0,
-                    }}
-                  >
-                    Forgot password?
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode('reset');
+                    setMessage(null);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    color: 'var(--brand)',
+                    fontSize: '12px',
+                    cursor: 'pointer',
+                    padding: 0,
+                  }}
+                >
+                  Forgot password?
+                </button>
               </div>
               <input
                 type="password"
@@ -254,15 +226,32 @@ export default function LoginPage() {
           {mode === 'reset' && (
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
-                New Desired Password (Min 8 chars)
+                New Password (Min 8 chars)
               </label>
               <input
                 type="password"
                 required
                 minLength={8}
                 placeholder="••••••••"
-                value={proposedPassword}
-                onChange={(e) => setProposedPassword(e.target.value)}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                className="fluent-input"
+                style={{ width: '100%' }}
+              />
+            </div>
+          )}
+          {mode === 'reset' && (
+            <div>
+              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
+                Confirm New Password
+              </label>
+              <input
+                type="password"
+                required
+                minLength={8}
+                placeholder="••••••••"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
                 className="fluent-input"
                 style={{ width: '100%' }}
               />
@@ -270,52 +259,6 @@ export default function LoginPage() {
           )}
 
           {/* Links & Action Switchers */}
-          {mode === 'signin' && (
-            <div style={{ fontSize: '12.5px', color: 'var(--text-body)' }}>
-              No account?{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('signup');
-                  setMessage(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--brand)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  padding: 0,
-                }}
-              >
-                Create one!
-              </button>
-            </div>
-          )}
-
-          {mode === 'signup' && (
-            <div style={{ fontSize: '12.5px', color: 'var(--text-body)' }}>
-              Already registered?{' '}
-              <button
-                type="button"
-                onClick={() => {
-                  setMode('signin');
-                  setMessage(null);
-                }}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  color: 'var(--brand)',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                  padding: 0,
-                }}
-              >
-                Sign in with existing credentials
-              </button>
-            </div>
-          )}
-
           {mode === 'reset' && (
             <button
               type="button"
@@ -358,8 +301,6 @@ export default function LoginPage() {
                 ? 'Processing...'
                 : mode === 'signin'
                 ? 'Sign in'
-                : mode === 'signup'
-                ? 'Register'
                 : 'Submit Request'}
             </button>
           </div>
