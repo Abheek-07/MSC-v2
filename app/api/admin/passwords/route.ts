@@ -1,10 +1,23 @@
 import { NextResponse } from 'next/server';
 import { decryptSecret } from '@/lib/security';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { checkRateLimit } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const auth = await requireAdmin();
+  if (!auth.authorized) return auth.response;
+
+  const rateLimit = await checkRateLimit(auth.user.id, 'api');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const supabase = getAdminClient();
     const { data, error } = await supabase
@@ -22,6 +35,17 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAdmin();
+  if (!auth.authorized) return auth.response;
+
+  const rateLimit = await checkRateLimit(auth.user.id, 'api');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const { request_id, action } = await req.json();
 

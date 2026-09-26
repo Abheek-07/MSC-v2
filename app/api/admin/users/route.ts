@@ -1,9 +1,22 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { checkRateLimit } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
+  const auth = await requireAdmin();
+  if (!auth.authorized) return auth.response;
+
+  const rateLimit = await checkRateLimit(auth.user.id, 'api');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const supabase = getAdminClient();
     const { data, error } = await supabase
@@ -21,6 +34,25 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const auth = await requireAdmin();
+  if (!auth.authorized) return auth.response;
+
+  const rateLimit = await checkRateLimit(auth.user.id, 'api');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
+  // Role creation/promotion to admin or core_member strictly requires admin role
+  if (auth.role !== 'admin') {
+    return NextResponse.json(
+      { error: 'Forbidden: Only administrators can provision accounts or assign member roles' },
+      { status: 403 }
+    );
+  }
+
   try {
     const { email, password, full_name, role, department, year } = await req.json();
 
@@ -78,6 +110,17 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const auth = await requireAdmin();
+  if (!auth.authorized) return auth.response;
+
+  const rateLimit = await checkRateLimit(auth.user.id, 'api');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const { user_id, action, role, new_password } = await req.json();
 
@@ -88,6 +131,14 @@ export async function PUT(req: Request) {
     const supabase = getAdminClient();
 
     if (action === 'update_role' && role) {
+      // Role modifications strictly require admin role
+      if (auth.role !== 'admin') {
+        return NextResponse.json(
+          { error: 'Forbidden: Only administrators can modify member roles' },
+          { status: 403 }
+        );
+      }
+
       const { error } = await supabase
         .from('member_profiles')
         .update({ role, updated_at: new Date().toISOString() })
@@ -111,6 +162,17 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const auth = await requireAdmin();
+  if (!auth.authorized) return auth.response;
+
+  const rateLimit = await checkRateLimit(auth.user.id, 'api');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('user_id');

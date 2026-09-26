@@ -2,10 +2,23 @@ import { NextResponse } from 'next/server';
 import ExcelJS from 'exceljs';
 import Papa from 'papaparse';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { checkRateLimit } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+  const auth = await requireAdmin();
+  if (!auth.authorized) return auth.response;
+
+  const rateLimit = await checkRateLimit(auth.user.id, 'api');
+  if (!rateLimit.success) {
+    return NextResponse.json(
+      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+      { status: 429, headers: { 'Retry-After': '60' } }
+    );
+  }
+
   try {
     const { searchParams } = new URL(req.url);
     const format = searchParams.get('format') || 'xlsx';
