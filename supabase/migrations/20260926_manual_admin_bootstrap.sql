@@ -1,0 +1,43 @@
+-- ==============================================================================
+-- MANUAL ADMIN BOOTSTRAP (Old Version Style)
+-- ==============================================================================
+-- Use this if you prefer the old version's manual approach:
+-- 1. Create user in Supabase Dashboard → Authentication → Users
+--    (Email: your-admin@srmap.edu.in, Password: your-choice, Confirm email)
+-- 2. Run this migration in Supabase SQL Editor
+-- 3. Replace 'your-admin@srmap.edu.in' with the actual email
+-- ==============================================================================
+
+-- UPDATE THE EMAIL BELOW BEFORE RUNNING:
+-- update public.member_profiles
+--    set role = 'admin', is_onboarded = true
+--  where email = 'your-admin@srmap.edu.in';
+
+-- ==============================================================================
+-- ALTERNATIVE: Single-statement version (copy-paste into SQL Editor)
+-- ==============================================================================
+-- update public.member_profiles
+--    set role = 'admin', is_onboarded = true
+--  where email = 'your-admin@srmap.edu.in';
+
+-- ==============================================================================
+-- VERIFICATION QUERY (run after update)
+-- ==============================================================================
+-- select id, email, role, is_onboarded, created_at
+-- from public.member_profiles
+-- where role = 'admin';
+
+-- ==============================================================================
+-- NOTES:
+-- - The user MUST exist in auth.users AND member_profiles first
+--   (trigger handle_new_user() creates profile on signup)
+-- - If user was created via Dashboard (not signup), manually insert profile:
+--   insert into public.member_profiles (id, email, role, is_onboarded)
+--   values (
+--     '<auth-user-uuid-from-dashboard>',
+--     'your-admin@srmap.edu.in',
+--     'admin',
+--     true
+--   )
+--   on conflict (id) do update set role = 'admin', is_onboarded = true;
+-- ==============================================================================

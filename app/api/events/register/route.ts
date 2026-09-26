@@ -9,6 +9,7 @@ import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { sendTicketEmail } from '@/lib/email';
 import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
+import crypto from 'crypto';
 
 export async function POST(req: Request) {
   try {
@@ -45,32 +46,113 @@ export async function POST(req: Request) {
     const matchingEvent = FALLBACK_EVENTS.find((e) => e.id === event_id) || FALLBACK_EVENTS[0];
     const isPaid = matchingEvent.form_requirements.event_pricing === 'paid';
 
-    // 5. Try Supabase Atomic RPC
+    // 5. Application-level registration logic (old version style)
     const supabase = getAdminClient();
-    let registrationId = crypto.randomUUID();
-    let hashPayload = crypto.randomUUID();
-    let status = isPaid ? 'pending_payment' : 'confirmed';
 
-    try {
-      const { data: rpcData, error: rpcError } = await supabase.rpc('register_for_event', {
-        p_event_id: event_id,
-        p_user_id: null,
-        p_lead_email: lead_email.toLowerCase().trim(),
-        p_form_data: form_data || {},
-        p_team_data: team_data || null,
-        p_idempotency_key: idempotency_key || null,
+    // Check if already registered
+    const { data: existing } = await supabase
+      .from('registrations')
+      .select('id, hash_payload')
+      .eq('event_id', event_id)
+      .eq('lead_email', lead_email.toLowerCase().trim())
+      .maybeSingle();
+
+    if (existing) {
+      return NextResponse.json({
+        success: true,
+        registration_id: existing.id,
+        hash_payload: existing.hash_payload,
+        status: existing.status,
+        replayed: true,
       });
-
-      if (!rpcError && rpcData?.success) {
-        registrationId = rpcData.registration_id;
-        hashPayload = rpcData.hash_payload;
-        status = rpcData.status;
-      }
-    } catch {
-      // Degrades gracefully to memory state if database is offline/unconfigured
     }
 
-    // 6. Asynchronously send confirmation email if confirmed (never rolls back registration on error)
+    // Check event capacity & status
+    const { data: event } = await supabase
+      .from('events')
+      .select('id, registration_open, max_capacity, form_requirements')
+      .eq('id', event_id)
+      .single();
+
+    if (!event) return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
+    if (!event.registration_open)
+      return NextResponse.json({ error: 'Registrations are currently closed for this event.' }, { status: 400 });
+
+    // Count existing registrations
+    const { count } = await supabase
+      .from('registrations')
+      .select('id', { count: 'exact', head: true })
+      .eq('event_id', event_id)
+      .neq('status', 'cancelled');
+
+    const isWaitlisted = event.max_capacity && (count || 0) >= event.max_capacity;
+
+    const hashPayload = crypto.randomUUID();
+    let teamId = null;
+
+    // Build team data
+    let teamData = null;
+    if (team_data?.teamName) {
+      const { data: team, error: teamError } = await supabase
+        .from('teams')
+        .insert({
+          event_id: event_id,
+          team_name: team_data.teamName,
+          leader_name: form_data?.full_name || '',
+          leader_email: lead_email.toLowerCase().trim(),
+          leader_year: form_data?.year || '',
+          leader_branch: form_data?.branch || null,
+          looking_for_members: team_data.lookingForMembers || false,
+        })
+        .select('id')
+        .single();
+
+      if (teamError) {
+        console.error('Team creation failed:', teamError);
+        return NextResponse.json({ error: 'Failed to create team. Please try again.' }, { status: 500 });
+      }
+      teamId = team.id;
+
+      teamData = {
+        team_id: teamId,
+        team_name: team_data.teamName,
+        members: (team_data.members || []).map((m: any) => ({
+          fullName: m.fullName,
+          email: m.email?.toLowerCase().trim(),
+          year: m.year,
+          branch: m.branch,
+          checked_in: false,
+        })),
+        leadIndex: 0,
+      };
+    }
+
+    // Determine status
+    let status = isPaid ? 'pending_payment' : 'confirmed';
+    if (isWaitlisted) status = 'waitlisted';
+
+    // Insert registration
+    const registrationId = crypto.randomUUID();
+    const { error: regError } = await supabase
+      .from('registrations')
+      .insert({
+        id: registrationId,
+        event_id: event_id,
+        lead_email: lead_email.toLowerCase().trim(),
+        hash_payload: hashPayload,
+        form_data: form_data || {},
+        team_data: teamData,
+        status,
+        idempotency_key: idempotency_key || null,
+        reservation_expires_at: isPaid ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
+      });
+
+    if (regError) {
+      console.error('Registration insert failed:', regError);
+      return NextResponse.json({ error: 'Registration failed. Please try again.' }, { status: 500 });
+    }
+
+    // 6. Asynchronously send confirmation email if confirmed
     if (status === 'confirmed') {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
       const ticketUrl = `${appUrl}/ticket/${hashPayload}`;
@@ -98,9 +180,6 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error('[API register error]:', err);
-    return NextResponse.json(
-      { error: err.message || 'Registration failed. Please verify your input and try again.' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Registration failed due to server error.' }, { status: 500 });
   }
 }

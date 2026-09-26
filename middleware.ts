@@ -83,7 +83,7 @@ export async function middleware(request: NextRequest) {
     response.headers.set('Access-Control-Allow-Credentials', 'true');
   }
 
-  // 3. Supabase session and route gating
+  // 3. Supabase session refresh only (no route gating - handled client-side)
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY || 'placeholder-anon-key';
 
@@ -104,44 +104,8 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  // Protected route check for /admin - Strict Cryptographic Gate
-  if (pathname.startsWith('/admin')) {
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
-
-    if (userError || !user) {
-      const loginUrl = new URL('/login', request.url);
-      loginUrl.searchParams.set('redirect', pathname);
-      return NextResponse.redirect(loginUrl);
-    }
-
-    // Re-verify role from member_profiles
-    const { data: profile } = await supabase
-      .from('member_profiles')
-      .select('role, is_onboarded')
-      .eq('id', user.id)
-      .single();
-
-    if (!profile || (profile.role !== 'admin' && profile.role !== 'core_member')) {
-      // Access denied - not an authorized administrator
-      const unauthorizedUrl = new URL('/login', request.url);
-      unauthorizedUrl.searchParams.set('error', 'unauthorized');
-      return NextResponse.redirect(unauthorizedUrl);
-    }
-  }
-
-  // Protected route check for /onboarding
-  if (pathname.startsWith('/onboarding')) {
-    const {
-      data: { session },
-    } = await supabase.auth.getSession();
-
-    if (!session) {
-      return NextResponse.redirect(new URL('/login', request.url));
-    }
-  }
+  // Refresh session to keep auth cookies up to date
+  await supabase.auth.getSession();
 
   return response;
 }
