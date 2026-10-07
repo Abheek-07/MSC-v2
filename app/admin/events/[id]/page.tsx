@@ -223,7 +223,7 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
           const teamNameKey = rawTeam; // keep exact casing (e.g. Nexora vs NEXORA)
           
           let currentInstanceKey = activeTeamKeyByName.get(teamNameKey);
-          let currentMembers = currentInstanceKey ? teamMap.get(currentInstanceKey) || [] : [];
+          const currentMembers = currentInstanceKey ? teamMap.get(currentInstanceKey) || [] : [];
           
           const reachedCapacity = att.team_size ? currentMembers.length >= att.team_size : currentMembers.length >= 5;
 

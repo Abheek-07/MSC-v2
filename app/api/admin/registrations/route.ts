@@ -96,7 +96,7 @@ export async function POST(req: Request) {
       }
 
       // Fetch all existing registrations for these events to prevent unique constraint collisions
-      let existingEmailMap = new Map<string, string>(); // key: `${event_id}:${lower(email)}`, value: registration_id
+      const existingEmailMap = new Map<string, string>(); // key: `${event_id}:${lower(email)}`, value: registration_id
       if (!body.clear_first && eventIds.length > 0) {
         const { data: existingRows } = await supabase
           .from('registrations')

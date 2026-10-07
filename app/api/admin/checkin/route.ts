@@ -65,7 +65,9 @@ export async function POST(req: Request) {
       query = query.eq('event_id', event_id);
     }
 
-    let { data: reg, error } = await query.maybeSingle();
+    const checkinResult = await query.maybeSingle();
+    let reg = checkinResult.data;
+    const error = checkinResult.error;
 
     if (error) {
       console.error('Checkin query error:', error);
