@@ -3,7 +3,7 @@
 import React, { useRef, useState } from 'react';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
-import { toPng } from 'html-to-image';
+// html-to-image dynamically loaded on download
 import {
   Calendar,
   MapPin,
@@ -77,6 +77,7 @@ export default function TicketClient({
     if (!ticketRef.current) return;
     setDownloading(true);
     try {
+      const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(ticketRef.current, { cacheBust: true, pixelRatio: 2 });
       const link = document.createElement('a');
       const filenameSuffix = passViewMode === 'individual' && currentMember
@@ -105,7 +106,7 @@ export default function TicketClient({
             Invalid Ticket Identifier
           </h2>
           <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.5, marginBottom: '24px' }}>
-            The provided ticket identifier could not be verified in the MSC registration ledger. Search with your registered email or college registration number.
+            The provided ticket could not be found or verified. Search with your registered email or college registration number.
           </p>
           <div style={{ display: 'flex', justifyContent: 'center', gap: '12px' }}>
             <Link href="/ticket" className="fluent-btn fluent-btn-primary">

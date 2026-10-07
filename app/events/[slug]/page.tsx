@@ -15,17 +15,27 @@ interface EventPageProps {
 async function getEventBySlug(slug: string): Promise<EventItem | null> {
   try {
     const supabase = getAdminClient();
-    const { data, error } = await supabase
+    let filter = `slug.eq.${slug},id.eq.${slug}`;
+    if (slug === 'synora' || slug === 'synora-2026' || slug === 'synora-pitstop') {
+      filter += `,slug.eq.synora-26`;
+    }
+    const queryPromise = supabase
       .from('events')
       .select('*')
-      .or(`slug.eq.${slug},id.eq.${slug}`)
+      .or(filter)
       .maybeSingle();
+
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+      setTimeout(() => reject(new Error('Event detail fetch timeout')), 6000)
+    );
+
+    const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as any;
 
     if (!error && data) {
       return data as EventItem;
     }
-  } catch (err) {
-    console.warn('Event detail query fallback:', err);
+  } catch {
+    // Falls back immediately to FALLBACK_EVENTS if offline or slow
   }
 
   return (

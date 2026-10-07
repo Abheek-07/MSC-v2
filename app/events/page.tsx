@@ -7,9 +7,9 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export const metadata = {
-  title: 'Events Directory | Microsoft Student Community | SRM University-AP',
+  title: 'Events | Microsoft Student Community | SRM University-AP',
   description:
-    'Explore hackathons, workshops, bootcamps, and technical conferences hosted by Microsoft Student Community at SRM University AP.',
+    'Explore hackathons, workshops, bootcamps, and technical conferences hosted by Microsoft Student Community at SRM University-AP.',
 };
 
 export default async function EventsPage() {
@@ -17,17 +17,23 @@ export default async function EventsPage() {
 
   try {
     const supabase = getAdminClient();
-    const { data, error } = await supabase
+    const queryPromise = supabase
       .from('events')
       .select('*')
       .eq('is_published', true)
       .order('date_start', { ascending: false });
 
+    const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+      setTimeout(() => reject(new Error('Events fetch timeout')), 6000)
+    );
+
+    const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as any;
+
     if (!error && data && data.length > 0) {
       eventsList = data as EventItem[];
     }
-  } catch (err) {
-    console.warn('Events query fallback:', err);
+  } catch {
+    // Immediately uses fallback events catalog if offline or slow
   }
 
   return <EventsClient events={eventsList} />;

@@ -27,8 +27,7 @@ import {
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
-import Papa from 'papaparse';
-import ExcelJS from 'exceljs';
+// Papa and ExcelJS are dynamically imported on demand for optimal bundle size
 import { QRCodeSVG } from 'qrcode.react';
 
 interface AttendeeRecord {
@@ -392,7 +391,8 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
   const pendingCount = attendees.filter((a) => a.status === 'pending_payment' || (a.status as string) === 'pending').length;
 
   // Export CSV matching exact header specification
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    const Papa = (await import('papaparse')).default;
     const csvData = attendees.map((a) => ({
       'Ticket ID': a.ticket_id || a.hash_payload || a.id,
       Role: a.role || (a.team_name ? 'Member' : 'Solo'),
@@ -418,6 +418,7 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
 
   // Export Excel (.xlsx) using exceljs matching standard header schema
   const handleExportExcel = async () => {
+    const ExcelJS = (await import('exceljs')).default;
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Microsoft Student Community SRM AP';
     const worksheet = workbook.addWorksheet('Attendees');
@@ -473,7 +474,8 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
   };
 
   // Download Sample CSV Template
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
+    const Papa = (await import('papaparse')).default;
     const sampleHeaders = [
       {
         'Ticket ID': 'SYN-1001',
@@ -548,6 +550,7 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
     const file = e.target.files?.[0];
     if (!file) return;
 
+    const Papa = (await import('papaparse')).default;
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,

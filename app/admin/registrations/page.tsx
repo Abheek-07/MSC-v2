@@ -16,7 +16,7 @@ import {
   CreditCard,
   Users,
 } from 'lucide-react';
-import Papa from 'papaparse';
+// Papa is dynamically imported on demand for optimal bundle size
 import { QRCodeSVG } from 'qrcode.react';
 
 interface RegistrationRecord {
@@ -189,6 +189,7 @@ export default function AdminRegistrationsPage() {
       return;
     }
 
+    const Papa = (await import('papaparse')).default;
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
@@ -320,7 +321,8 @@ export default function AdminRegistrationsPage() {
   };
 
   // Export to CSV following the 11-column format
-  const handleExportCSV = () => {
+  const handleExportCSV = async () => {
+    const Papa = (await import('papaparse')).default;
     const csv = Papa.unparse(
       filteredRegistrations.map((r) => ({
         'Ticket ID': r.ticket_id || r.id,
@@ -348,7 +350,8 @@ export default function AdminRegistrationsPage() {
   };
 
   // Download Sample Template (.csv)
-  const handleDownloadTemplate = () => {
+  const handleDownloadTemplate = async () => {
+    const Papa = (await import('papaparse')).default;
     const sampleHeaders = [
       {
         'Ticket ID': 'SYN-1001',
