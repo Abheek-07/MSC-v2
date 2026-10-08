@@ -1,6 +1,16 @@
 import React from 'react';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { ArrowLeft } from 'lucide-react';
+
+export const metadata: Metadata = {
+  title: '404: Page Not Found | Microsoft Student Community SRM AP',
+  description: 'The requested resource could not be found on MSC SRM AP portal.',
+  robots: {
+    index: false,
+    follow: false,
+  },
+};
 
 export default function NotFound() {
   return (

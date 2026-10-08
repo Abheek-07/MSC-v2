@@ -4,7 +4,7 @@ import { createServerClient } from '@supabase/ssr';
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const origin = request.headers.get('origin');
-  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'http://localhost:3000,http://127.0.0.1:3000')
+  const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://mscsrmap.xyz,https://www.mscsrmap.xyz,http://localhost:3000,http://127.0.0.1:3000')
     .split(',')
     .map((o) => o.trim().replace(/\/$/, ''));
 

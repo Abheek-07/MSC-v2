@@ -166,7 +166,7 @@ export async function POST(req: Request) {
 
     // 6. Asynchronously send confirmation email if confirmed
     if (status === 'confirmed') {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mscsrmap.xyz';
       const ticketUrl = `${appUrl}/ticket/${hashPayload}`;
       const attendeeName =
         team_data?.members?.[0]?.fullName ||

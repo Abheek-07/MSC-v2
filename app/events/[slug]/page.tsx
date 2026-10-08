@@ -12,6 +12,8 @@ interface EventPageProps {
   searchParams: Promise<{ view?: string; invite?: string; tab?: string }>;
 }
 
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://mscsrmap.xyz';
+
 async function getEventBySlug(slug: string): Promise<EventItem | null> {
   try {
     const supabase = getAdminClient();
@@ -51,8 +53,31 @@ export async function generateMetadata({ params }: EventPageProps) {
   if (!event) return { title: 'Event Not Found' };
 
   return {
-    title: `${event.title} | Microsoft Student Community | SRM AP`,
+    title: `${event.title} | Microsoft Student Community SRM AP`,
     description: event.description,
+    alternates: {
+      canonical: `/events/${event.slug}`,
+    },
+    openGraph: {
+      title: `${event.title} | Microsoft Student Community SRM AP`,
+      description: event.description,
+      url: `/events/${event.slug}`,
+      type: 'article',
+      images: [
+        {
+          url: event.image_url || '/hero_bg.png',
+          width: 1200,
+          height: 630,
+          alt: event.title,
+        },
+      ],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title: `${event.title} | Microsoft Student Community SRM AP`,
+      description: event.description,
+      images: [event.image_url || '/hero_bg.png'],
+    },
   };
 }
 
@@ -113,11 +138,54 @@ export default async function EventDetailPage({ params, searchParams }: EventPag
     notFound();
   }
 
+  const eventJsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    name: event.title,
+    description: event.description,
+    image: event.image_url,
+    startDate: event.date_start,
+    endDate: event.date_end,
+    eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
+    eventStatus: 'https://schema.org/EventScheduled',
+    location: {
+      '@type': 'Place',
+      name: event.location,
+      address: {
+        '@type': 'PostalAddress',
+        addressLocality: 'Amaravati',
+        addressRegion: 'Andhra Pradesh',
+        postalCode: '522240',
+        addressCountry: 'IN',
+      },
+    },
+    organizer: {
+      '@type': 'Organization',
+      name: 'Microsoft Student Community SRM AP',
+      url: BASE_URL,
+    },
+    offers: {
+      '@type': 'Offer',
+      url: `${BASE_URL}/events/${event.slug}`,
+      price: event.form_requirements?.registration_fee || '0',
+      priceCurrency: 'INR',
+      availability: event.registration_open
+        ? 'https://schema.org/InStock'
+        : 'https://schema.org/SoldOut',
+    },
+  };
+
   return (
-    <EventDetailClient
-      event={event}
-      initialInvite={invite}
-      initialTab={tab}
-    />
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
+      />
+      <EventDetailClient
+        event={event}
+        initialInvite={invite}
+        initialTab={tab}
+      />
+    </>
   );
 }

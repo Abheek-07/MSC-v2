@@ -41,8 +41,24 @@ export async function generateMetadata({ params }: CertificatePageProps) {
   if (!event) return { title: 'Certificate' };
 
   return {
-    title: `Certificate of Participation - ${event.title}`,
-    description: `Official verified certificate for ${event.title} issued by Microsoft Student Community SRM AP.`,
+    title: `Certificate of Participation - ${event.title} | MSC SRM AP`,
+    description: `Official verified certificate of participation for ${event.title} issued by Microsoft Student Community SRM AP.`,
+    alternates: {
+      canonical: `/events/${event.slug}/certificate`,
+    },
+    openGraph: {
+      title: `Certificate of Participation - ${event.title} | MSC SRM AP`,
+      description: `Official verified certificate of participation for ${event.title} issued by Microsoft Student Community SRM AP.`,
+      url: `/events/${event.slug}/certificate`,
+      images: [
+        {
+          url: event.image_url || '/hero_bg.png',
+          width: 1200,
+          height: 630,
+          alt: `${event.title} Certificate`,
+        },
+      ],
+    },
   };
 }
 

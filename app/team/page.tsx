@@ -1,13 +1,23 @@
 import React from 'react';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { FALLBACK_TEAM, TeamMemberItem } from '@/lib/data/mock-fallback';
 import { Linkedin, Github, Twitter, Instagram, Globe, Mail, ArrowRight } from 'lucide-react';
 import { getAdminClient } from '@/lib/supabase/admin';
 
-export const metadata = {
-  title: 'Leadership & team | Microsoft Student Community | SRM University-AP',
+export const metadata: Metadata = {
+  title: 'Executive Board & Team | Microsoft Student Community | SRM University-AP',
   description:
-    'Meet the student leaders, engineers, and coordinators driving Microsoft Student Community at SRM University-AP.',
+    'Meet the student executives, engineering domain leads, and coordinators driving Microsoft Student Community at SRM University-AP.',
+  alternates: {
+    canonical: '/team',
+  },
+  openGraph: {
+    title: 'Executive Board & Team | Microsoft Student Community | SRM University-AP',
+    description:
+      'Meet the student executives, engineering domain leads, and coordinators driving Microsoft Student Community at SRM University-AP.',
+    url: '/team',
+  },
 };
 
 // Deterministic color palette for initial avatars

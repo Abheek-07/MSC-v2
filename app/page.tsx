@@ -4,7 +4,6 @@ import {
   ArrowRight,
   ExternalLink,
   Cloud,
-  Terminal,
   Trophy,
   Users,
   Calendar,
@@ -12,12 +11,28 @@ import {
   Send,
   Code,
 } from 'lucide-react';
+import type { Metadata } from 'next';
 import TelemetryMarquee from '@/components/TelemetryMarquee';
 import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
 import { getAdminClient } from '@/lib/supabase/admin';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+export const metadata: Metadata = {
+  title: 'Build what\'s next. Together. | Microsoft Student Community SRM AP',
+  description:
+    'The student developer community at SRM University-AP. We build cloud applications on Azure, host hackathons, and contribute to open-source — together.',
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    title: 'Microsoft Student Community | SRM University-AP',
+    description:
+      'The student developer community at SRM University-AP. We build cloud applications on Azure, host hackathons, and contribute to open-source — together.',
+    url: '/',
+  },
+};
 
 export default async function HomePage() {
   let allEvents: EventItem[] = FALLBACK_EVENTS;

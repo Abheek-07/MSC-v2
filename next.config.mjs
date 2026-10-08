@@ -1,4 +1,4 @@
-﻿/** @type {import('next').NextConfig} */
+/** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -27,8 +27,8 @@ const nextConfig = {
       },
     ],
   },
-  turbopack: {},
-  webpack: (config, { dev, isServer }) => {
+  cleanDistDir: true,
+  webpack: (config, { dev }) => {
     // Fast source maps in development for faster compilation
     if (dev) {
       config.devtool = 'eval-cheap-module-source-map';

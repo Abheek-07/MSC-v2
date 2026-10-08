@@ -1,4 +1,5 @@
 import React from 'react';
+import type { Metadata } from 'next';
 import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
 import { getAdminClient } from '@/lib/supabase/admin';
 import EventsClient from './EventsClient';
@@ -6,10 +7,19 @@ import EventsClient from './EventsClient';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export const metadata = {
-  title: 'Events | Microsoft Student Community | SRM University-AP',
+export const metadata: Metadata = {
+  title: 'Events & Hackathons | Microsoft Student Community | SRM University-AP',
   description:
-    'Explore hackathons, workshops, bootcamps, and technical conferences hosted by Microsoft Student Community at SRM University-AP.',
+    'Explore upcoming hackathons, workshops, Azure bootcamps, and technical conferences hosted by Microsoft Student Community at SRM University-AP.',
+  alternates: {
+    canonical: '/events',
+  },
+  openGraph: {
+    title: 'Events & Hackathons | Microsoft Student Community | SRM University-AP',
+    description:
+      'Explore upcoming hackathons, workshops, Azure bootcamps, and technical conferences hosted by Microsoft Student Community at SRM University-AP.',
+    url: '/events',
+  },
 };
 
 export default async function EventsPage() {

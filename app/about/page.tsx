@@ -1,11 +1,21 @@
 import React from 'react';
 import Link from 'next/link';
+import type { Metadata } from 'next';
 import { Users, Cpu, Rocket, ArrowRight, ShieldCheck } from 'lucide-react';
 
-export const metadata = {
-  title: 'About us | Microsoft Student Community | SRM University-AP',
+export const metadata: Metadata = {
+  title: 'About Us | Microsoft Student Community | SRM University-AP',
   description:
     'The official charter, story, and community pillars of Microsoft Student Community at SRM University-AP. Founded by Jayanth Ramakrishnan, guided by Dr. Murali Krishna Enduri Sir and Dr. CV Tomy Sir.',
+  alternates: {
+    canonical: '/about',
+  },
+  openGraph: {
+    title: 'About Us | Microsoft Student Community | SRM University-AP',
+    description:
+      'The official charter, story, and community pillars of Microsoft Student Community at SRM University-AP.',
+    url: '/about',
+  },
 };
 
 export default function AboutPage() {
