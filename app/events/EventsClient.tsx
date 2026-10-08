@@ -450,7 +450,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                   {/* Thumbnail */}
                   <div style={{ height: '180px', position: 'relative', overflow: 'hidden', background: 'var(--bg-soft)' }}>
                     <img
-                      src={evt.image_url || '/images/hero-bg.png'}
+                      src={evt.image_url || '/hero_bg.png'}
                       alt={evt.title}
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />

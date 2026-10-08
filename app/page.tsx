@@ -22,14 +22,14 @@ export const revalidate = 0;
 export const metadata: Metadata = {
   title: 'Build what\'s next. Together. | Microsoft Student Community SRM AP',
   description:
-    'The student developer community at SRM University-AP. We build cloud applications on Azure, host hackathons, and contribute to open-source — together.',
+    'The student developer community at SRM University-AP. We build cloud applications on Azure, host hackathons, and contribute to open source together.',
   alternates: {
     canonical: '/',
   },
   openGraph: {
     title: 'Microsoft Student Community | SRM University-AP',
     description:
-      'The student developer community at SRM University-AP. We build cloud applications on Azure, host hackathons, and contribute to open-source — together.',
+      'The student developer community at SRM University-AP. We build cloud applications on Azure, host hackathons, and contribute to open source together.',
     url: '/',
   },
 };
@@ -157,7 +157,7 @@ export default async function HomePage() {
                 marginBottom: '32px',
               }}
             >
-              The student developer community at SRM University-AP. We build cloud applications on Azure, host hackathons, and contribute to open-source — together.
+              The student developer community at SRM University-AP. We build cloud applications on Azure, host hackathons, and contribute to open source together.
             </p>
 
             {/* Two CTA Buttons only */}
@@ -221,12 +221,12 @@ export default async function HomePage() {
               Three pillars powering your developer journey
             </h2>
             <p style={{ color: 'var(--text-muted)', fontSize: '14px', maxWidth: '600px', marginTop: '8px', lineHeight: 1.6 }}>
-              From cloud computing to competitive hackathons to mentorship — we help student developers go from ideas to production.
+              From cloud computing to competitive hackathons to mentorship, we help student developers go from ideas to production.
             </p>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 280px), 1fr))', gap: '20px' }}>
-            {/* Pillar 01 — Azure Blue */}
+            {/* Pillar 01 · Azure Blue */}
             <div
               className="fluent-card"
               style={{
@@ -264,7 +264,7 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            {/* Pillar 02 — Green */}
+            {/* Pillar 02 · Green */}
             <div
               className="fluent-card"
               style={{
@@ -302,7 +302,7 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            {/* Pillar 03 — Orange */}
+            {/* Pillar 03 · Orange */}
             <div
               className="fluent-card"
               style={{
@@ -397,7 +397,7 @@ export default async function HomePage() {
               >
                 <div style={{ minHeight: '260px', position: 'relative', overflow: 'hidden', background: '#0a0a0c' }}>
                   <img
-                    src={flagship.image_url || '/images/hero-bg.png'}
+                    src={flagship.image_url || '/hero_bg.png'}
                     alt={flagship.title}
                     style={{ width: '100%', height: '100%', minHeight: '260px', objectFit: 'cover' }}
                   />
@@ -574,7 +574,7 @@ export default async function HomePage() {
                 Contact the team
               </h2>
               <p style={{ fontSize: '13px', color: 'var(--text-body)', lineHeight: 1.6, marginBottom: '24px' }}>
-                Whether you represent a student club, an industry partner, or want to speak at our next event — reach out.
+                Whether you represent a student club, an industry partner, or want to speak at our next event, reach out to us.
               </p>
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '13px' }}>

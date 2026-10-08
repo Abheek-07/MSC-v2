@@ -124,7 +124,7 @@ export default function Navbar() {
             gap: '12px',
           }}
         >
-          {/* Microsoft Brand — "Microsoft | Student Community" pattern */}
+          {/* Microsoft Brand: "Microsoft | Student Community" pattern */}
           <Link
             href="/"
             style={{
@@ -185,7 +185,7 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop Navigation — underline active indicator */}
+          {/* Desktop Navigation: underline active indicator */}
           <nav
             style={{ display: 'none', alignItems: 'center', gap: '2px' }}
             className="desktop-nav"

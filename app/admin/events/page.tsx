@@ -683,7 +683,7 @@ export default function AdminEventsPage() {
                     type="url"
                     value={editingEvent.image_url || ''}
                     onChange={(e) => setEditingEvent({ ...editingEvent, image_url: e.target.value })}
-                    placeholder="https://... or /images/hero-bg.png"
+                    placeholder="https://... or /hero_bg.png"
                     className="fluent-input"
                     style={{ flex: 1, height: '38px', borderRadius: '4px' }}
                   />
@@ -871,8 +871,8 @@ export default function AdminEventsPage() {
                       className="fluent-input"
                       style={{ width: '100%', height: '36px', borderRadius: '4px' }}
                     >
-                      <option value="yes">Yes — Issue Verifiable E-Certificates</option>
-                      <option value="no">No — Do not issue certificates</option>
+                      <option value="yes">Yes: Issue Verifiable E-Certificates</option>
+                      <option value="no">No: Do not issue certificates</option>
                     </select>
                   </div>
                 </div>

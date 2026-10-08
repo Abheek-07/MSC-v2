@@ -6,7 +6,7 @@ import { Cloud, Award, Users, Trophy, GitBranch, Cpu, Zap } from 'lucide-react';
 export default function TelemetryMarquee({ activeEventTitle }: { activeEventTitle?: string }) {
   const featuredTitle = activeEventTitle || "SYNORA '26";
   const items = [
-    { text: `${featuredTitle} — Featured event`, icon: Trophy },
+    { text: `${featuredTitle} · Featured event`, icon: Trophy },
     { text: 'Azure & Cloud Computing', icon: Cloud },
     { text: 'Applied AI & Cognitive Services', icon: Cpu },
     { text: '1,200+ Student members', icon: Users },

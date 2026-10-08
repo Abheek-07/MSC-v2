@@ -1388,7 +1388,7 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
                                           <td style={{ padding: '8px 10px', color: 'var(--text-muted)' }}>{member.lead_email}</td>
                                           <td style={{ padding: '8px 10px', fontFamily: 'monospace' }}>{member.reg_number}</td>
                                           <td style={{ padding: '8px 10px', color: 'var(--text-muted)', fontSize: '11px' }}>
-                                            {member.branch || '—'}
+                                            {member.branch || 'N/A'}
                                           </td>
                                           <td style={{ padding: '8px 10px' }}>
                                             <button

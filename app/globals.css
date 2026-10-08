@@ -38,7 +38,7 @@
   --shadow-rest:     0 2px 4px rgba(0, 0, 0, 0.04), 0 0 2px rgba(0, 0, 0, 0.06);
   --shadow-lift:     0 8px 16px rgba(0, 0, 0, 0.08), 0 0 2px rgba(0, 0, 0, 0.06);
 
-  /* Fluent 2 Curvature — Microsoft uses conservative radii */
+  /* Fluent 2 Curvature: Microsoft uses conservative radii */
   --radius-sm:       4px;
   --radius-md:       6px;
   --radius-lg:       8px;

@@ -212,7 +212,7 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom Bar — Microsoft.com footer pattern */}
+        {/* Bottom Bar: Microsoft.com footer pattern */}
         <div
           style={{
             borderTop: '1px solid var(--border)',

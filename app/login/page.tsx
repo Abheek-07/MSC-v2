@@ -97,7 +97,7 @@ export default function LoginPage() {
         fontFamily: 'var(--font-family)',
       }}
     >
-      {/* Microsoft Authentic Login Card — square corners on desktop */}
+      {/* Microsoft Authentic Login Card: square corners on desktop */}
       <div
         style={{
           maxWidth: '440px',
