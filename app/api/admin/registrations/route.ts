@@ -1,23 +1,23 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
     const { searchParams } = new URL(req.url);
     const eventId = searchParams.get('event_id');
     const limit = parseInt(searchParams.get('limit') || '500', 10);
@@ -53,26 +53,26 @@ export async function GET(req: Request) {
       created_at: r.created_at,
     }));
 
-    return NextResponse.json({ success: true, registrations });
+    return noStoreJson({ success: true, registrations });
   } catch (err: any) {
     console.error('Error fetching admin registrations:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
     const body = await req.json();
     const supabase = getAdminClient();
 
@@ -187,7 +187,7 @@ export async function POST(req: Request) {
         updatedCount = toUpdate.length;
       }
 
-      return NextResponse.json({
+      return noStoreJson({
         success: true,
         count: insertedCount + updatedCount,
         inserted: insertedCount,
@@ -200,7 +200,7 @@ export async function POST(req: Request) {
     const { event_id, lead_email, full_name, registration_number, phone, college, team_name, checked_in } = body;
 
     if (!event_id || !lead_email) {
-      return NextResponse.json({ error: 'event_id and lead_email are required' }, { status: 400 });
+      return noStoreJson({ error: 'event_id and lead_email are required' }, 400);
     }
 
     const cleanEmail = lead_email.toLowerCase().trim();
@@ -232,7 +232,7 @@ export async function POST(req: Request) {
         .single();
 
       if (error) throw error;
-      return NextResponse.json({ success: true, registration: data, updated: true });
+      return noStoreJson({ success: true, registration: data, updated: true });
     }
 
     const { data, error } = await supabase
@@ -255,18 +255,17 @@ export async function POST(req: Request) {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, registration: data });
+    return noStoreJson({ success: true, registration: data });
   } catch (err: any) {
     console.error('Error creating registration:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
 
 export async function DELETE(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
     const { searchParams } = new URL(req.url);
     const eventId = searchParams.get('event_id');
     const regId = searchParams.get('id');
@@ -280,7 +279,7 @@ export async function DELETE(req: Request) {
         .eq('event_id', eventId);
 
       if (error) throw error;
-      return NextResponse.json({
+      return noStoreJson({
         success: true,
         count: count || 0,
         message: `Successfully deleted all attendees for event`,
@@ -294,13 +293,12 @@ export async function DELETE(req: Request) {
         .eq('id', regId);
 
       if (error) throw error;
-      return NextResponse.json({ success: true, message: 'Attendee deleted successfully' });
+      return noStoreJson({ success: true, message: 'Attendee deleted successfully' });
     }
 
-    return NextResponse.json({ error: 'event_id or id query parameter is required' }, { status: 400 });
+    return noStoreJson({ error: 'event_id or id query parameter is required' }, 400);
   } catch (err: any) {
     console.error('Delete registration error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
-

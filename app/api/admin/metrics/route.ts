@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { requireAdmin, noStoreJson } from '@/lib/api-security';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET(request: NextRequest) {
-  // Verify admin authorization
-  const auth = await requireAdmin();
-  if (!auth.authorized) {
-    return auth.response;
-  }
-
   try {
+    // Verify admin authorization
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
     const supabase = getAdminClient();
 
     // 1. Live Events query
@@ -29,7 +26,7 @@ export async function GET(request: NextRequest) {
     const { data: payments } = await supabase.from('payments').select('amount').eq('status', 'captured');
     const revenueInRupees = payments?.reduce((acc: number, p: any) => acc + (p.amount || 0), 0) || 0;
 
-    return NextResponse.json({
+    return noStoreJson({
       totalEvents,
       activeEvents,
       totalRegistrations,
@@ -39,6 +36,6 @@ export async function GET(request: NextRequest) {
     });
   } catch (err: any) {
     console.error('[Admin Metrics] error:', err);
-    return NextResponse.json({ error: 'Failed to fetch metrics' }, { status: 500 });
+    return noStoreJson({ error: 'Failed to fetch metrics' }, 500);
   }
 }

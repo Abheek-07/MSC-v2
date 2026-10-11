@@ -1,6 +1,7 @@
 import React from 'react';
 import { redirect } from 'next/navigation';
 import { createClient } from '@/lib/supabase/server';
+import { requireAdmin } from '@/lib/auth/requireAdmin';
 import AdminShell from '@/components/AdminShell';
 
 export const metadata = {
@@ -16,28 +17,16 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+  const auth = await requireAdmin();
 
-  if (userError || !user) {
+  if (!auth) {
     redirect('/login?redirect=/admin');
   }
 
-  const { data: profile } = await supabase
-    .from('member_profiles')
-    .select('role')
-    .eq('id', user.id)
-    .single();
-
-  if (!profile || (profile.role !== 'admin' && profile.role !== 'core_member')) {
-    redirect('/login?error=unauthorized');
-  }
+  const { user } = auth;
 
   return (
-    <AdminShell userEmail={user.email} userRole={profile.role}>
+    <AdminShell userEmail={user.email ?? ''} userRole="admin">
       {children}
     </AdminShell>
   );

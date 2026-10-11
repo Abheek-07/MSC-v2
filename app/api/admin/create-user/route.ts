@@ -9,27 +9,22 @@ import {
   requireAdmin,
   securityLog,
 } from '@/lib/api-security';
+import { guardRoleChange, SINGLE_ADMIN_ERROR } from '@/lib/single-admin';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_ROLES = ['admin', 'core_member', 'user'] as const;
+const VALID_ROLES = ['admin', 'member'] as const;
 
 /**
  * Provisions a member account.
  *
- * Ported from the older project's `admin/create-user` route. That version
- * inlined its own auth guard; this uses the shared `requireAdmin()` helper, so
- * the check cannot drift from the rest of the admin surface.
- *
- * Adds: the `full_name` / `department` / `year` profile fields the consolidated
- * `/api/admin/users` route already supported, UUID validation, and a strict
- * email check.
+ * Uses the shared `requireAdmin()` guard so the check cannot drift.
+ * Enforces single-admin rule: cannot create an admin if another admin exists.
  */
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin();
-  if ('error' in auth) return auth.error;
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
     const body = await readJsonObject(req);
     if (!body) return noStoreJson({ error: 'Invalid request body' }, 400);
 
@@ -54,7 +49,16 @@ export async function POST(req: NextRequest) {
 
     const assignedRole = VALID_ROLES.includes(role as (typeof VALID_ROLES)[number])
       ? role!
-      : 'core_member';
+      : 'member';
+
+    // Single-admin guard for admin role assignment
+    if (assignedRole === 'admin') {
+      const supabase = await (await import('@/lib/supabase/server')).createClient();
+      const guard = await guardRoleChange(supabase, 'admin', 'new'); // target doesn't exist yet
+      if (guard) {
+        return noStoreJson({ error: guard.error.message, code: guard.error.code }, guard.error.status);
+      }
+    }
 
     const supabase = getAdminClient();
 
@@ -66,8 +70,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (error) {
-      console.error('[Create-user] auth error:', error.message);
-      return noStoreJson({ error: error.message }, 400);
+      console.error('[Create-user] auth error:', JSON.stringify(error, null, 2));
+      return noStoreJson({ error: error.message || 'Auth creation failed', code: error.code, status: error.status, details: error.details, hint: error.hint }, 400);
     }
 
     if (data?.user) {
@@ -83,11 +87,10 @@ export async function POST(req: NextRequest) {
       });
 
       if (profErr) {
-        // The auth user exists but the profile row failed. Surfaced rather than
-        // swallowed, since a half-provisioned account cannot be onboarded.
-        console.error('[Create-user] profile upsert failed:', profErr.message);
+        console.error('[Create-user] profile upsert failed:', profErr);
+        // Return the actual database error
         return noStoreJson(
-          { error: 'Account created but profile setup failed. Contact support.', user: data.user },
+          { error: profErr.message || 'Profile upsert failed', code: profErr.code, details: profErr.details, hint: profErr.hint, user: data.user },
           500
         );
       }
@@ -97,6 +100,6 @@ export async function POST(req: NextRequest) {
     return noStoreJson({ success: true, user: data?.user });
   } catch (err: any) {
     console.error('[Create-user error]:', err);
-    return noStoreJson({ error: 'Failed to create user' }, 500);
+    return noStoreJson({ error: err.message || 'Failed to create user', code: err.code }, 500);
   }
 }

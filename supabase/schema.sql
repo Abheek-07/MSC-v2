@@ -1,7 +1,3 @@
--- ==============================================================================
--- MSC SRM AP - Production Database Schema & Hardening
--- Grounded in production requirements with concurrency, idempotency & RLS
--- ==============================================================================
 
 create extension if not exists pgcrypto;
 
@@ -10,7 +6,7 @@ create table if not exists public.member_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text unique,
   full_name text,
-  role text not null default 'user' check (role in ('admin', 'core_member', 'user')),
+  role text not null default 'member' check (role in ('admin', 'member')),
   registration_number text,
   phone_number text,
   department text,
@@ -23,14 +19,15 @@ create table if not exists public.member_profiles (
 );
 
 -- Helper function to break RLS recursion: returns role of current authenticated user
+-- Replace lines 22-30 with:
 create or replace function public.current_user_role()
-returns text language plpgsql security definer set search_path = public as $$
-declare
-  v_role text;
-begin
-  select role into v_role from public.member_profiles where id = auth.uid();
-  return coalesce(v_role, 'user');
-end;
+returns text
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select role from public.member_profiles where id = auth.uid();
 $$;
 
 -- Auto-create profile on signup
@@ -38,7 +35,7 @@ create or replace function public.handle_new_user()
 returns trigger language plpgsql security definer set search_path = public as $$
 begin
   insert into public.member_profiles (id, email, role, is_onboarded)
-  values (new.id, new.email, 'user', false)
+  values (new.id, new.email, 'member', false)
   on conflict (id) do nothing;
   return new;
 end;
@@ -459,54 +456,54 @@ alter table public.payment_orders enable row level security;
 
 -- 1. member_profiles
 create policy "member_profiles_owner_read" on public.member_profiles
-  for select using (auth.uid() = id or public.current_user_role() in ('admin', 'core_member'));
+  for select using (auth.uid() = id or public.current_user_role() = 'admin');
 
 create policy "member_profiles_owner_update" on public.member_profiles
   for update using (auth.uid() = id or public.current_user_role() = 'admin');
 
 -- 2. events
 create policy "events_public_read" on public.events
-  for select using (is_published = true or public.current_user_role() in ('admin', 'core_member'));
+  for select using (is_published = true or public.current_user_role() = 'admin');
 
 create policy "events_staff_write" on public.events
-  for all using (public.current_user_role() in ('admin', 'core_member'));
+  for all using (public.current_user_role() = 'admin');
 
 -- 3. registrations
 create policy "registrations_read" on public.registrations
   for select using (
     auth.uid() = user_id or
-    public.current_user_role() in ('admin', 'core_member')
+    public.current_user_role() = 'admin'
   );
 
 create policy "registrations_staff_insert" on public.registrations
-  for insert with check (public.current_user_role() in ('admin', 'core_member'));
+  for insert with check (public.current_user_role() = 'admin');
 
 create policy "registrations_staff_update" on public.registrations
-  for update using (public.current_user_role() in ('admin', 'core_member'));
+  for update using (public.current_user_role() = 'admin');
 
 create policy "registrations_staff_delete" on public.registrations
-  for delete using (public.current_user_role() in ('admin', 'core_member'));
+  for delete using (public.current_user_role() = 'admin');
 
 -- 4. teams
 create policy "teams_public_read" on public.teams
   for select using (true);
 
 create policy "teams_staff_write" on public.teams
-  for all using (public.current_user_role() in ('admin', 'core_member'));
+  for all using (public.current_user_role() = 'admin');
 
 -- 5. team_members
 create policy "team_members_public_read" on public.team_members
   for select using (true);
 
 create policy "team_members_staff_write" on public.team_members
-  for all using (public.current_user_role() in ('admin', 'core_member'));
+  for all using (public.current_user_role() = 'admin');
 
 -- 6. gallery_items
 create policy "gallery_items_public_read" on public.gallery_items
   for select using (true);
 
 create policy "gallery_items_staff_write" on public.gallery_items
-  for all using (public.current_user_role() in ('admin', 'core_member'));
+  for all using (public.current_user_role() = 'admin');
 
 -- 7. password_reset_requests
 create policy "password_reset_requests_admin_read" on public.password_reset_requests

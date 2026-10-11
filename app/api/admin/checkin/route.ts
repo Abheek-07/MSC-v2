@@ -1,23 +1,23 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
     const { event_id, hash_payload, team_mode, member_id, member_email } = await req.json();
 
     const supabase = getAdminClient();
@@ -215,7 +215,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ success: false, error: updateError.message }, { status: 500 });
     }
 
-    return NextResponse.json({
+    return noStoreJson({
       success: true,
       already_checked_in: false,
       is_team: isTeam,
@@ -226,7 +226,7 @@ export async function POST(req: Request) {
     });
   } catch (err: any) {
     console.error('Checkin API error:', err);
-    return NextResponse.json({ success: false, error: err.message }, { status: 500 });
+    return noStoreJson({ success: false, error: err.message }, 500);
   }
 }
 

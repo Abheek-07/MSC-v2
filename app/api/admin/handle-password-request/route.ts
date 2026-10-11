@@ -20,10 +20,9 @@ const AUTH_PAGE_SIZE = 200;
  * This matches the old version's `admin/handle-password-request` route.
  */
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin();
-  if ('error' in auth) return auth.error;
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
     const body = await readJsonObject(req);
     if (!body) return noStoreJson({ error: 'Invalid request body' }, 400);
 

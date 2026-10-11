@@ -65,7 +65,7 @@ export default function AdminAnalyticsPage() {
       const checkinRate = totalRegistrations > 0 ? Number(((checkedInCount / totalRegistrations) * 100).toFixed(1)) : 0;
 
       setKpiMetrics({
-        totalCoreUsers: usersData.filter((u) => u.role === 'admin' || u.role === 'core_member').length,
+        totalCoreUsers: usersData.length, // Count all accounts (admin + member)
         totalEvents: eventsData.length,
         totalRegistrations,
         totalHeadcount: totalRegistrations,

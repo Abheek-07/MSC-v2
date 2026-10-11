@@ -20,7 +20,7 @@ interface UserProfile {
   id: string;
   email: string;
   full_name?: string;
-  role: 'admin' | 'core_member' | 'user';
+  role: 'admin' | 'member';
   department?: string;
   year?: string;
   created_at: string;
@@ -35,13 +35,14 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [newPassword, setNewPassword] = useState('');
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [soleAdminId, setSoleAdminId] = useState<string | null>(null);
 
   // New User Form State
   const [formData, setFormData] = useState({
     email: '',
     password: '',
     full_name: '',
-    role: 'core_member',
+    role: 'member',
     department: 'Computer Science & Engineering',
     year: '3rd Year',
   });
@@ -52,6 +53,11 @@ export default function AdminUsersPage() {
       const data = await res.json();
       if (data.users) {
         setUsers(data.users);
+        // Find sole admin
+        const admins = data.users.filter((u: UserProfile) => u.role === 'admin');
+        if (admins.length === 1) {
+          setSoleAdminId(admins[0].id);
+        }
       }
     } catch {
       // Offline fallback
@@ -78,7 +84,7 @@ export default function AdminUsersPage() {
           email: '',
           password: '',
           full_name: '',
-          role: 'core_member',
+          role: 'member',
           department: 'Computer Science & Engineering',
           year: '3rd Year',
         });
@@ -100,9 +106,13 @@ export default function AdminUsersPage() {
       });
       if (res.ok) {
         setUsers((prev) =>
-          prev.map((u) => (u.id === userId ? { ...u, role: newRole as any } : u))
+          prev.map((u) => (u.id === userId ? { ...u, role: newRole as 'admin' | 'member' } : u))
         );
         setActionMessage('User permissions updated successfully.');
+        fetchUsers(); // refresh sole admin status
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to update role');
       }
     } catch (err: any) {
       alert(err.message);
@@ -142,6 +152,10 @@ export default function AdminUsersPage() {
       if (res.ok) {
         setUsers((prev) => prev.filter((u) => u.id !== userId));
         setActionMessage(`Member account ${email} removed.`);
+        fetchUsers(); // refresh sole admin status
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to delete user');
       }
     } catch (err: any) {
       alert(err.message);
@@ -165,7 +179,7 @@ export default function AdminUsersPage() {
             User Access Provisioning
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '4px 0 0 0' }}>
-            Manage core member accounts, elevate administrative roles, and provision access for Chapter &apos;26.
+            Manage member accounts, elevate administrative roles, and provision access for Chapter &apos;26.
           </p>
         </div>
 
@@ -174,7 +188,7 @@ export default function AdminUsersPage() {
           className="fluent-btn fluent-btn-primary"
           style={{ fontSize: '13px' }}
         >
-          <UserPlus size={16} /> Provision Core Member
+          <UserPlus size={16} /> Provision Member
         </button>
       </div>
 
@@ -232,7 +246,7 @@ export default function AdminUsersPage() {
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Role:</span>
-          {['all', 'admin', 'core_member'].map((r) => (
+          {['all', 'admin', 'member'].map((r) => (
             <button
               key={r}
               onClick={() => setRoleFilter(r)}
@@ -247,7 +261,7 @@ export default function AdminUsersPage() {
                 textTransform: 'capitalize',
               }}
             >
-              {r.replace('_', ' ')}
+              {r}
             </button>
           ))}
         </div>
@@ -268,7 +282,7 @@ export default function AdminUsersPage() {
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', color: 'var(--text-muted)' }}>
               <th style={{ padding: '12px 16px' }}>Member Profile</th>
-              <th style={{ padding: '12px 16px' }}>Department &amp; Year</th>
+              <th style={{ padding: '12px 16px' }}>Department & Year</th>
               <th style={{ padding: '12px 16px' }}>Current Role</th>
               <th style={{ padding: '12px 16px' }}>Date Provisioned</th>
               <th style={{ padding: '12px 16px', textAlign: 'right' }}>Actions</th>
@@ -278,73 +292,79 @@ export default function AdminUsersPage() {
             {filteredUsers.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No accounts found. Click &quot;Provision Core Member&quot; to create a new user.
+                  No accounts found. Click "Provision Member" to create a new user.
                 </td>
               </tr>
             ) : (
-              filteredUsers.map((u) => (
-                <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>
-                      {u.full_name || 'MSC Member'}
-                    </div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{u.email}</div>
-                  </td>
+              filteredUsers.map((u) => {
+                const isSoleAdmin = soleAdminId === u.id;
+                return (
+                  <tr key={u.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontWeight: 600, color: 'var(--text-strong)' }}>
+                        {u.full_name || 'MSC Member'}
+                      </div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{u.email}</div>
+                    </td>
 
-                  <td style={{ padding: '12px 16px' }}>
-                    <div>{u.department || 'SRM AP Engineering'}</div>
-                    <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{u.year || '3rd Year'}</div>
-                  </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div>{u.department || 'SRM AP Engineering'}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>{u.year || '3rd Year'}</div>
+                    </td>
 
-                  <td style={{ padding: '12px 16px' }}>
-                    <select
-                      value={u.role}
-                      onChange={(e) => handleUpdateRole(u.id, e.target.value)}
-                      className="fluent-input"
-                      style={{
-                        padding: '4px 8px',
-                        fontSize: '12px',
-                        width: 'auto',
-                        fontWeight: 600,
-                        color: u.role === 'admin' ? 'var(--accent-strong)' : 'var(--brand)',
-                      }}
-                    >
-                      <option value="admin">Admin</option>
-                      <option value="core_member">Core Member</option>
-                      <option value="user">Regular User</option>
-                    </select>
-                  </td>
-
-                  <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>
-                    {new Date(u.created_at).toLocaleDateString()}
-                  </td>
-
-                  <td style={{ padding: '12px 16px', textAlign: 'right' }}>
-                    <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={() => {
-                          setSelectedUser(u);
-                          setIsResetModalOpen(true);
+                    <td style={{ padding: '12px 16px' }}>
+                      <select
+                        value={u.role}
+                        onChange={(e) => handleUpdateRole(u.id, e.target.value)}
+                        className="fluent-input"
+                        style={{
+                          padding: '4px 8px',
+                          fontSize: '12px',
+                          width: 'auto',
+                          fontWeight: 600,
+                          color: u.role === 'admin' ? 'var(--accent-strong)' : 'var(--brand)',
                         }}
-                        className="fluent-btn fluent-btn-secondary"
-                        style={{ padding: '4px 8px', fontSize: '12px' }}
-                        title="Set new password"
+                        disabled={isSoleAdmin}
                       >
-                        <Key size={13} /> Reset Pass
-                      </button>
+                        <option value="member">Member</option>
+                        <option value="admin" disabled={isSoleAdmin}>
+                          Administrator {isSoleAdmin && '(sole admin)'}
+                        </option>
+                      </select>
+                    </td>
 
-                      <button
-                        onClick={() => handleDeleteUser(u.id, u.email)}
-                        className="fluent-btn fluent-btn-secondary"
-                        style={{ padding: '4px 8px', fontSize: '12px', color: 'var(--danger)' }}
-                        title="Delete member account"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))
+                    <td style={{ padding: '12px 16px', color: 'var(--text-muted)', fontSize: '12px' }}>
+                      {new Date(u.created_at).toLocaleDateString()}
+                    </td>
+
+                    <td style={{ padding: '12px 16px', textAlign: 'right' }}>
+                      <div style={{ display: 'flex', gap: '8px', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => {
+                            setSelectedUser(u);
+                            setIsResetModalOpen(true);
+                          }}
+                          className="fluent-btn fluent-btn-secondary"
+                          style={{ padding: '4px 8px', fontSize: '12px' }}
+                          title="Set new password"
+                        >
+                          <Key size={13} /> Reset Pass
+                        </button>
+
+                        <button
+                          onClick={() => handleDeleteUser(u.id, u.email)}
+                          className="fluent-btn fluent-btn-secondary"
+                          style={{ padding: '4px 8px', fontSize: '12px', color: 'var(--danger)' }}
+                          title="Delete member account"
+                          disabled={isSoleAdmin}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
@@ -380,7 +400,7 @@ export default function AdminUsersPage() {
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <UserPlus size={20} color="var(--brand)" />
                 <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'var(--text-strong)', margin: 0 }}>
-                  Provision Core Member Account
+                  Provision Member Account
                 </h3>
               </div>
               <button
@@ -449,7 +469,7 @@ export default function AdminUsersPage() {
                     className="fluent-input"
                     style={{ width: '100%' }}
                   >
-                    <option value="core_member">Core Member</option>
+                    <option value="member">Member</option>
                     <option value="admin">Administrator</option>
                   </select>
                 </div>

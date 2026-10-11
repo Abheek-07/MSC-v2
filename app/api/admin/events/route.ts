@@ -1,24 +1,24 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
     const supabase = getAdminClient();
     const { data, error } = await supabase
       .from('events')
@@ -27,26 +27,26 @@ export async function GET() {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, events: data || [] });
+    return noStoreJson({ success: true, events: data || [] });
   } catch (err: any) {
     console.error('Error fetching admin events:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
     const body = await req.json();
     const supabase = getAdminClient();
 
@@ -95,31 +95,31 @@ export async function POST(req: Request) {
       console.warn('Revalidate path warning:', e);
     }
 
-    return NextResponse.json({ success: true, event: data });
+    return noStoreJson({ success: true, event: data });
   } catch (err: any) {
     console.error('Error creating admin event:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
 
 export async function PUT(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
     const body = await req.json();
     const { id, ...updates } = body;
 
     if (!id) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+      return noStoreJson({ error: 'Event ID is required' }, 400);
     }
 
     const supabase = getAdminClient();
@@ -146,31 +146,31 @@ export async function PUT(req: Request) {
       console.warn('Revalidate path warning:', e);
     }
 
-    return NextResponse.json({ success: true, event: data });
+    return noStoreJson({ success: true, event: data });
   } catch (err: any) {
     console.error('Error updating admin event:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
 
 export async function DELETE(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
     const { searchParams } = new URL(req.url);
     const id = searchParams.get('id');
 
     if (!id) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+      return noStoreJson({ error: 'Event ID is required' }, 400);
     }
 
     const supabase = getAdminClient();
@@ -189,9 +189,9 @@ export async function DELETE(req: Request) {
       console.warn('Revalidate path warning:', e);
     }
 
-    return NextResponse.json({ success: true, id });
+    return noStoreJson({ success: true, id });
   } catch (err: any) {
     console.error('Error deleting admin event:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }

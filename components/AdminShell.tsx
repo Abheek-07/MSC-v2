@@ -141,9 +141,7 @@ export default function AdminShell({ children, userEmail, userRole }: AdminShell
   // Initials for avatar
   const initials = userEmail
     ? userEmail.slice(0, 2).toUpperCase()
-    : userRole === 'admin'
-    ? 'AD'
-    : 'CR';
+    : 'AD';
 
   return (
     <div
@@ -435,7 +433,7 @@ export default function AdminShell({ children, userEmail, userRole }: AdminShell
                   whiteSpace: 'nowrap',
                 }}
               >
-                {userRole === 'admin' ? 'Admin' : 'Core'}
+                Admin
               </span>
             </button>
 
@@ -463,10 +461,10 @@ export default function AdminShell({ children, userEmail, userRole }: AdminShell
                     {userEmail || 'Organizer'}
                   </div>
                   <span
-                    className={`fluent-badge ${userRole === 'admin' ? 'badge-primary' : 'badge-info'}`}
+                    className="fluent-badge badge-primary"
                     style={{ marginTop: '4px', display: 'inline-block' }}
                   >
-                    Role: {userRole || 'admin'}
+                    Role: Admin
                   </span>
                 </div>
 
