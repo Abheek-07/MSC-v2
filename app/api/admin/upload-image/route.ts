@@ -12,10 +12,9 @@ const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_BUCKETS = ['images'] as const;
 
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin();
-  if ('error' in auth) return auth.error;
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
     const formData = await req.formData();
     const file = formData.get('file');
     const pathPrefix = (formData.get('pathPrefix') as string | null) ?? 'upload';

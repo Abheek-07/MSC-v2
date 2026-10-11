@@ -1,23 +1,22 @@
 import { NextRequest } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { auditLog, isUuid, noStoreJson, readJsonObject, requireAdmin } from '@/lib/api-security';
+import { guardRoleChange, SINGLE_ADMIN_ERROR } from '@/lib/single-admin';
 
 export const dynamic = 'force-dynamic';
 
-const VALID_ROLES = ['admin', 'core_member', 'user'] as const;
+const VALID_ROLES = ['admin', 'member'] as const;
 
 /**
  * Changes a member's role.
  *
- * Ported from the older project's `admin/elevate-role`. Same semantics, but
- * using the shared guard, and accepting both the old field names
- * (`targetUserId` / `newRole`) and the consolidated route's (`user_id` / `role`).
+ * Enforces single-admin rule: cannot promote to admin if another admin exists.
+ * Cannot demote the sole admin.
  */
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin();
-  if ('error' in auth) return auth.error;
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
     const body = await readJsonObject(req);
     if (!body) return noStoreJson({ error: 'Invalid request body' }, 400);
 
@@ -34,13 +33,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Self-demotion guard, ported from the old version.
+    // Self-role-change guard
     if (targetUserId === auth.user.id) {
       return noStoreJson({ error: 'Cannot change your own role' }, 400);
     }
 
-    const supabase = getAdminClient();
-    const { error } = await supabase
+    // Single-admin guards
+    const supabase = await (await import('@/lib/supabase/server')).createClient();
+    const guard = await guardRoleChange(supabase, newRole, targetUserId);
+    if (guard) {
+      return noStoreJson({ error: guard.error.message, code: guard.error.code }, guard.error.status);
+    }
+
+    const adminClient = getAdminClient();
+    const { error } = await adminClient
       .from('member_profiles')
       .update({ role: newRole, updated_at: new Date().toISOString() })
       .eq('id', targetUserId);

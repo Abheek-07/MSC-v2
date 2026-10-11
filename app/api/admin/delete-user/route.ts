@@ -1,24 +1,20 @@
 import { NextRequest } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { auditLog, isUuid, noStoreJson, readJsonObject, requireAdmin } from '@/lib/api-security';
+import { guardAdminRemoval, LAST_ADMIN_ERROR } from '@/lib/single-admin';
 
 export const dynamic = 'force-dynamic';
 
 /**
  * Deletes a member account.
  *
- * Ported from the older project's `admin/delete-user`. Accepts the target id
- * from either the JSON body (`targetUserId`, the old contract) or a `user_id`
- * query parameter, so either calling convention works.
- *
- * The old version only removed the Auth user, leaving an orphaned
- * `member_profiles` row. This removes both.
+ * Enforces single-admin rule: cannot delete the sole admin.
+ * Uses SQL handover for admin transfers.
  */
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin();
-  if ('error' in auth) return auth.error;
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
     const body = await readJsonObject(req);
     const fromQuery = new URL(req.url).searchParams.get('user_id');
     const targetUserId =
@@ -30,14 +26,21 @@ export async function POST(req: NextRequest) {
       return noStoreJson({ error: 'Invalid targetUserId' }, 400);
     }
 
-    // Self-deletion guard, ported from the old version.
+    // Self-deletion guard
     if (targetUserId === auth.user.id) {
       return noStoreJson({ error: 'Cannot delete your own account' }, 400);
     }
 
-    const supabase = getAdminClient();
+    // Single-admin guard for admin deletion
+    const supabase = await (await import('@/lib/supabase/server')).createClient();
+    const guard = await guardAdminRemoval(supabase, targetUserId, 'delete');
+    if (guard) {
+      return noStoreJson({ error: guard.error.message, code: guard.error.code }, guard.error.status);
+    }
 
-    const { error } = await supabase.auth.admin.deleteUser(targetUserId);
+    const adminClient = getAdminClient();
+
+    const { error } = await adminClient.auth.admin.deleteUser(targetUserId);
     if (error) {
       console.error('[Delete-user] auth delete failed:', error.message);
       return noStoreJson({ error: error.message }, 400);
@@ -45,7 +48,7 @@ export async function POST(req: NextRequest) {
 
     // member_profiles.id cascades from auth.users, so this is normally a no-op.
     // Done explicitly so the row is removed even if the cascade is missing.
-    const { error: profErr } = await supabase
+    const { error: profErr } = await adminClient
       .from('member_profiles')
       .delete()
       .eq('id', targetUserId);

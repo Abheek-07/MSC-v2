@@ -1,23 +1,28 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
+import { guardRoleChange, guardAdminRemoval, SINGLE_ADMIN_ERROR, LAST_ADMIN_ERROR } from '@/lib/single-admin';
 
 export const dynamic = 'force-dynamic';
 
+const VALID_ROLES = ['admin', 'member'] as const;
+
 export async function GET() {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
+
     const supabase = getAdminClient();
     const { data, error } = await supabase
       .from('member_profiles')
@@ -26,45 +31,50 @@ export async function GET() {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, users: data || [] });
+    return noStoreJson({ success: true, users: data || [] });
   } catch (err: any) {
     console.error('Error fetching admin users:', err);
-    return NextResponse.json({ error: err.message, users: [] }, { status: 500 });
+    return noStoreJson({ error: err.message, users: [] }, 500);
   }
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
-  // Role creation/promotion to admin or core_member strictly requires admin role
-  if (auth.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden: Only administrators can provision accounts or assign member roles' },
-      { status: 403 }
-    );
-  }
-
   try {
-    const { email, password, full_name, role, department, year } = await req.json();
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
 
-    if (!email || !password || password.length < 8) {
-      return NextResponse.json(
-        { error: 'Valid email and password (minimum 8 characters) required' },
-        { status: 400 }
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
       );
     }
 
-    const assignedRole = role === 'admin' ? 'admin' : 'core_member';
+    const { email, password, full_name, role, department, year } = await req.json();
+
+    if (!email || !password || password.length < 8) {
+      return noStoreJson(
+        { error: 'Valid email and password (minimum 8 characters) required' },
+        400
+      );
+    }
+
+    const assignedRole = role === 'admin' ? 'admin' : 'member';
     const supabase = getAdminClient();
+
+    // Single-admin guard for admin role assignment
+    if (assignedRole === 'admin') {
+      const client = await createClient();
+      const guard = await guardRoleChange(client, 'admin', 'new');
+      if (guard) {
+        return noStoreJson(
+          { error: guard.error.message, code: guard.error.code },
+          guard.error.status
+        );
+      }
+    }
 
     // Provision user via Supabase Auth Admin API
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
@@ -75,8 +85,14 @@ export async function POST(req: Request) {
     });
 
     if (authError) {
-      console.error('Supabase Auth user creation error:', authError);
-      return NextResponse.json({ error: authError.message }, { status: 400 });
+      console.error('Supabase Auth user creation error:', JSON.stringify(authError, null, 2));
+      return noStoreJson({ 
+        error: authError.message || 'Auth creation failed', 
+        code: authError.code,
+        status: authError.status,
+        details: authError.details,
+        hint: authError.hint
+      }, 400);
     }
 
     if (authUser?.user) {
@@ -97,45 +113,56 @@ export async function POST(req: Request) {
 
       if (profError) {
         console.error('Profile creation error:', profError);
+        return noStoreJson(
+          { error: profError.message || 'Profile creation failed', code: profError.code, details: profError.details, hint: profError.hint, user: authUser.user },
+          500
+        );
       }
 
-      return NextResponse.json({ success: true, user: profile || authUser.user });
+      return noStoreJson({ success: true, user: profile });
     }
 
-    return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
+    return noStoreJson({ error: 'Failed to create user' }, 500);
   } catch (err: any) {
     console.error('Admin provision user error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message || 'Failed to create user', code: err.code }, 500);
   }
 }
 
 export async function PUT(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
+
     const { user_id, action, role, new_password } = await req.json();
 
     if (!user_id) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return noStoreJson({ error: 'User ID is required' }, 400);
     }
 
     const supabase = getAdminClient();
+    const client = await createClient();
 
     if (action === 'update_role' && role) {
-      // Role modifications strictly require admin role
-      if (auth.role !== 'admin') {
-        return NextResponse.json(
-          { error: 'Forbidden: Only administrators can modify member roles' },
-          { status: 403 }
+      if (!VALID_ROLES.includes(role as (typeof VALID_ROLES)[number])) {
+        return noStoreJson({ error: 'Invalid role. Must be admin or member' }, 400);
+      }
+
+      // Single-admin guards
+      const guard = await guardRoleChange(client, role, user_id);
+      if (guard) {
+        return noStoreJson(
+          { error: guard.error.message, code: guard.error.code },
+          guard.error.status
         );
       }
 
@@ -145,54 +172,57 @@ export async function PUT(req: Request) {
         .eq('id', user_id);
 
       if (error) throw error;
-      return NextResponse.json({ success: true, message: 'Role updated successfully' });
+      return noStoreJson({ success: true, message: 'Role updated successfully' });
     }
 
     if (action === 'reset_password' && new_password) {
       const { error } = await supabase.auth.admin.updateUserById(user_id, { password: new_password });
       if (error) throw error;
-      return NextResponse.json({ success: true, message: 'Password reset successfully' });
+      return noStoreJson({ success: true, message: 'Password reset successfully' });
     }
 
-    return NextResponse.json({ error: 'Invalid action specified' }, { status: 400 });
+    return noStoreJson({ error: 'Invalid action specified' }, 400);
   } catch (err: any) {
     console.error('Admin user update error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
 
 export async function DELETE(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
-  // Account deletion strictly requires admin role (core_members cannot delete accounts)
-  if (auth.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden: Only administrators can delete accounts' },
-      { status: 403 }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
+
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('user_id');
 
     if (!userId) {
-      return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      return noStoreJson({ error: 'User ID is required' }, 400);
     }
 
     if (userId === auth.user.id) {
-      return NextResponse.json(
+      return noStoreJson(
         { error: 'Forbidden: You cannot delete your own administrative account' },
-        { status: 400 }
+        400
+      );
+    }
+
+    // Single-admin guard for admin deletion
+    const client = await createClient();
+    const guard = await guardAdminRemoval(client, userId, 'delete');
+    if (guard) {
+      return noStoreJson(
+        { error: guard.error.message, code: guard.error.code },
+        guard.error.status
       );
     }
 
@@ -206,9 +236,9 @@ export async function DELETE(req: Request) {
       console.warn('Profile delete warning:', profErr.message);
     }
 
-    return NextResponse.json({ success: true, message: 'Account deleted' });
+    return noStoreJson({ success: true, message: 'Account deleted' });
   } catch (err: any) {
     console.error('Admin user delete error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }

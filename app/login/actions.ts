@@ -49,9 +49,9 @@ async function resolveLanding(supabase: Awaited<ReturnType<typeof createClient>>
     .eq('id', session.user.id)
     .single();
 
-  if (profile?.role === 'admin' || profile?.role === 'core_member') return '/admin';
+  if (profile?.role === 'admin') return '/admin';
   if (profile && !profile.is_onboarded) return '/onboarding';
-  return '/';
+  return '/events';
 }
 
 /**
@@ -104,61 +104,4 @@ export async function login(formData: FormData): Promise<AuthActionState> {
 
   const destination = await resolveLanding(supabase);
   redirect(destination);
-}
-
-/**
- * Creates an account, server-side.
- *
- * The old version had no sign-up flow at all, so this is new work modelled on
- * its onboarding action. Rate-limited for the same reason as `login`.
- */
-export async function signup(formData: FormData): Promise<AuthActionState> {
-  const email = String(formData.get('email') || '')
-    .trim()
-    .toLowerCase();
-  const password = String(formData.get('password') || '');
-  const fullName = String(formData.get('fullName') || '').trim();
-  const ip = await actionClientIp();
-
-  const [byIp, byAccount] = await Promise.all([
-    checkRateLimit(`signup_ip:${ip}`, 'auth'),
-    checkRateLimit(`signup_acct:${email || 'unknown'}`, 'register'),
-  ]);
-
-  if (!byIp.success || !byAccount.success) {
-    securityLog('auth.denied', 'Sign-up throttled by rate limiter', { ip, status: 429 });
-    return { error: 'Too many sign-up attempts. Please wait a minute and try again.' };
-  }
-
-  if (!isValidEmail(email)) {
-    return { error: 'Please enter a valid email address.' };
-  }
-  if (password.length < MIN_PASSWORD_LENGTH) {
-    return { error: `Password must be at least ${MIN_PASSWORD_LENGTH} characters.` };
-  }
-  if (!fullName) {
-    return { error: 'Please enter your full name.' };
-  }
-
-  const supabase = await createClient();
-
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: { data: { full_name: fullName } },
-  });
-
-  if (error) {
-    // Supabase's "already registered" text would confirm the address exists.
-    if (/already|registered|exists/i.test(error.message)) {
-      securityLog('auth.denied', 'Sign-up for an existing account', { ip, status: 409 });
-      return { error: 'Unable to create an account with those details.' };
-    }
-    return { error: 'Unable to create your account right now. Please try again.' };
-  }
-
-  return {
-    message:
-      'Account created! Please check your email to confirm registration, or sign in directly.',
-  };
 }

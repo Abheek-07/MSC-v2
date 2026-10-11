@@ -38,7 +38,7 @@ export default function LoginPage() {
             .eq('id', data.user.id)
             .single();
 
-          if (profile?.role === 'admin' || profile?.role === 'core_member') {
+          if (profile?.role === 'admin') {
             router.push('/admin');
             return;
           }
@@ -49,7 +49,7 @@ export default function LoginPage() {
           }
         }
 
-        router.push('/');
+        router.push('/events');
       } else if (mode === 'reset') {
         // Submit admin-approved password reset request
         if (newPassword !== confirmPassword) {

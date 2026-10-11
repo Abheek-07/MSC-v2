@@ -76,6 +76,15 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
   const [teamModalData, setTeamModalData] = useState<ScanResult | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const soundEnabledRef = useRef(soundEnabled);
+  soundEnabledRef.current = soundEnabled;
+
+  // Serialized scanner lifecycle queue to prevent "Cannot stop, scanner is not running or paused"
+  const scanOpsRef = useRef<Promise<void>>(Promise.resolve());
+  const enqueueScanOp = useCallback((fn: () => Promise<void>) => {
+    scanOpsRef.current = scanOpsRef.current.then(fn, fn);
+    return scanOpsRef.current;
+  }, []);
 
   // Audio and Haptic Synthesizer
   const playFeedback = (outcome: ScanOutcome) => {
@@ -94,8 +103,8 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
       }
     }
 
-    // Audio cue
-    if (!soundEnabled || typeof window === 'undefined') return;
+    // Audio cue - use ref to get current soundEnabled value
+    if (!soundEnabledRef.current || typeof window === 'undefined') return;
     try {
       const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
       const audioCtx = new AudioContextClass();
@@ -271,23 +280,32 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
   };
 
   const stopScanner = async () => {
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current = null;
-      } catch (err) {
-        console.error('Error stopping scanner:', err);
-      }
+    if (!scannerRef.current) {
+      setScannerActive(false);
+      return;
     }
-    setScannerActive(false);
+    // Only call stop() if the scanner is actually running
+    try {
+      // Html5Qrcode.getState() can tell us if it's running
+      const state = (scannerRef.current as any).getState?.();
+      if (state === 2) { // Html5QrcodeScannerState.SCANNING = 2
+        await scannerRef.current.stop();
+      }
+    } catch (err) {
+      console.warn('Error stopping scanner (may already be stopped):', err);
+    } finally {
+      scannerRef.current.clear?.(); // release camera even if stop() threw
+      scannerRef.current = null;
+      setScannerActive(false);
+    }
   };
 
   useEffect(() => {
-    startScanner();
+    enqueueScanOp(startScanner);
     return () => {
-      stopScanner();
+      enqueueScanOp(stopScanner);
     };
-  }, []);
+  }, [enqueueScanOp]);
 
   // Process a Scanned Code
   const processCheckin = async (hash: string, teamMode?: 'all' | 'lead_only') => {
@@ -467,8 +485,16 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
   };
 
   const onScanSuccess = async (decodedText: string) => {
+    // Pause only if scanner is actually running
     if (scannerRef.current) {
-      scannerRef.current.pause();
+      try {
+        const state = (scannerRef.current as any).getState?.();
+        if (state === 2) { // Html5QrcodeScannerState.SCANNING
+          scannerRef.current.pause();
+        }
+      } catch {
+        // ignore
+      }
     }
 
     let hash = decodedText.trim();
@@ -482,7 +508,14 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
 
     setTimeout(() => {
       if (scannerRef.current) {
-        scannerRef.current.resume();
+        try {
+          const state = (scannerRef.current as any).getState?.();
+          if (state === 1) { // Html5QrcodeScannerState.PAUSED
+            scannerRef.current.resume();
+          }
+        } catch {
+          // ignore
+        }
       }
     }, 2000);
   };

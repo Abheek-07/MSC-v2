@@ -1,24 +1,25 @@
 import { NextResponse } from 'next/server';
 import { decryptSecret } from '@/lib/security';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
+
     const supabase = getAdminClient();
     const { data, error } = await supabase
       .from('password_reset_requests')
@@ -27,30 +28,31 @@ export async function GET() {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, requests: data || [] });
+    return noStoreJson({ success: true, requests: data || [] });
   } catch (err: any) {
     console.error('Error fetching password requests:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
+
     const { request_id, action } = await req.json();
 
     if (!request_id || !['approve', 'reject'].includes(action)) {
-      return NextResponse.json({ error: 'Invalid request or action' }, { status: 400 });
+      return noStoreJson({ error: 'Invalid request or action' }, 400);
     }
 
     const supabase = getAdminClient();
@@ -63,7 +65,7 @@ export async function POST(req: Request) {
         .single();
 
       if (fetchErr || !resetReq) {
-        return NextResponse.json({ error: 'Reset request not found' }, { status: 404 });
+        return noStoreJson({ error: 'Reset request not found' }, 404);
       }
 
       if (resetReq.new_password) {
@@ -82,7 +84,7 @@ export async function POST(req: Request) {
           });
           if (pwdErr) {
             console.error('Failed to update Supabase Auth user password:', pwdErr);
-            return NextResponse.json({ error: 'Failed to update auth password: ' + pwdErr.message }, { status: 500 });
+            return noStoreJson({ error: 'Failed to update auth password: ' + pwdErr.message }, 500);
           }
         }
       }
@@ -102,9 +104,9 @@ export async function POST(req: Request) {
       if (updateErr) throw updateErr;
     }
 
-    return NextResponse.json({ success: true, request_id, action });
+    return noStoreJson({ success: true, request_id, action });
   } catch (err: any) {
     console.error('[Admin passwords route error]:', err);
-    return NextResponse.json({ error: err.message || 'Failed to process password request' }, { status: 500 });
+    return noStoreJson({ error: err.message || 'Failed to process password request' }, 500);
   }
 }

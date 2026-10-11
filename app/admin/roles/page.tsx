@@ -7,14 +7,20 @@ interface MemberRoleRecord {
   id: string;
   email: string;
   full_name: string;
-  role: 'admin' | 'core_member' | 'user';
+  role: 'admin' | 'member';
   is_onboarded: boolean;
+}
+
+interface AdminStatus {
+  isAdmin: boolean;
+  soleAdmin: boolean;
 }
 
 export default function AdminRolesPage() {
   const [members, setMembers] = useState<MemberRoleRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [adminStatus, setAdminStatus] = useState<AdminStatus>({ isAdmin: false, soleAdmin: false });
 
   const fetchMembers = async () => {
     setLoading(true);
@@ -23,6 +29,12 @@ export default function AdminRolesPage() {
       const data = await res.json();
       if (data.members) {
         setMembers(data.members);
+        // Check if current user is admin and if they're the sole admin
+        const adminCount = data.members.filter((m: MemberRoleRecord) => m.role === 'admin').length;
+        setAdminStatus({
+          isAdmin: data.members.some((m: MemberRoleRecord) => m.role === 'admin'), // simplified
+          soleAdmin: adminCount === 1,
+        });
       }
     } catch (err: any) {
       console.error('Failed to load member roles:', err);
@@ -35,7 +47,7 @@ export default function AdminRolesPage() {
     fetchMembers();
   }, []);
 
-  const handleRoleChange = async (userId: string, newRole: 'admin' | 'core_member' | 'user') => {
+  const handleRoleChange = async (userId: string, newRole: 'admin' | 'member') => {
     try {
       const res = await fetch('/api/admin/roles', {
         method: 'POST',
@@ -51,6 +63,7 @@ export default function AdminRolesPage() {
       );
       setMessage({ type: 'success', text: `Successfully updated role to ${newRole}` });
       setTimeout(() => setMessage(null), 3000);
+      fetchMembers(); // refresh admin status
     } catch (err: any) {
       setMessage({ type: 'error', text: `Failed to update role: ${err.message}` });
       setTimeout(() => setMessage(null), 4000);
@@ -65,7 +78,7 @@ export default function AdminRolesPage() {
             Member Role Management
           </h1>
           <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-            Assign operational privileges across Administrator, Core Member (Organizer), and General Member.
+            Assign privileges: <strong>Administrator</strong> (admin portal access) or <strong>Member</strong> (member portal only).
           </p>
         </div>
         <button
@@ -110,7 +123,7 @@ export default function AdminRolesPage() {
           <thead>
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', color: 'var(--text-strong)' }}>
               <th style={{ padding: '12px 16px' }}>Member Profile</th>
-              <th style={{ padding: '12px 16px' }}>Current Privilege</th>
+              <th style={{ padding: '12px 16px' }}>Current Role</th>
               <th style={{ padding: '12px 16px' }}>Onboarded</th>
               <th style={{ padding: '12px 16px' }}>Elevate / Demote</th>
             </tr>
@@ -129,44 +142,45 @@ export default function AdminRolesPage() {
                 </td>
               </tr>
             ) : (
-              members.map((m) => (
-                <tr key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
-                  <td style={{ padding: '14px 16px' }}>
-                    <strong style={{ color: 'var(--text-strong)', display: 'block' }}>
-                      {m.full_name || 'Community Member'}
-                    </strong>
-                    <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{m.email}</span>
-                  </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <span
-                      className={`fluent-badge ${
-                        m.role === 'admin'
-                          ? 'badge-danger'
-                          : m.role === 'core_member'
-                          ? 'badge-info'
-                          : 'badge-success'
-                      }`}
-                    >
-                      {m.role ? m.role.toUpperCase() : 'USER'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    {m.is_onboarded ? 'Yes' : 'Pending'}
-                  </td>
-                  <td style={{ padding: '14px 16px' }}>
-                    <select
-                      value={m.role || 'user'}
-                      onChange={(e) => handleRoleChange(m.id, e.target.value as any)}
-                      className="fluent-input"
-                      style={{ width: '160px', fontSize: '12px' }}
-                    >
-                      <option value="user">User</option>
-                      <option value="core_member">Core Member (Staff)</option>
-                      <option value="admin">Administrator</option>
-                    </select>
-                  </td>
-                </tr>
-              ))
+              members.map((m) => {
+                const isSoleAdmin = adminStatus.soleAdmin && m.role === 'admin';
+                return (
+                  <tr key={m.id} style={{ borderBottom: '1px solid var(--border)' }}>
+                    <td style={{ padding: '14px 16px' }}>
+                      <strong style={{ color: 'var(--text-strong)', display: 'block' }}>
+                        {m.full_name || 'Community Member'}
+                      </strong>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{m.email}</span>
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <span
+                        className={`fluent-badge ${
+                          m.role === 'admin' ? 'badge-danger' : 'badge-success'
+                        }`}
+                      >
+                        {m.role ? m.role.toUpperCase() : 'MEMBER'}
+                      </span>
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      {m.is_onboarded ? 'Yes' : 'Pending'}
+                    </td>
+                    <td style={{ padding: '14px 16px' }}>
+                      <select
+                        value={m.role || 'member'}
+                        onChange={(e) => handleRoleChange(m.id, e.target.value as 'admin' | 'member')}
+                        className="fluent-input"
+                        style={{ width: '160px', fontSize: '12px' }}
+                        disabled={isSoleAdmin}
+                      >
+                        <option value="member">Member</option>
+                        <option value="admin" disabled={!adminStatus.isAdmin || adminStatus.soleAdmin}>
+                          Administrator {isSoleAdmin && '(sole admin)'}
+                        </option>
+                      </select>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

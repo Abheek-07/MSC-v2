@@ -15,10 +15,9 @@ export const dynamic = 'force-dynamic';
  * consolidated route's (`user_id` / `new_password`).
  */
 export async function POST(req: NextRequest) {
-  const auth = await requireAdmin();
-  if ('error' in auth) return auth.error;
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
     const body = await readJsonObject(req);
     if (!body) return noStoreJson({ error: 'Invalid request body' }, 400);
 

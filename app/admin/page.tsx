@@ -45,14 +45,14 @@ export default function AdminDashboardPage() {
           return;
         }
 
-        // Verify admin/core_member role
+        // Verify admin role
         const { data: profile } = await supabase
           .from('member_profiles')
           .select('role')
           .eq('id', session.user.id)
           .single();
 
-        if (!profile || (profile.role !== 'admin' && profile.role !== 'core_member')) {
+        if (!profile || profile.role !== 'admin') {
           router.push('/login?error=unauthorized');
           return;
         }

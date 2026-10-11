@@ -1,23 +1,28 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { requireAdmin } from '@/lib/auth/requireAdmin';
+import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
+import { guardRoleChange, SINGLE_ADMIN_ERROR } from '@/lib/single-admin';
 
 export const dynamic = 'force-dynamic';
 
+const VALID_ROLES = ['admin', 'member'] as const;
+
 export async function GET() {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
   try {
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
+
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
+    }
+
     const supabase = getAdminClient();
     const { data, error } = await supabase
       .from('member_profiles')
@@ -26,51 +31,54 @@ export async function GET() {
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, members: data || [] });
+    return noStoreJson({ success: true, members: data || [] });
   } catch (err: any) {
     console.error('Error fetching member roles:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
 
 export async function POST(req: Request) {
-  const auth = await requireAdmin();
-  if (!auth.authorized) return auth.response;
-
-  const rateLimit = await checkRateLimit(auth.user.id, 'api');
-  if (!rateLimit.success) {
-    return NextResponse.json(
-      { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
-      { status: 429, headers: { 'Retry-After': '60' } }
-    );
-  }
-
-  // Only admin can change member roles (core_member cannot change roles)
-  if (auth.role !== 'admin') {
-    return NextResponse.json(
-      { error: 'Forbidden: Only administrators can modify member roles' },
-      { status: 403 }
-    );
-  }
-
   try {
-    const { user_id, role } = await req.json();
+    const auth = await requireAdmin();
+    if ('error' in auth) return auth.error;
 
-    if (!user_id || !['admin', 'core_member', 'user'].includes(role)) {
-      return NextResponse.json({ error: 'Invalid user ID or role specified' }, { status: 400 });
+    const rateLimit = await checkRateLimit(auth.user.id, 'api');
+    if (!rateLimit.success) {
+      return noStoreJson(
+        { error: 'Rate limit exceeded. Please wait a minute before trying again.' },
+        429,
+        { 'Retry-After': '60' }
+      );
     }
 
-    const supabase = getAdminClient();
-    const { error } = await supabase
+    const { user_id, role } = await req.json();
+
+    if (!user_id || !VALID_ROLES.includes(role as (typeof VALID_ROLES)[number])) {
+      return noStoreJson({ error: 'Invalid user ID or role specified' }, 400);
+    }
+
+    // Single-admin guard
+    const supabase = await createClient();
+    const guard = await guardRoleChange(supabase, role, user_id);
+    if (guard) {
+      return noStoreJson(
+        { error: guard.error.message, code: guard.error.code },
+        guard.error.status
+      );
+    }
+
+    const adminClient = getAdminClient();
+    const { error } = await adminClient
       .from('member_profiles')
       .update({ role, updated_at: new Date().toISOString() })
       .eq('id', user_id);
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, user_id, role });
+    return noStoreJson({ success: true, user_id, role });
   } catch (err: any) {
     console.error('Error updating member role:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return noStoreJson({ error: err.message }, 500);
   }
 }
