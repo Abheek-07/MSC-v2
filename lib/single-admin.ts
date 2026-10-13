@@ -60,8 +60,7 @@ export async function guardRoleChange(
 /** Guard: reject demotion/deletion of the sole admin. */
 export async function guardAdminRemoval(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  targetUserId: string,
-  action: 'demote' | 'delete'
+  targetUserId: string
 ): Promise<{ error: typeof LAST_ADMIN_ERROR } | null> {
   const { data: target } = await supabase
     .from('member_profiles')

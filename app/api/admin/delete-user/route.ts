@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { auditLog, isUuid, noStoreJson, readJsonObject, requireAdmin } from '@/lib/api-security';
-import { guardAdminRemoval, LAST_ADMIN_ERROR } from '@/lib/single-admin';
+import { guardAdminRemoval } from '@/lib/single-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     // Single-admin guard for admin deletion
     const supabase = await (await import('@/lib/supabase/server')).createClient();
-    const guard = await guardAdminRemoval(supabase, targetUserId, 'delete');
+    const guard = await guardAdminRemoval(supabase, targetUserId);
     if (guard) {
       return noStoreJson({ error: guard.error.message, code: guard.error.code }, guard.error.status);
     }

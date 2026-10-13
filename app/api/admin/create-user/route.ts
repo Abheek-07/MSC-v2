@@ -3,13 +3,11 @@ import { getAdminClient } from '@/lib/supabase/admin';
 import { isValidEmail } from '@/lib/security';
 import {
   auditLog,
-  isUuid,
   noStoreJson,
   readJsonObject,
   requireAdmin,
-  securityLog,
 } from '@/lib/api-security';
-import { guardRoleChange, SINGLE_ADMIN_ERROR } from '@/lib/single-admin';
+import { guardRoleChange } from '@/lib/single-admin';
 
 export const dynamic = 'force-dynamic';
 

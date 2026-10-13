@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Award, Edit2, Calendar, MapPin, Users, Check, X, ShieldAlert, Trash2, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { Plus, Award, Edit2, X, Trash2, ExternalLink } from 'lucide-react';
 import { EventItem } from '@/lib/data/mock-fallback';
-import { createClient } from '@/lib/supabase/client';
 
 const DEFAULT_CERTIFICATE_TEMPLATE = `<div style="width: 860px; height: 580px; padding: 48px 40px; background: #ffffff; border: 12px solid #0067b8; box-sizing: border-box; text-align: center; position: relative; font-family: 'Segoe UI', system-ui, sans-serif; color: #242424; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
   <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -54,7 +53,6 @@ const DEFAULT_CERTIFICATE_TEMPLATE = `<div style="width: 860px; height: 580px; p
 </div>`;
 
 export default function AdminEventsPage() {
-  const supabase = createClient();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState<Partial<EventItem> | null>(null);
@@ -975,6 +973,75 @@ export default function AdminEventsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Certificate Preview Modal */}
+      {showCertPreviewModal && (
+        <div className="fluent-modal-overlay" style={{ zIndex: 1100 }}>
+          <div
+            className="fluent-modal"
+            style={{
+              maxWidth: '920px',
+              width: '95%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', margin: 0 }}>
+                  Certificate Template Sandbox Preview
+                </h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                  Rendered with sample participant data tokens.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCertPreviewModal(false)}
+                className="fluent-btn-icon"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                background: '#525659',
+                padding: '24px',
+                borderRadius: '6px',
+                display: 'flex',
+                justifyContent: 'center',
+                overflowX: 'auto',
+              }}
+              dangerouslySetInnerHTML={{
+                __html: (editingEvent?.certificate_html || DEFAULT_CERTIFICATE_TEMPLATE)
+                  .replace(/{{NAME}}/g, 'Alex Morgan')
+                  .replace(/{{EVENT_TITLE}}/g, editingEvent?.title || 'SYNORA Chapter 2026')
+                  .replace(/{{COLLEGE_NAME}}/g, 'SRM University-AP')
+                  .replace(/{{EVENT_DATE}}/g, editingEvent?.date_start ? new Date(editingEvent.date_start).toLocaleDateString() : 'October 24, 2026')
+                  .replace(/{{TICKET_ID}}/g, 'MSC-SYNORA-0042')
+                  .replace(/{{REG_NUMBER}}/g, 'AP23110010042')
+                  .replace(/{{ROLE}}/g, 'Delegate / Participant')
+                  .replace(/{{ISSUED_DATE}}/g, new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })),
+              }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowCertPreviewModal(false)}
+                className="fluent-btn fluent-btn-secondary"
+                style={{ fontSize: '13px' }}
+              >
+                Close Preview
+              </button>
+            </div>
           </div>
         </div>
       )}

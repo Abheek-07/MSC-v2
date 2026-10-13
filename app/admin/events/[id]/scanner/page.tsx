@@ -21,12 +21,12 @@ const QRScanner = dynamic(() => import('@/components/QRScanner'), {
 export default function EventSpecificScannerPage() {
   const params = useParams();
   const eventId = params?.id as string;
-  const supabase = createClient();
   const [eventTitle, setEventTitle] = useState('Event Scanner');
 
   useEffect(() => {
     if (!eventId) return;
-    supabase
+    const client = createClient();
+    client
       .from('events')
       .select('title')
       .eq('id', eventId)

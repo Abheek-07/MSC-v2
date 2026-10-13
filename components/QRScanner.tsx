@@ -64,7 +64,6 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
-  const [scannerActive, setScannerActive] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [recentScans, setRecentScans] = useState<ScanResult[]>([]);
@@ -87,7 +86,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
   }, []);
 
   // Audio and Haptic Synthesizer
-  const playFeedback = (outcome: ScanOutcome) => {
+  const playFeedback = useCallback((outcome: ScanOutcome) => {
     // Haptic feedback
     if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
       try {
@@ -133,7 +132,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
     } catch {
       // Audio autoplay restrictions
     }
-  };
+  }, []);
 
   // Check counts in IndexedDB
   const updateDBCounts = useCallback(async () => {
@@ -261,8 +260,10 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
     };
   }, [syncOfflineQueue, updateDBCounts]);
 
+  const onScanSuccessRef = useRef<(decodedText: string) => Promise<void>>(() => Promise.resolve());
+
   // Camera Scanner Lifecycle
-  const startScanner = async () => {
+  const startScanner = useCallback(async () => {
     try {
       const html5QrCode = new Html5Qrcode('qr-reader');
       scannerRef.current = html5QrCode;
@@ -270,18 +271,16 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
       await html5QrCode.start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
-        onScanSuccess,
+        (decodedText: string) => onScanSuccessRef.current(decodedText),
         () => {}
       );
-      setScannerActive(true);
     } catch (err) {
       console.error('Failed to start camera scanner:', err);
     }
-  };
+  }, []);
 
-  const stopScanner = async () => {
+  const stopScanner = useCallback(async () => {
     if (!scannerRef.current) {
-      setScannerActive(false);
       return;
     }
     // Only call stop() if the scanner is actually running
@@ -296,19 +295,18 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
     } finally {
       scannerRef.current.clear?.(); // release camera even if stop() threw
       scannerRef.current = null;
-      setScannerActive(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     enqueueScanOp(startScanner);
     return () => {
       enqueueScanOp(stopScanner);
     };
-  }, [enqueueScanOp]);
+  }, [enqueueScanOp, startScanner, stopScanner]);
 
   // Process a Scanned Code
-  const processCheckin = async (hash: string, teamMode?: 'all' | 'lead_only') => {
+  const processCheckin = useCallback(async (hash: string, teamMode?: 'all' | 'lead_only') => {
     let result: ScanResult;
 
     // 1. Try Online API if network is available
@@ -441,7 +439,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
       if (result.outcome === 'success' && result.isTeam && !teamMode && (result.teamMembers?.length || 0) > 1) {
         setTeamModalData(result);
       }
-    } catch (err) {
+    } catch {
       const errResult: ScanResult = {
         outcome: 'invalid',
         message: 'Offline validation failed.',
@@ -451,7 +449,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
       setScanResult(errResult);
       playFeedback('invalid');
     }
-  };
+  }, [eventId, playFeedback, updateDBCounts]);
 
   const checkInSingleMember = async (memberId: string | undefined, memberEmail: string, hashPayload: string) => {
     try {
@@ -484,7 +482,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
     }
   };
 
-  const onScanSuccess = async (decodedText: string) => {
+  const onScanSuccess = useCallback(async (decodedText: string) => {
     // Pause only if scanner is actually running
     if (scannerRef.current) {
       try {
@@ -518,7 +516,9 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
         }
       }
     }, 2000);
-  };
+  }, [processCheckin]);
+
+  onScanSuccessRef.current = onScanSuccess;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>

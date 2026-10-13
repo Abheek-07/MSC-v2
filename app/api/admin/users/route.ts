@@ -1,9 +1,8 @@
-import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
-import { guardRoleChange, guardAdminRemoval, SINGLE_ADMIN_ERROR, LAST_ADMIN_ERROR } from '@/lib/single-admin';
+import { guardRoleChange, guardAdminRemoval } from '@/lib/single-admin';
 
 export const dynamic = 'force-dynamic';
 
@@ -218,7 +217,7 @@ export async function DELETE(req: Request) {
 
     // Single-admin guard for admin deletion
     const client = await createClient();
-    const guard = await guardAdminRemoval(client, userId, 'delete');
+    const guard = await guardAdminRemoval(client, userId);
     if (guard) {
       return noStoreJson(
         { error: guard.error.message, code: guard.error.code },

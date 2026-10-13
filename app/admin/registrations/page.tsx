@@ -1,20 +1,18 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   Search,
   Download,
   Upload,
   UserPlus,
-  CheckCircle,
-  Clock,
-  Printer,
   FileSpreadsheet,
   FileText,
   X,
   CreditCard,
   Users,
+  Printer,
 } from 'lucide-react';
 // Papa is dynamically imported on demand for optimal bundle size
 import { QRCodeSVG } from 'qrcode.react';
@@ -39,14 +37,14 @@ interface RegistrationRecord {
 }
 
 export default function AdminRegistrationsPage() {
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBadge, setSelectedBadge] = useState<RegistrationRecord | null>(null);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
 
-  const fetchRegistrations = async () => {
+  const fetchRegistrations = useCallback(async () => {
     try {
       const { data, error } = await supabase
         .from('registrations')
@@ -77,11 +75,11 @@ export default function AdminRegistrationsPage() {
     } catch (err) {
       console.error('Failed to load registrations:', err);
     }
-  };
+  }, [supabase]);
 
   useEffect(() => {
     fetchRegistrations();
-  }, []);
+  }, [fetchRegistrations]);
 
   const handleToggleCheckin = async (id: string, currentVal: boolean) => {
     setRegistrations(registrations.map((item) => (item.id === id ? { ...item, checked_in: !currentVal } : item)));

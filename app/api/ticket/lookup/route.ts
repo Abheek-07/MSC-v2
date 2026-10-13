@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
-import { isValidEmail } from '@/lib/security';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
 
 export async function POST(req: Request) {
   try {

@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { decryptSecret } from '@/lib/security';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin, noStoreJson } from '@/lib/api-security';

@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { AlertTriangle, ArrowLeft, Shield } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { getAdminClient } from '@/lib/supabase/admin';
 import DirectCheckinClient from './DirectCheckinClient';
 
@@ -9,13 +9,10 @@ export const revalidate = 0;
 
 interface CheckinPageProps {
   params: Promise<{ hash: string }>;
-  searchParams?: Promise<{ mode?: string }>;
 }
 
-export default async function DirectCheckinPage({ params, searchParams }: CheckinPageProps) {
+export default async function DirectCheckinPage({ params }: CheckinPageProps) {
   const { hash } = await params;
-  const resolvedSearchParams = searchParams ? await searchParams : {};
-  const defaultMode = resolvedSearchParams.mode;
 
   if (!hash) {
     return (
@@ -189,11 +186,8 @@ export default async function DirectCheckinPage({ params, searchParams }: Checki
 
   return (
     <DirectCheckinClient
-      hash={hash}
       initialReg={initialRegData}
       initialTeamMembers={teamMembers}
-      initialWasAlreadyCheckedIn={wasAlreadyCheckedIn}
-      defaultMode={defaultMode}
     />
   );
 }

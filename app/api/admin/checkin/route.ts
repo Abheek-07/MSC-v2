@@ -18,7 +18,7 @@ export async function POST(req: Request) {
         { 'Retry-After': '60' }
       );
     }
-    const { event_id, hash_payload, team_mode, member_id, member_email } = await req.json();
+    const { event_id, hash_payload, team_mode, member_id } = await req.json();
 
     const supabase = getAdminClient();
 

@@ -1,8 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, use, useMemo } from 'react';
+import React, { useState, useEffect, use, useMemo, useCallback } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -17,13 +16,9 @@ import {
   QrCode,
   CheckCircle,
   X,
-  CreditCard,
   FileSpreadsheet,
-  FileText,
-  UserCheck,
   ChevronDown,
   ChevronRight,
-  Layers,
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
@@ -72,11 +67,10 @@ type GroupedItem = TeamGroup | SoloGroup;
 export default function PerEventManagementPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const eventId = resolvedParams.id;
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [event, setEvent] = useState<EventItem | null>(null);
   const [attendees, setAttendees] = useState<AttendeeRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBadge, setSelectedBadge] = useState<AttendeeRecord | null>(null);
@@ -113,7 +107,7 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
     }
   };
 
-  const fetchEventAndAttendees = async () => {
+  const fetchEventAndAttendees = useCallback(async () => {
     try {
       // 1. Fetch Event
       const { data: evData, error: evError } = await supabase
@@ -160,14 +154,12 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
       }
     } catch (err) {
       console.error('Failed to load event or attendees:', err);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [eventId, supabase]);
 
   useEffect(() => {
     fetchEventAndAttendees();
-  }, [eventId]);
+  }, [eventId, fetchEventAndAttendees]);
 
   // Toggle Attendance with real Supabase persistence
   const toggleCheckIn = async (id: string) => {

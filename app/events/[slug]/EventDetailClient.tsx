@@ -2,7 +2,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { QRCodeSVG } from 'qrcode.react';
 // html-to-image dynamically loaded on download
 import {
@@ -10,19 +9,14 @@ import {
   MapPin,
   Users,
   CheckCircle2,
-  Clock,
-  Sparkles,
-  Download,
   Award,
   Search,
   AlertCircle,
-  Hourglass,
   ArrowRight,
   Shield,
-  CreditCard,
-  UserPlus,
   Lock,
   CalendarCheck,
+  Download,
 } from 'lucide-react';
 import { EventItem } from '@/lib/data/mock-fallback';
 
@@ -98,8 +92,6 @@ export default function EventDetailClient({
   initialInvite?: string;
   initialTab?: string;
 }) {
-  const router = useRouter();
-
   const isCompleted =
     event.status === 'completed' ||
     Boolean(
@@ -133,8 +125,8 @@ export default function EventDetailClient({
   const [leadEmail, setLeadEmail] = useState('');
   const [leadPhone, setLeadPhone] = useState('');
   const [leadRegNum, setLeadRegNum] = useState('');
-  const [leadBranch, setLeadBranch] = useState('CSE');
-  const [leadYear, setLeadYear] = useState('2nd Year');
+  const [leadBranch] = useState('CSE');
+  const [leadYear] = useState('2nd Year');
   const [collegeName, setCollegeName] = useState('SRM University AP');
   const [cityName, setCityName] = useState('Amaravati');
 
@@ -143,7 +135,7 @@ export default function EventDetailClient({
   const [members, setMembers] = useState<MemberData[]>([]);
 
   // Open matchmaking teams pool
-  const [openTeams, setOpenTeams] = useState<OpenTeam[]>([
+  const [openTeams] = useState<OpenTeam[]>([
     { id: 'team-az1', team_name: 'Azure Titans', leader_name: 'Aravind S.', leader_branch: 'CSE', members_count: 2 },
     { id: 'team-ai2', team_name: 'Cognitive Matrix', leader_name: 'Sneha Reddy', leader_branch: 'ECE', members_count: 3 },
   ]);
@@ -166,7 +158,6 @@ export default function EventDetailClient({
   const [verifiedParticipant, setVerifiedParticipant] = useState<any | null>(null);
   const [certDownloading, setCertDownloading] = useState(false);
   const certContainerRef = useRef<HTMLDivElement>(null);
-  const ticketRef = useRef<HTMLDivElement>(null);
 
   // Add member
   const addMember = () => {
@@ -313,8 +304,8 @@ export default function EventDetailClient({
         lead_email: leadEmail,
         team_name: teamName,
       });
-    } catch (err: any) {
-      setErrorMsg(err.message || 'An unexpected registration error occurred.');
+    } catch (_err: any) {
+      setErrorMsg(_err?.message || 'An unexpected registration error occurred.');
     } finally {
       setSubmitting(false);
     }
@@ -352,7 +343,7 @@ export default function EventDetailClient({
       } else {
         setLookupError(`No confirmed passes found for "${lookupQuery}".`);
       }
-    } catch (err: any) {
+    } catch {
       // In local mode if non-email typed, provide demonstration ticket
       setFoundTicket({
         hash_payload: 'e1000000-0000-0000-0000-000000000001',
@@ -393,8 +384,8 @@ export default function EventDetailClient({
         return;
       }
       setVerifiedParticipant(data.participant);
-    } catch (err: any) {
-      console.error('[Certificate lookup error]:', err);
+    } catch (_err: any) {
+      console.error('[Certificate lookup error]:', _err);
       setCertError('Network or verification error. Please try again.');
     } finally {
       setCertLoading(false);
@@ -412,8 +403,8 @@ export default function EventDetailClient({
       link.download = `Certificate_${(verifiedParticipant?.name || 'MSC').replace(/\s+/g, '_')}_${event.slug}.png`;
       link.href = dataUrl;
       link.click();
-    } catch (err) {
-      console.error(err);
+    } catch (_err) {
+      console.error(_err);
     } finally {
       setCertDownloading(false);
     }

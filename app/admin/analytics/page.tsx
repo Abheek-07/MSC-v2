@@ -2,10 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { FALLBACK_EVENTS } from '@/lib/data/mock-fallback';
 import { createClient } from '@/lib/supabase/client';
 import {
-  BarChart3,
   Users,
   Calendar,
   CheckCircle2,
@@ -13,8 +11,6 @@ import {
   RefreshCw,
   Radio,
   UserCheck,
-  Award,
-  ArrowUpRight,
 } from 'lucide-react';
 
 interface EventAnalytics {
@@ -31,7 +27,6 @@ interface EventAnalytics {
 }
 
 export default function AdminAnalyticsPage() {
-  const [isLive, setIsLive] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<string>('');
   const [liveStreamEvents, setLiveStreamEvents] = useState<Array<{ id: string; text: string; time: string; type: 'checkin' | 'reg' }>>([]);
 
