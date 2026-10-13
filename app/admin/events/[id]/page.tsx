@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, use, useMemo } from 'react';
+import React, { useState, useEffect, use, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
 import { createClient } from '@/lib/supabase/client';
@@ -67,7 +67,7 @@ type GroupedItem = TeamGroup | SoloGroup;
 export default function PerEventManagementPage({ params }: { params: Promise<{ id: string }> }) {
   const resolvedParams = use(params);
   const eventId = resolvedParams.id;
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
 
   const [event, setEvent] = useState<EventItem | null>(null);
   const [attendees, setAttendees] = useState<AttendeeRecord[]>([]);
@@ -107,7 +107,7 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
     }
   };
 
-  const fetchEventAndAttendees = async () => {
+  const fetchEventAndAttendees = useCallback(async () => {
     try {
       // 1. Fetch Event
       const { data: evData, error: evError } = await supabase
@@ -155,11 +155,11 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
     } catch (err) {
       console.error('Failed to load event or attendees:', err);
     }
-  };
+  }, [eventId, supabase]);
 
   useEffect(() => {
     fetchEventAndAttendees();
-  }, [eventId]);
+  }, [eventId, fetchEventAndAttendees]);
 
   // Toggle Attendance with real Supabase persistence
   const toggleCheckIn = async (id: string) => {

@@ -58,6 +58,7 @@ export default function AdminEventsPage() {
   const [editingEvent, setEditingEvent] = useState<Partial<EventItem> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showCertPreviewModal, setShowCertPreviewModal] = useState(false);
 
   const fetchEvents = async () => {
     try {
@@ -972,6 +973,75 @@ export default function AdminEventsPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Certificate Preview Modal */}
+      {showCertPreviewModal && (
+        <div className="fluent-modal-overlay" style={{ zIndex: 1100 }}>
+          <div
+            className="fluent-modal"
+            style={{
+              maxWidth: '920px',
+              width: '95%',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <div>
+                <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', margin: 0 }}>
+                  Certificate Template Sandbox Preview
+                </h3>
+                <p style={{ fontSize: '12px', color: 'var(--text-muted)', margin: '2px 0 0 0' }}>
+                  Rendered with sample participant data tokens.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCertPreviewModal(false)}
+                className="fluent-btn-icon"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div
+              style={{
+                background: '#525659',
+                padding: '24px',
+                borderRadius: '6px',
+                display: 'flex',
+                justifyContent: 'center',
+                overflowX: 'auto',
+              }}
+              dangerouslySetInnerHTML={{
+                __html: (editingEvent?.certificate_html || DEFAULT_CERTIFICATE_TEMPLATE)
+                  .replace(/{{NAME}}/g, 'Alex Morgan')
+                  .replace(/{{EVENT_TITLE}}/g, editingEvent?.title || 'SYNORA Chapter 2026')
+                  .replace(/{{COLLEGE_NAME}}/g, 'SRM University-AP')
+                  .replace(/{{EVENT_DATE}}/g, editingEvent?.date_start ? new Date(editingEvent.date_start).toLocaleDateString() : 'October 24, 2026')
+                  .replace(/{{TICKET_ID}}/g, 'MSC-SYNORA-0042')
+                  .replace(/{{REG_NUMBER}}/g, 'AP23110010042')
+                  .replace(/{{ROLE}}/g, 'Delegate / Participant')
+                  .replace(/{{ISSUED_DATE}}/g, new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })),
+              }}
+            />
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button
+                type="button"
+                onClick={() => setShowCertPreviewModal(false)}
+                className="fluent-btn fluent-btn-secondary"
+                style={{ fontSize: '13px' }}
+              >
+                Close Preview
+              </button>
+            </div>
           </div>
         </div>
       )}

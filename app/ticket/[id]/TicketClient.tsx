@@ -7,8 +7,8 @@ import { QRCodeSVG } from 'qrcode.react';
 import {
   Calendar,
   MapPin,
-  CheckCircle,
-  Clock,
+  
+  
   Download,
   Shield,
   AlertTriangle,

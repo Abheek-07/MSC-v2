@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 // html-to-image dynamically loaded on download
 import { Award, Download, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
@@ -67,14 +67,7 @@ export default function CertificateClient({
   const [downloading, setDownloading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // If initialEmail was supplied, trigger verify
-  useEffect(() => {
-    if (initialEmail) {
-      handleVerification(initialEmail);
-    }
-  }, [initialEmail]);
-
-  const handleVerification = async (searchQuery: string) => {
+  const handleVerification = useCallback(async (searchQuery: string) => {
     setErrorMsg(null);
     if (!searchQuery.trim()) return;
 
@@ -106,7 +99,14 @@ export default function CertificateClient({
     } finally {
       setLoading(false);
     }
-  };
+  }, [event]);
+
+  // If initialEmail was supplied, trigger verify
+  useEffect(() => {
+    if (initialEmail) {
+      handleVerification(initialEmail);
+    }
+  }, [initialEmail, handleVerification]);
 
   const handleDownload = async () => {
     if (!certificateRef.current) return;

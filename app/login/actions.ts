@@ -12,8 +12,6 @@ export interface AuthActionState {
   message?: string;
 }
 
-const MIN_PASSWORD_LENGTH = 8;
-
 /**
  * Reads the client IP for rate-limit keying.
  *

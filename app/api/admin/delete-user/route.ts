@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
 
     // Single-admin guard for admin deletion
     const supabase = await (await import('@/lib/supabase/server')).createClient();
-    const guard = await guardAdminRemoval(supabase, targetUserId, 'delete');
+    const guard = await guardAdminRemoval(supabase, targetUserId);
     if (guard) {
       return noStoreJson({ error: guard.error.message, code: guard.error.code }, guard.error.status);
     }

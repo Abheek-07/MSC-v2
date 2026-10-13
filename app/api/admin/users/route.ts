@@ -217,7 +217,7 @@ export async function DELETE(req: Request) {
 
     // Single-admin guard for admin deletion
     const client = await createClient();
-    const guard = await guardAdminRemoval(client, userId, 'delete');
+    const guard = await guardAdminRemoval(client, userId);
     if (guard) {
       return noStoreJson(
         { error: guard.error.message, code: guard.error.code },

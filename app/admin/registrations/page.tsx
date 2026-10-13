@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   Search,
@@ -37,16 +37,16 @@ interface RegistrationRecord {
 }
 
 export default function AdminRegistrationsPage() {
+  const supabase = useMemo(() => createClient(), []);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBadge, setSelectedBadge] = useState<RegistrationRecord | null>(null);
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
   const [registrations, setRegistrations] = useState<RegistrationRecord[]>([]);
 
-  const fetchRegistrations = async () => {
+  const fetchRegistrations = useCallback(async () => {
     try {
-      const client = createClient();
-      const { data, error } = await client
+      const { data, error } = await supabase
         .from('registrations')
         .select('*, events(title)')
         .order('created_at', { ascending: false });
@@ -75,38 +75,11 @@ export default function AdminRegistrationsPage() {
     } catch (err) {
       console.error('Failed to load registrations:', err);
     }
-  };
+  }, [supabase]);
 
   useEffect(() => {
-    const client = createClient();
-    client
-      .from('registrations')
-      .select('*, events(title)')
-      .order('created_at', { ascending: false })
-      .then(({ data, error }) => {
-        if (error) throw error;
-        const mapped = (data || []).map((r: any) => ({
-          id: r.id,
-          hash_payload: r.hash_payload || r.id,
-          event_id: r.event_id,
-          event_title: r.events?.title || 'SYNORA',
-          lead_name: r.form_data?.full_name || r.form_data?.name || r.lead_email.split('@')[0],
-          lead_email: r.lead_email,
-          reg_number: r.form_data?.registration_number || r.form_data?.reg_num || 'N/A',
-          phone: r.form_data?.phone || '',
-          college: r.form_data?.college || 'SRM University AP',
-          team_name: r.team_data?.team_name || '',
-          team_members: r.team_data?.members || [],
-          checked_in: Boolean(r.checked_in),
-          status: r.status,
-          created_at: r.created_at,
-        }));
-        setRegistrations(mapped);
-      })
-      .catch((err) => {
-        console.error('Failed to load registrations:', err);
-      });
-  }, []);
+    fetchRegistrations();
+  }, [fetchRegistrations]);
 
   const handleToggleCheckin = async (id: string, currentVal: boolean) => {
     setRegistrations(registrations.map((item) => (item.id === id ? { ...item, checked_in: !currentVal } : item)));

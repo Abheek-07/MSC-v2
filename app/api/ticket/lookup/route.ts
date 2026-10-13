@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getAdminClient } from '@/lib/supabase/admin';
 

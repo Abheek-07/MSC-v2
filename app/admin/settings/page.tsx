@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
   Camera,
@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 
 export default function AdminSettingsPage() {
+  const supabase = useMemo(() => createClient(), []);
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState({
     fullName: '',
@@ -30,15 +31,15 @@ export default function AdminSettingsPage() {
     ratio: number;
   } | null>(null);
 
+  const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    const client = createClient();
-    client.auth.getUser().then(({ data: { user } }) => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserId(user.id);
-        client
+        supabase
           .from('member_profiles')
           .select('*')
           .eq('id', user.id)
@@ -59,7 +60,7 @@ export default function AdminSettingsPage() {
           });
         }
       });
-  }, []);
+  }, [supabase]);
 
   // Client-side HTML5 Canvas Image Compressor to WebP
   const handleAvatarFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,6 +224,7 @@ export default function AdminSettingsPage() {
               />
               <button
                 type="button"
+                disabled={isProcessingAvatar}
                 onClick={() => fileInputRef.current?.click()}
                 style={{
                   position: 'absolute',
@@ -237,10 +239,11 @@ export default function AdminSettingsPage() {
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  cursor: 'pointer',
+                  cursor: isProcessingAvatar ? 'wait' : 'pointer',
+                  opacity: isProcessingAvatar ? 0.7 : 1,
                   boxShadow: 'var(--shadow-rest)',
                 }}
-                title="Change Avatar"
+                title={isProcessingAvatar ? 'Compressing Avatar...' : 'Change Avatar'}
               >
                 <Camera size={16} />
               </button>
