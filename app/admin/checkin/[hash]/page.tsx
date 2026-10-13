@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { AlertTriangle, ArrowLeft, Shield } from 'lucide-react';
+import { AlertTriangle } from 'lucide-react';
 import { getAdminClient } from '@/lib/supabase/admin';
 import DirectCheckinClient from './DirectCheckinClient';
 

@@ -3,7 +3,6 @@ import {
   enforcePayloadSize,
   isValidUUID,
   isValidEmail,
-  sanitizeText,
 } from '@/lib/security';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getAdminClient } from '@/lib/supabase/admin';

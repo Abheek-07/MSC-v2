@@ -18,7 +18,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { event_id, registration_id, idempotency_key } = body;
+    const { event_id, registration_id } = body;
 
     if (!isValidUUID(event_id) || !isValidUUID(registration_id)) {
       return NextResponse.json({ error: 'Invalid UUID format in payment parameters.' }, { status: 400 });

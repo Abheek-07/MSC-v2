@@ -3,19 +3,13 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import {
-  User,
   Camera,
   Save,
   CheckCircle,
-  FileCheck,
-  Shield,
-  Briefcase,
-  GraduationCap,
   Sparkles,
 } from 'lucide-react';
 
 export default function AdminSettingsPage() {
-  const supabase = createClient();
   const [userId, setUserId] = useState<string | null>(null);
   const [profile, setProfile] = useState({
     fullName: '',
@@ -36,15 +30,15 @@ export default function AdminSettingsPage() {
     ratio: number;
   } | null>(null);
 
-  const [isProcessingAvatar, setIsProcessingAvatar] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
+    const client = createClient();
+    client.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         setUserId(user.id);
-        supabase
+        client
           .from('member_profiles')
           .select('*')
           .eq('id', user.id)
@@ -63,8 +57,8 @@ export default function AdminSettingsPage() {
               }));
             }
           });
-      }
-    });
+        }
+      });
   }, []);
 
   // Client-side HTML5 Canvas Image Compressor to WebP

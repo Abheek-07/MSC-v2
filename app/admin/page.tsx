@@ -10,8 +10,6 @@ import {
   IndianRupee,
   Mail,
   QrCode,
-  Shield,
-  ArrowRight,
   TrendingUp,
   Plus,
   FileSpreadsheet,

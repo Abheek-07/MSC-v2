@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Shield, ShieldAlert, UserCheck, Check, AlertCircle, RefreshCw } from 'lucide-react';
+import { Check, AlertCircle, RefreshCw } from 'lucide-react';
 
 interface MemberRoleRecord {
   id: string;

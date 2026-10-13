@@ -18,12 +18,12 @@ const QRScanner = dynamic(() => import('@/components/QRScanner'), {
 });
 
 export default function AdminGlobalScannerPage() {
-  const supabase = createClient();
   const [events, setEvents] = useState<EventItem[]>(FALLBACK_EVENTS);
   const [selectedEventId, setSelectedEventId] = useState<string>(FALLBACK_EVENTS[0].id);
 
   useEffect(() => {
-    supabase
+    const client = createClient();
+    client
       .from('events')
       .select('*')
       .order('date_start', { ascending: false })

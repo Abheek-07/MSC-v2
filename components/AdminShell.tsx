@@ -72,7 +72,7 @@ export const ADMIN_GROUPS: NavGroup[] = [
   },
 ];
 
-export default function AdminShell({ children, userEmail, userRole }: AdminShellProps) {
+export default function AdminShell({ children, userEmail }: AdminShellProps) {
   const pathname = usePathname();
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);

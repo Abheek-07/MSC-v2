@@ -64,7 +64,6 @@ function openDB(): Promise<IDBDatabase> {
 }
 
 export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
-  const [scannerActive, setScannerActive] = useState(false);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [recentScans, setRecentScans] = useState<ScanResult[]>([]);
@@ -262,7 +261,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
   }, [syncOfflineQueue, updateDBCounts]);
 
   // Camera Scanner Lifecycle
-  const startScanner = async () => {
+  const startScanner = useCallback(async () => {
     try {
       const html5QrCode = new Html5Qrcode('qr-reader');
       scannerRef.current = html5QrCode;
@@ -273,15 +272,13 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
         onScanSuccess,
         () => {}
       );
-      setScannerActive(true);
     } catch (err) {
       console.error('Failed to start camera scanner:', err);
     }
-  };
+  }, [onScanSuccess]);
 
-  const stopScanner = async () => {
+  const stopScanner = useCallback(async () => {
     if (!scannerRef.current) {
-      setScannerActive(false);
       return;
     }
     // Only call stop() if the scanner is actually running
@@ -296,16 +293,15 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
     } finally {
       scannerRef.current.clear?.(); // release camera even if stop() threw
       scannerRef.current = null;
-      setScannerActive(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     enqueueScanOp(startScanner);
     return () => {
       enqueueScanOp(stopScanner);
     };
-  }, [enqueueScanOp]);
+  }, [enqueueScanOp, startScanner, stopScanner]);
 
   // Process a Scanned Code
   const processCheckin = async (hash: string, teamMode?: 'all' | 'lead_only') => {
@@ -441,7 +437,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
       if (result.outcome === 'success' && result.isTeam && !teamMode && (result.teamMembers?.length || 0) > 1) {
         setTeamModalData(result);
       }
-    } catch (err) {
+    } catch (_err) {
       const errResult: ScanResult = {
         outcome: 'invalid',
         message: 'Offline validation failed.',

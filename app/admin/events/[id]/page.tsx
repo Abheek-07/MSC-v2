@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, use, useMemo } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
 import { createClient } from '@/lib/supabase/client';
 import {
@@ -17,13 +16,9 @@ import {
   QrCode,
   CheckCircle,
   X,
-  CreditCard,
   FileSpreadsheet,
-  FileText,
-  UserCheck,
   ChevronDown,
   ChevronRight,
-  Layers,
   Trash2,
   AlertTriangle,
 } from 'lucide-react';
@@ -76,7 +71,6 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
 
   const [event, setEvent] = useState<EventItem | null>(null);
   const [attendees, setAttendees] = useState<AttendeeRecord[]>([]);
-  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [selectedBadge, setSelectedBadge] = useState<AttendeeRecord | null>(null);
@@ -160,8 +154,6 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
       }
     } catch (err) {
       console.error('Failed to load event or attendees:', err);
-    } finally {
-      setLoading(false);
     }
   };
 

@@ -1,4 +1,3 @@
-import { NextResponse } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin, noStoreJson } from '@/lib/api-security';

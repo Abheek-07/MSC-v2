@@ -2,9 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Plus, Award, Edit2, Calendar, MapPin, Users, Check, X, ShieldAlert, Trash2, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { Plus, Award, Edit2, X, Trash2, ExternalLink } from 'lucide-react';
 import { EventItem } from '@/lib/data/mock-fallback';
-import { createClient } from '@/lib/supabase/client';
 
 const DEFAULT_CERTIFICATE_TEMPLATE = `<div style="width: 860px; height: 580px; padding: 48px 40px; background: #ffffff; border: 12px solid #0067b8; box-sizing: border-box; text-align: center; position: relative; font-family: 'Segoe UI', system-ui, sans-serif; color: #242424; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
   <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -54,13 +53,11 @@ const DEFAULT_CERTIFICATE_TEMPLATE = `<div style="width: 860px; height: 580px; p
 </div>`;
 
 export default function AdminEventsPage() {
-  const supabase = createClient();
   const [events, setEvents] = useState<EventItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [editingEvent, setEditingEvent] = useState<Partial<EventItem> | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [showCertPreviewModal, setShowCertPreviewModal] = useState(false);
 
   const fetchEvents = async () => {
     try {

@@ -61,7 +61,7 @@ export async function guardRoleChange(
 export async function guardAdminRemoval(
   supabase: Awaited<ReturnType<typeof createClient>>,
   targetUserId: string,
-  action: 'demote' | 'delete'
+  _action: 'demote' | 'delete'
 ): Promise<{ error: typeof LAST_ADMIN_ERROR } | null> {
   const { data: target } = await supabase
     .from('member_profiles')

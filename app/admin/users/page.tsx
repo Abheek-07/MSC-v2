@@ -1,19 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import {
-  Users,
   UserPlus,
-  Shield,
   Key,
   Trash2,
   Search,
   CheckCircle,
-  AlertTriangle,
   X,
-  Mail,
-  Lock,
 } from 'lucide-react';
 
 interface UserProfile {
@@ -292,7 +286,7 @@ export default function AdminUsersPage() {
             {filteredUsers.length === 0 ? (
               <tr>
                 <td colSpan={5} style={{ padding: '32px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                  No accounts found. Click "Provision Member" to create a new user.
+                  No accounts found. Click &ldquo;Provision Member&rdquo; to create a new user.
                 </td>
               </tr>
             ) : (

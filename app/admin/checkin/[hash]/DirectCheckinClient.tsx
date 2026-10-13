@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   CheckCircle2,
-  AlertTriangle,
   ArrowLeft,
   Users,
   UserCheck,
@@ -24,7 +23,6 @@ export interface DirectCheckinMember {
 }
 
 export interface DirectCheckinClientProps {
-  hash: string;
   initialReg: {
     id: string;
     lead_name: string;
@@ -39,16 +37,11 @@ export interface DirectCheckinClientProps {
     is_team: boolean;
   };
   initialTeamMembers: DirectCheckinMember[];
-  initialWasAlreadyCheckedIn: boolean;
-  defaultMode?: string;
 }
 
 export default function DirectCheckinClient({
-  hash,
   initialReg,
   initialTeamMembers,
-  initialWasAlreadyCheckedIn,
-  defaultMode,
 }: DirectCheckinClientProps) {
   const [reg, setReg] = useState(initialReg);
   const [teamMembers, setTeamMembers] = useState<DirectCheckinMember[]>(initialTeamMembers);
