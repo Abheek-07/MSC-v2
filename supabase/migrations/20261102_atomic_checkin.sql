@@ -15,6 +15,7 @@ declare
   v_team_name text;
   v_team_id text;
   v_updated public.registrations%rowtype;
+  v_already_checked_in boolean := false;
 begin
   if p_event_id is null or p_registration_id is null
      or p_team_mode is null or p_team_mode not in ('lead_only', 'all', 'member') then
@@ -29,6 +30,7 @@ begin
   if not found then return jsonb_build_object('success', false, 'error', 'Registration not found for this event'); end if;
   if v_reg.status <> 'confirmed' then return jsonb_build_object('success', false, 'error', 'Only confirmed registrations can be checked in'); end if;
 
+  v_already_checked_in := v_reg.checked_in;
   v_team_name := nullif(trim(v_reg.team_data->>'team_name'), '');
   v_team_id := nullif(trim(v_reg.team_data->>'team_id'), '');
 
@@ -56,6 +58,7 @@ begin
        or jsonb_array_length(v_reg.team_data->'members') <= p_member_index then
       return jsonb_build_object('success', false, 'error', 'Team member not found');
     end if;
+    v_already_checked_in := coalesce((v_reg.team_data->'members'->p_member_index->>'checked_in')::boolean, false);
     update public.registrations
     set team_data = jsonb_set(team_data, '{members}', (
           select jsonb_agg(
@@ -75,7 +78,7 @@ begin
   select * into v_updated from public.registrations
   where id = p_registration_id and event_id = p_event_id;
   return jsonb_build_object(
-    'success', true, 'already_checked_in', v_reg.checked_in,
+    'success', true, 'already_checked_in', v_already_checked_in,
     'registration_id', v_updated.id, 'event_id', v_updated.event_id,
     'checked_in', v_updated.checked_in, 'form_data', v_updated.form_data,
     'team_data', v_updated.team_data, 'lead_email', v_updated.lead_email,
