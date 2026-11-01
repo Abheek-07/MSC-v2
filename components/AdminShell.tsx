@@ -53,6 +53,7 @@ export const ADMIN_GROUPS: NavGroup[] = [
       { name: 'Events', href: '/admin/events', icon: Calendar },
       { name: 'Registrations', href: '/admin/registrations', icon: FileSpreadsheet },
       { name: 'QR Turnstile Scanner', href: '/admin/scanner', icon: QrCode },
+      { name: 'Session Management', href: '/admin/sessions', icon: Calendar },
       { name: 'Live Analytics', href: '/admin/analytics', icon: BarChart3 },
     ],
   },

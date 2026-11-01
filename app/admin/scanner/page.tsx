@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { FALLBACK_EVENTS, EventItem } from '@/lib/data/mock-fallback';
 import { createClient } from '@/lib/supabase/client';
 import dynamic from 'next/dynamic';
-import { ArrowLeft, Calendar } from 'lucide-react';
+import { ArrowLeft, Calendar, Clock } from 'lucide-react';
 
 const QRScanner = dynamic(() => import('@/components/QRScanner'), {
   ssr: false,
@@ -20,6 +20,9 @@ const QRScanner = dynamic(() => import('@/components/QRScanner'), {
 export default function AdminGlobalScannerPage() {
   const [events, setEvents] = useState<EventItem[]>(FALLBACK_EVENTS);
   const [selectedEventId, setSelectedEventId] = useState<string>(FALLBACK_EVENTS[0].id);
+  const [sessions, setSessions] = useState<Array<{ id: string; title: string; is_active: boolean }>>([]);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('');
+  const [sessionsLoading, setSessionsLoading] = useState(false);
 
   useEffect(() => {
     const client = createClient();
@@ -34,6 +37,22 @@ export default function AdminGlobalScannerPage() {
         }
       });
   }, []);
+
+  useEffect(() => {
+    if (!selectedEventId) return;
+    setSessionsLoading(true);
+    setSelectedSessionId('');
+    fetch('/api/admin/sessions?event_id=' + encodeURIComponent(selectedEventId), { cache: 'no-store' })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok || !data.success) throw new Error(data.error || 'Unable to load sessions.');
+        const active = (data.sessions || []).filter((session: any) => session.is_active);
+        setSessions(active);
+        setSelectedSessionId(active[0]?.id || '');
+      })
+      .catch((error) => { console.error('Failed to load event sessions:', error); setSessions([]); })
+      .finally(() => setSessionsLoading(false));
+  }, [selectedEventId]);
 
   const currentEvent = events.find((e) => e.id === selectedEventId) || events[0] || FALLBACK_EVENTS[0];
 
@@ -76,8 +95,23 @@ export default function AdminGlobalScannerPage() {
         </div>
       </div>
 
-      {/* Main Scanner Container with IndexedDB Caching and Team Check-in */}
-      <QRScanner key={selectedEventId} eventId={selectedEventId} eventTitle={currentEvent.title} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '12px 16px' }}>
+        <Clock size={16} color="var(--brand)" />
+        <label htmlFor="session-select" style={{ fontSize: 13, fontWeight: 600, color: 'var(--text-body)' }}>Attendance session:</label>
+        <select id="session-select" value={selectedSessionId} onChange={(e) => setSelectedSessionId(e.target.value)} className="fluent-input" style={{ minWidth: 240, width: 'auto', padding: '6px 12px', fontSize: 13 }} disabled={sessionsLoading || sessions.length === 0}>
+          {sessions.length === 0 && <option value="">No active sessions</option>}
+          {sessions.map((session) => <option key={session.id} value={session.id}>{session.title}</option>)}
+        </select>
+        {sessionsLoading && <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>Loading sessions...</span>}
+        {!sessionsLoading && sessions.length === 0 && <Link href="/admin/sessions" style={{ fontSize: 12, color: 'var(--brand)' }}>Create an event session</Link>}
+      </div>
+
+      {/* Session attendance scanner. Session selection scopes every scan to that session. */}
+      {selectedSessionId ? (
+        <QRScanner key={selectedEventId + ':' + selectedSessionId} eventId={selectedEventId} eventTitle={currentEvent.title} sessionId={selectedSessionId} sessionTitle={sessions.find((s) => s.id === selectedSessionId)?.title} />
+      ) : (
+        <div className="fluent-card" style={{ padding: 36, textAlign: 'center', color: 'var(--text-muted)' }}>Create and activate a session before recording session attendance.</div>
+      )}
     </div>
   );
 }
