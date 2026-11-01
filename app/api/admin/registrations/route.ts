@@ -10,7 +10,8 @@ function ensureTeamMemberQrTokens(teamData: any) {
     members: teamData.members.map((member: any) => {
       if (!member || typeof member !== 'object' || Array.isArray(member)) return member;
       const existingToken = typeof member.hash_payload === 'string' ? member.hash_payload.trim() : '';
-      return { ...member, hash_payload: existingToken || randomUUID() };
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(existingToken);
+      return { ...member, hash_payload: isUuid ? existingToken : randomUUID() };
     }),
   };
 }
