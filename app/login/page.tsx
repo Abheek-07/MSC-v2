@@ -8,8 +8,7 @@ import { AlertCircle, CheckCircle, ArrowLeft } from 'lucide-react';
 
 export default function LoginPage() {
   const router = useRouter();
-  const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
-  const [fullName, setFullName] = useState('');
+  const [mode, setMode] = useState<'signin' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -25,18 +24,7 @@ export default function LoginPage() {
     setMessage(null);
 
     try {
-      if (mode === 'signup') {
-        const cleanEmail = email.trim().toLowerCase();
-        const cleanName = fullName.trim();
-        if (!cleanName) throw new Error('Full name is required.');
-        if (password.length < 8) throw new Error('Password must be at least 8 characters.');
-        if (password !== confirmPassword) throw new Error('Passwords do not match.');
-        const { data, error } = await supabase.auth.signUp({ email: cleanEmail, password, options: { data: { full_name: cleanName } } });
-        if (error) throw error;
-        if (data.session) { router.push('/onboarding'); return; }
-        setMessage({ type: 'success', text: 'Account created. Check your email to confirm your address, then sign in.' });
-        setMode('signin'); setPassword(''); setConfirmPassword('');
-      } else if (mode === 'signin') {
+      if (mode === 'signin') {
         const cleanEmail = email.trim().toLowerCase();
 
         // Strict Supabase cryptographic password verification
@@ -153,12 +141,10 @@ export default function LoginPage() {
           }}
         >
           {mode === 'signin' && 'Sign in'}
-          {mode === 'signup' && 'Create your account'}
           {mode === 'reset' && 'Reset password'}
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 24px 0' }}>
           {mode === 'signin' && 'to continue to Microsoft Student Community SRM AP'}
-          {mode === 'signup' && 'Join Microsoft Student Community SRM AP'}
           {mode === 'reset' && 'Submit a password update request for approval'}
         </p>
 
@@ -184,10 +170,6 @@ export default function LoginPage() {
         )}
 
         <form onSubmit={handleAuth} style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-          {mode === 'signup' && <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>Full name</label>
-            <input type="text" required autoComplete="name" placeholder="Your full name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="fluent-input" style={{ width: '100%' }} />
-          </div>}
           <div>
             <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
               Email address
@@ -203,11 +185,11 @@ export default function LoginPage() {
             />
           </div>
 
-          {(mode === 'signin' || mode === 'signup') && (
+          {mode === 'signin' && (
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-strong)' }}>Password</label>
-                {mode === 'signin' && <button
+                <button
                   type="button"
                   onClick={() => {
                     setMode('reset');
@@ -223,13 +205,11 @@ export default function LoginPage() {
                   }}
                 >
                   Forgot password?
-                </button>}
+                </button>
               </div>
               <input
                 type="password"
                 required
-                minLength={mode === 'signup' ? 8 : undefined}
-                autoComplete={mode === 'signup' ? 'new-password' : 'current-password'}
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -239,10 +219,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {mode === 'signup' && <div>
-            <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>Confirm password</label>
-            <input type="password" required minLength={8} autoComplete="new-password" placeholder="Re-enter your password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className="fluent-input" style={{ width: '100%' }} />
-          </div>}
           {mode === 'reset' && (
             <div>
               <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
@@ -318,12 +294,25 @@ export default function LoginPage() {
               marginTop: '4px',
             }}
           >
-            {loading ? 'Processing...' : mode === 'signin' ? 'Sign in' : mode === 'signup' ? 'Create account' : 'Submit request'}
+            {loading
+              ? 'Processing...'
+              : mode === 'signin'
+              ? 'Sign in'
+              : 'Submit request'}
           </button>
 
           {/* "No account? Contact admin" link */}
-          {mode === 'signin' && <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', margin: '4px 0 0 0' }}>New to MSC? <button type="button" onClick={() => { setMode('signup'); setMessage(null); }} style={{ background: 'none', border: 0, padding: 0, color: 'var(--brand)', cursor: 'pointer', fontWeight: 600 }}>Create an account</button></p>}
-          {mode === 'signup' && <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', margin: '4px 0 0 0' }}>Already have an account? <button type="button" onClick={() => { setMode('signin'); setMessage(null); }} style={{ background: 'none', border: 0, padding: 0, color: 'var(--brand)', cursor: 'pointer', fontWeight: 600 }}>Sign in</button></p>}
+          {mode === 'signin' && (
+            <p style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center', margin: '4px 0 0 0' }}>
+              No account?{' '}
+              <a
+                href="mailto:msc.community@srmap.edu.in"
+                style={{ color: 'var(--brand)', textDecoration: 'none', fontWeight: 600 }}
+              >
+                Contact your administrator
+              </a>
+            </p>
+          )}
         </form>
       </div>
 
