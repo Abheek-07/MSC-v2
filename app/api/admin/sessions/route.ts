@@ -27,10 +27,12 @@ export async function GET(req: Request) {
     const ids = (sessions || []).map((s: any) => s.id);
     let counts: Record<string, number> = {};
     if (ids.length) {
-      const { data: rows, error: attendanceError } = await db.from('session_attendance')
-        .select('session_id').in('session_id', ids);
-      if (attendanceError) throw attendanceError;
-      for (const row of rows || []) counts[row.session_id] = (counts[row.session_id] || 0) + 1;
+      for (const sessionId of ids) {
+        const { count, error: attendanceError } = await db.from('session_attendance')
+          .select('id', { count: 'exact', head: true }).eq('session_id', sessionId);
+        if (attendanceError) throw attendanceError;
+        counts[sessionId] = count || 0;
+      }
     }
     return noStoreJson({ success: true, sessions: (sessions || []).map((s: any) => ({ ...s, attendance_count: counts[s.id] || 0 })) });
   } catch (error) {
