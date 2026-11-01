@@ -732,7 +732,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <button
+          {!sessionId && <button
             onClick={cacheRegistrations}
             disabled={cachingInProgress}
             className="fluent-btn fluent-btn-secondary"
@@ -740,7 +740,8 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
             title="Download attendee records for offline emergency turnstile check"
           >
             <Database size={14} /> {cachingInProgress ? 'Caching...' : 'Cache Registrations'}
-          </button>
+          </button>}
+          {sessionId && <span className="fluent-badge badge-warning" style={{ fontSize: 11 }}>Session check-in requires internet</span>}
 
           {pendingQueueCount > 0 && isOnline && (
             <button
