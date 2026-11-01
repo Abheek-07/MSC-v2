@@ -256,11 +256,13 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
 
       for (const item of items) {
         try {
-          const res = await fetch('/api/admin/checkin', {
+          const endpoint = item.session_id ? '/api/admin/session-checkin' : '/api/admin/checkin';
+          const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               event_id: item.event_id,
+              session_id: item.session_id || undefined,
               hash_payload: item.hash_payload,
               team_mode: item.team_mode || (item.checkin_type === 'all' ? 'all' : 'lead_only'),
               member_id: item.member_id,
@@ -394,12 +396,6 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       }
     }
 
-    // Session attendance is online-only in this release. Never fall back to event-level offline state.
-    if (sessionId && !navigator.onLine) {
-      result = { outcome: 'invalid', message: 'Session check-in requires an internet connection. Reconnect before scanning.', timestamp: new Date().toLocaleTimeString(), offline: true, hashPayload: hash };
-      setScanResult(result); setRecentScans((prev) => [result, ...prev.slice(0, 9)]); playFeedback('invalid'); return;
-    }
-
     // 1. Try Online API if network is available
     if (navigator.onLine) {
       try {
@@ -461,12 +457,6 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       }
     }
 
-    // A network failure must not be converted into an event-wide check-in while a session is selected.
-    if (sessionId) {
-      result = { outcome: 'invalid', message: 'Could not reach the session attendance service. No attendance was recorded.', timestamp: new Date().toLocaleTimeString(), hashPayload: hash };
-      setScanResult(result); setRecentScans((prev) => [result, ...prev.slice(0, 9)]); playFeedback('invalid'); return;
-    }
-
     // 2. Offline Mode with IndexedDB
     try {
       const db = await openDB();
@@ -479,7 +469,35 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         req.onerror = () => resolve(null);
       });
 
-      if (!cachedRec || cachedRec.event_id !== eventId) {
+      // A queued scan counts as a local duplicate for this exact event/session.
+      // The database remains authoritative across devices when the queue syncs.
+      let alreadyQueued = false;
+      if (sessionId) {
+        const queueRead = db.transaction('offline_queue', 'readonly');
+        const queueItems = await new Promise<any[]>((resolve) => {
+          const request = queueRead.objectStore('offline_queue').getAll();
+          request.onsuccess = () => resolve(request.result || []);
+          request.onerror = () => resolve([]);
+        });
+        alreadyQueued = queueItems.some((item) =>
+          item.event_id === eventId &&
+          item.session_id === sessionId &&
+          item.hash_payload === hash
+        );
+      }
+
+      if (alreadyQueued) {
+        result = {
+          outcome: 'already_checked_in',
+          message: 'Already scanned on this device. Waiting for server sync.',
+          name: cachedRec?.lead_name,
+          regNum: cachedRec?.reg_number,
+          teamName: cachedRec?.team_name,
+          timestamp: new Date().toLocaleTimeString(),
+          offline: true,
+          hashPayload: hash,
+        };
+      } else if (!cachedRec || cachedRec.event_id !== eventId) {
         result = {
           outcome: 'invalid',
           message: 'Ticket not found in this event’s local cache (Offline Mode).',
@@ -518,13 +536,17 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         }
         // Mark locally checked in only after the operator chooses a team mode.
         const writeTx = db.transaction(['cached_registrations', 'offline_queue'], 'readwrite');
-        cachedRec.checked_in = true;
-        cachedRec.checked_in_at = new Date().toISOString();
-        writeTx.objectStore('cached_registrations').put(cachedRec);
+        // Session attendance is scoped to a session, not the event-wide cache flag.
+        if (!sessionId) {
+          cachedRec.checked_in = true;
+          cachedRec.checked_in_at = new Date().toISOString();
+          writeTx.objectStore('cached_registrations').put(cachedRec);
+        }
 
         // Queue for server sync
         writeTx.objectStore('offline_queue').add({
           event_id: eventId,
+          session_id: sessionId || null,
           hash_payload: hash,
           team_mode: cachedRec.is_team_member ? 'member' : (teamMode || 'lead_only'),
           member_id: cachedRec.member_id,
