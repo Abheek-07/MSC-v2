@@ -372,7 +372,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       }
     };
     refreshCount();
-    const interval = window.setInterval(refreshCount, 10000);
+    const interval = window.setInterval(refreshCount, 20000);
     return () => {
       active = false;
       window.clearInterval(interval);
@@ -628,7 +628,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
 
         result = {
           outcome: 'success',
-          message: 'Check-in Granted (Queued Offline for Sync)',
+          message: 'Offline scan queued. Server confirmation is pending.',
           name: cachedRec.lead_name,
           regNum: cachedRec.reg_number,
           teamName: cachedRec.team_name,
