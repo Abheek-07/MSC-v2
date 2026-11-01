@@ -1,4 +1,5 @@
 import React from 'react';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
 import { getAdminClient } from '@/lib/supabase/admin';
@@ -43,7 +44,8 @@ export default async function DirectCheckinPage({ params }: CheckinPageProps) {
   }
 
   const supabase = getAdminClient();
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hash);
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(hash);
+  if (!isUUID) notFound();
 
   let reg: any = null;
 
@@ -143,7 +145,7 @@ export default async function DirectCheckinPage({ params }: CheckinPageProps) {
       tQuery = tQuery.filter('team_data->>team_name', 'eq', rawTeam);
     }
 
-    const { data: siblings } = await tQuery;
+    const { data: siblings } = await tQuery.limit(100);
     if (siblings && siblings.length > 0) {
       teamMembers = siblings.map((s: any, idx: number) => ({
         id: s.id,
