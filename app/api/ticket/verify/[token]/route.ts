@@ -24,11 +24,12 @@ export async function GET(req: Request, context: { params: Promise<{ token: stri
       .eq('hash_payload', token).maybeSingle();
     if (rootError) throw rootError;
     if (root) {
+      const relatedEvent = Array.isArray(root.events) ? root.events[0] : root.events;
       return NextResponse.json({
         valid: root.status === 'confirmed',
         status: root.status === 'confirmed' ? 'valid' : 'invalid',
         attendee: root.form_data?.full_name || root.form_data?.name || root.lead_email,
-        event: root.events?.title || 'MSC Event',
+        event: relatedEvent?.title || 'MSC Event',
       }, { headers: { 'Cache-Control': 'no-store' } });
     }
 
