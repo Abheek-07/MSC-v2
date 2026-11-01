@@ -36,6 +36,8 @@ export interface ScanResult {
 interface QRScannerProps {
   eventId: string;
   eventTitle?: string;
+  sessionId?: string;
+  sessionTitle?: string;
 }
 
 // Simple IndexedDB Helper
@@ -64,7 +66,7 @@ function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
+export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle }: QRScannerProps) {
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [recentScans, setRecentScans] = useState<ScanResult[]>([]);
@@ -358,10 +360,10 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
     // a team action before the first check-in mutation is sent.
     if (navigator.onLine && !teamMode) {
       try {
-        const previewRes = await fetch('/api/admin/checkin', {
+        const previewRes = await fetch(sessionId ? '/api/admin/session-checkin' : '/api/admin/checkin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ event_id: eventId, hash_payload: hash, preview: true }),
+          body: JSON.stringify({ event_id: eventId, session_id: sessionId, hash_payload: hash, preview: true }),
         });
         const preview = await previewRes.json();
         if (!previewRes.ok || !preview.success) {
@@ -392,14 +394,21 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
       }
     }
 
+    // Session attendance is online-only in this release. Never fall back to event-level offline state.
+    if (sessionId && !navigator.onLine) {
+      result = { outcome: 'invalid', message: 'Session check-in requires an internet connection. Reconnect before scanning.', timestamp: new Date().toLocaleTimeString(), offline: true, hashPayload: hash };
+      setScanResult(result); setRecentScans((prev) => [result, ...prev.slice(0, 9)]); playFeedback('invalid'); return;
+    }
+
     // 1. Try Online API if network is available
     if (navigator.onLine) {
       try {
-        const res = await fetch('/api/admin/checkin', {
+        const res = await fetch(sessionId ? '/api/admin/session-checkin' : '/api/admin/checkin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             event_id: eventId,
+            session_id: sessionId,
             hash_payload: hash,
             team_mode: teamMode,
           }),
@@ -450,6 +459,12 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
       } catch {
         // Fallback to offline validation
       }
+    }
+
+    // A network failure must not be converted into an event-wide check-in while a session is selected.
+    if (sessionId) {
+      result = { outcome: 'invalid', message: 'Could not reach the session attendance service. No attendance was recorded.', timestamp: new Date().toLocaleTimeString(), hashPayload: hash };
+      setScanResult(result); setRecentScans((prev) => [result, ...prev.slice(0, 9)]); playFeedback('invalid'); return;
     }
 
     // 2. Offline Mode with IndexedDB
@@ -550,9 +565,14 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
       setScanResult(errResult);
       playFeedback('invalid');
     }
-  }, [eventId, playFeedback, updateDBCounts]);
+  }, [eventId, sessionId, playFeedback, updateDBCounts]);
 
   const checkInSingleMember = async (memberId: string | undefined, memberEmail: string, hashPayload: string) => {
+    if (sessionId && !navigator.onLine) {
+      setScanResult({ outcome: 'invalid', message: 'Session check-in requires an internet connection. Reconnect before scanning.', timestamp: new Date().toLocaleTimeString(), hashPayload });
+      playFeedback('invalid');
+      return;
+    }
     if (!memberId || !/^[0-9a-f-]{36}-m-\d+$/i.test(memberId)) {
       setScanResult({ outcome: 'invalid', message: 'This cached team member has no valid member identifier. Refresh the attendee cache before checking them in.', timestamp: new Date().toLocaleTimeString(), hashPayload });
       return;
@@ -574,6 +594,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
         cacheStore.put(cached);
         tx.objectStore('offline_queue').add({
           event_id: eventId,
+          session_id: sessionId,
           hash_payload: hashPayload,
           member_id: memberId,
           team_mode: 'member',
@@ -593,7 +614,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
         playFeedback('success');
         return;
       }
-      const res = await fetch('/api/admin/checkin', {
+      const res = await fetch(sessionId ? '/api/admin/session-checkin' : '/api/admin/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -763,7 +784,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
               </h2>
               {eventTitle && (
                 <span style={{ fontSize: '12px', color: 'var(--brand)', fontWeight: 500 }}>
-                  {eventTitle}
+                  {eventTitle}{sessionTitle ? ' · ' + sessionTitle : ''}
                 </span>
               )}
             </div>
@@ -939,11 +960,11 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
             </div>
 
             <p style={{ fontSize: '13px', color: 'var(--text-body)', marginBottom: '16px', lineHeight: 1.4 }}>
-              Scanned ticket belongs to team <strong>{teamModalData.teamName}</strong> ({teamModalData.teamMembers?.length || 'Multiple'} members). Choose your check-in action:
+              Scanned ticket belongs to team <strong>{teamModalData.teamName}</strong> ({teamModalData.teamMembers?.length || 'Multiple'} members). {sessionId ? 'Choose which team members attended this session.' : 'Choose your check-in action:'}
             </p>
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '18px' }}>
-              <button
+              {!sessionId && <button
                 type="button"
                 onClick={() => {
                   processCheckin(teamModalData.hashPayload!, 'all');
@@ -953,7 +974,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
                 style={{ justifyContent: 'center', padding: '10px', fontSize: '13px', fontWeight: 600 }}
               >
                 <Users size={16} /> Check In Entire Team ({teamModalData.teamMembers?.length || 'All'} Members)
-              </button>
+              </button>}
 
               <button
                 type="button"
@@ -964,7 +985,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
                 className="fluent-btn fluent-btn-secondary"
                 style={{ justifyContent: 'center', padding: '9px', fontSize: '13px' }}
               >
-                <UserCheck size={16} /> Check In Scanned Attendee Only ({teamModalData.name})
+                <UserCheck size={16} /> {sessionId ? 'Check In Team Leader Only' : 'Check In Scanned Attendee Only'} ({teamModalData.name})
               </button>
             </div>
 
@@ -972,7 +993,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
             {teamModalData.teamMembers && teamModalData.teamMembers.length > 0 && (
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: '14px', marginBottom: '16px' }}>
                 <span style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-strong)', display: 'block', marginBottom: '8px' }}>
-                  Or Check In Members Individually:
+                  {sessionId ? 'Mark attendees present for this session:' : 'Or Check In Members Individually:'}
                 </span>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '180px', overflowY: 'auto' }}>
                   {teamModalData.teamMembers.map((member, idx) => (
