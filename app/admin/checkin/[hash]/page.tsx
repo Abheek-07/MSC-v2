@@ -1,7 +1,9 @@
 import React from 'react';
+import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/api-security';
 import DirectCheckinClient from './DirectCheckinClient';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +14,9 @@ interface CheckinPageProps {
 }
 
 export default async function DirectCheckinPage({ params }: CheckinPageProps) {
+  const auth = await requireAdmin();
+  if ('error' in auth) return <div>Admin access required.</div>;
+
   const { hash } = await params;
 
   if (!hash) {
@@ -39,7 +44,8 @@ export default async function DirectCheckinPage({ params }: CheckinPageProps) {
   }
 
   const supabase = getAdminClient();
-  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(hash);
+  const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(hash);
+  if (!isUUID) notFound();
 
   let reg: any = null;
 
@@ -139,7 +145,7 @@ export default async function DirectCheckinPage({ params }: CheckinPageProps) {
       tQuery = tQuery.filter('team_data->>team_name', 'eq', rawTeam);
     }
 
-    const { data: siblings } = await tQuery;
+    const { data: siblings } = await tQuery.limit(100);
     if (siblings && siblings.length > 0) {
       teamMembers = siblings.map((s: any, idx: number) => ({
         id: s.id,
@@ -161,14 +167,8 @@ export default async function DirectCheckinPage({ params }: CheckinPageProps) {
     }
   }
 
-  // If solo attendee and not checked in yet, record check-in
+  // Check-in is performed only after an authenticated admin confirms the action.
   const wasAlreadyCheckedIn = Boolean(reg.checked_in);
-  if (!isTeam && !wasAlreadyCheckedIn) {
-    await supabase
-      .from('registrations')
-      .update({ checked_in: true, updated_at: new Date().toISOString() })
-      .eq('id', reg.id);
-  }
 
   const initialRegData = {
     id: reg.id,
@@ -178,7 +178,7 @@ export default async function DirectCheckinPage({ params }: CheckinPageProps) {
     college: college,
     event_title: eventTitle,
     event_id: reg.event_id,
-    checked_in: !isTeam ? true : wasAlreadyCheckedIn,
+    checked_in: wasAlreadyCheckedIn,
     team_name: rawTeam,
     team_id: reg.team_data?.team_id,
     is_team: isTeam,
