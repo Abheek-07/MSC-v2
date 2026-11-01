@@ -38,14 +38,15 @@ export async function POST(req: Request) {
     const payment = await getRazorpayClient().payments.fetch(paymentId);
     if (payment.status !== 'captured') return NextResponse.json({ error: 'Payment has not been captured.' }, { status: 409 });
     if (payment.order_id !== orderId) return NextResponse.json({ error: 'Payment does not belong to the supplied order.' }, { status: 400 });
-    if (payment.currency !== 'INR' || !Number.isSafeInteger(payment.amount) || payment.amount <= 0) {
+    const amountPaise = Number(payment.amount);
+    if (payment.currency !== 'INR' || !Number.isSafeInteger(amountPaise) || amountPaise <= 0) {
       return NextResponse.json({ error: 'Payment amount or currency is invalid.' }, { status: 400 });
     }
 
     const { data, error } = await getAdminClient().rpc('confirm_captured_payment', {
       p_razorpay_payment_id: paymentId,
       p_razorpay_order_id: orderId,
-      p_amount: payment.amount,
+      p_amount: amountPaise,
       p_payer_email: payment.email || null,
       p_gateway_payload: payment,
     });
