@@ -76,8 +76,13 @@ export async function POST(req: Request) {
     if (error) throw error;
     if (!registration || registration.status !== 'confirmed') return noStoreJson({ error: 'Confirmed registration not found.' }, 404);
 
-    const member = memberIndex === null ? null : registration.team_data?.members?.[memberIndex];
-    if (memberIndex !== null && !member) return noStoreJson({ error: 'Team member not found.' }, 404);
+    // Team passes are issued per member. The first member is the team lead,
+    // so team registrations do not receive a separate root QR pass.
+    const effectiveMemberIndex = memberIndex === null && Array.isArray(registration.team_data?.members) && registration.team_data.members.length > 0
+      ? 0
+      : memberIndex;
+    const member = effectiveMemberIndex === null ? null : registration.team_data?.members?.[effectiveMemberIndex];
+    if (effectiveMemberIndex !== null && !member) return noStoreJson({ error: 'Team member not found.' }, 404);
 
     const attendeeName = member?.fullName || member?.name || registration.form_data?.full_name || registration.form_data?.name || registration.lead_email;
     const attendeeEmail = member?.email || registration.lead_email;
@@ -90,7 +95,7 @@ export async function POST(req: Request) {
       const newToken = randomUUID();
       const { data: result, error: rotateError } = await db.rpc('rotate_ticket_token', {
         p_registration_id: registrationId,
-        p_member_index: memberIndex,
+        p_member_index: effectiveMemberIndex,
         p_new_token: newToken,
         p_actor_id: guarded.user.id,
       });
