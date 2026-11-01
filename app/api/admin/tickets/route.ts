@@ -101,6 +101,9 @@ export async function POST(req: Request) {
 
     const origin = new URL(req.url).origin;
     const ticketUrl = `${origin}/ticket/${token}`;
+    if (!process.env.RESEND_API_KEY) {
+      return noStoreJson({ success: false, token_updated: action === 'regenerate', error: 'Email delivery is not configured. Set RESEND_API_KEY before using resend or regeneration.' }, 503);
+    }
     const emailResult = await sendTicketEmail({
       to: attendeeEmail,
       name: attendeeName,
