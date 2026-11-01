@@ -78,6 +78,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
   const [teamModalData, setTeamModalData] = useState<ScanResult | null>(null);
   const [manualQuery, setManualQuery] = useState('');
   const [cachedRoster, setCachedRoster] = useState<Array<{ hash_payload: string; name: string; reg_number: string; team_name: string }>>([]);
+  const [sessionAttendanceCount, setSessionAttendanceCount] = useState<number | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const soundEnabledRef = useRef(soundEnabled);
@@ -353,6 +354,30 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       window.removeEventListener('offline', handleOffline);
     };
   }, [syncOfflineQueue, updateDBCounts]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setSessionAttendanceCount(null);
+      return;
+    }
+    let active = true;
+    const refreshCount = async () => {
+      try {
+        const response = await fetch(`/api/admin/session-attendance?session_id=${encodeURIComponent(sessionId)}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (active && data.success && Array.isArray(data.attendees)) setSessionAttendanceCount(data.attendees.length);
+      } catch {
+        // Keep the last server-confirmed count while offline.
+      }
+    };
+    refreshCount();
+    const interval = window.setInterval(refreshCount, 10000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [sessionId]);
 
   const onScanSuccessRef = useRef<(decodedText: string) => Promise<void>>(() => Promise.resolve());
 
@@ -799,7 +824,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {!sessionId && <button
+          <button
             onClick={cacheRegistrations}
             disabled={cachingInProgress}
             className="fluent-btn fluent-btn-secondary"
@@ -807,8 +832,10 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
             title="Download attendee records for offline emergency turnstile check"
           >
             <Database size={14} /> {cachingInProgress ? 'Caching...' : 'Cache Registrations'}
-          </button>}
-          {sessionId && <span className="fluent-badge badge-warning" style={{ fontSize: 11 }}>Session check-in requires internet</span>}
+          </button>
+          {sessionId && <span className="fluent-badge badge-success" style={{ fontSize: 11 }}>
+            Session attendance: {sessionAttendanceCount === null ? 'Loading…' : sessionAttendanceCount}
+          </span>}
 
           {pendingQueueCount > 0 && isOnline && (
             <button
