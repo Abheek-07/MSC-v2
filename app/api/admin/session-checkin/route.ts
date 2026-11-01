@@ -67,6 +67,12 @@ export async function POST(req: Request) {
       }
     }
     if (!registrationId) return noStoreJson({ success: false, error: 'No exact registration matched this ticket.' }, 404);
+    if (token && isValidUUID(token)) {
+      const { data: revokedToken, error: revokedError } = await db.from('ticket_token_revocations')
+        .select('id').eq('token', token).maybeSingle();
+      if (revokedError) throw revokedError;
+      if (revokedToken) return noStoreJson({ success: false, error: 'This ticket QR has been revoked. Ask the attendee for their latest ticket.' }, 409);
+    }
 
     const { data: registration, error: registrationError } = await db.from('registrations')
       .select('id,event_id,status,hash_payload,lead_email,form_data,team_data')
