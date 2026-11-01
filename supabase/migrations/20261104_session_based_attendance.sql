@@ -89,13 +89,15 @@ begin
     return jsonb_build_object('success', false, 'error', 'Registration does not belong to this event');
   end if;
 
-  if v_registration.status <> 'confirmed' then
+  if v_registration.status is distinct from 'confirmed' then
     return jsonb_build_object('success', false, 'error', 'Only confirmed registrations can attend a session');
   end if;
 
   if p_member_index is not null then
-    if jsonb_typeof(v_registration.team_data->'members') is distinct from 'array'
-       or jsonb_array_length(v_registration.team_data->'members') <= p_member_index then
+    if jsonb_typeof(v_registration.team_data->'members') is distinct from 'array' then
+      return jsonb_build_object('success', false, 'error', 'Team member not found');
+    end if;
+    if jsonb_array_length(v_registration.team_data->'members') <= p_member_index then
       return jsonb_build_object('success', false, 'error', 'Team member not found');
     end if;
     if v_registration.team_data->'members'->p_member_index->>'hash_payload' is distinct from p_attendee_token then
