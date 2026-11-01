@@ -39,7 +39,14 @@ export default function TicketManagementPage() {
         body: JSON.stringify({ registration_id: registrationId, member_index: memberIndex, action }),
       });
       const result = await response.json();
-      if (!response.ok) throw new Error(result.error || 'Ticket action failed.');
+      if (!response.ok) {
+        if (result.token_updated && result.ticket_url) {
+          setMessage(`New QR issued. Email delivery failed. Share this new link manually: ${result.ticket_url}`);
+          await load();
+          return;
+        }
+        throw new Error(result.error || 'Ticket action failed.');
+      }
       setMessage(action === 'regenerate'
         ? `New QR issued and sent to ${result.email}. The previous QR is revoked.`
         : `Ticket resent to ${result.email}.`);
