@@ -89,6 +89,13 @@ export async function POST(req: Request) {
       attendeeToken = registration.hash_payload || registration.id;
     }
 
+    if (attendeeToken && isValidUUID(attendeeToken)) {
+      const { data: revokedAttendeeToken, error: revokedAttendeeError } = await db.from('ticket_token_revocations')
+        .select('id').eq('token', attendeeToken).maybeSingle();
+      if (revokedAttendeeError) throw revokedAttendeeError;
+      if (revokedAttendeeToken) return noStoreJson({ success: false, error: 'This ticket QR has been revoked. Ask the attendee for their latest ticket.' }, 409);
+    }
+
     const isTeamRoot = memberIndex === null && Boolean(registration.team_data?.team_name) && Array.isArray(registration.team_data?.members) && registration.team_data.members.length > 0;
     if (isTeamRoot) {
       const leader = registration.team_data.members[0];
