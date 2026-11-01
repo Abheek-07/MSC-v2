@@ -328,13 +328,22 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       const request = tx.objectStore('cached_registrations').index('event_id').getAll(IDBKeyRange.only(eventId));
       request.onsuccess = () => {
         const rows = request.result || [];
-        const roster = rows.filter((row: any) => !row.is_team_member && row.hash_payload)
-          .map((row: any) => ({
+        const roster = rows.filter((row: any) => !row.is_team_member).flatMap((row: any) => {
+          if (Array.isArray(row.team_members) && row.team_members.length) {
+            return row.team_members.filter((member: any) => member.hash_payload).map((member: any) => ({
+              hash_payload: member.hash_payload,
+              name: member.name || member.fullName || 'Team member',
+              reg_number: member.reg_number || '',
+              team_name: row.team_name || '',
+            }));
+          }
+          return row.hash_payload ? [{
             hash_payload: row.hash_payload,
             name: row.lead_name || 'Attendee',
             reg_number: row.reg_number || '',
             team_name: row.team_name || '',
-          }));
+          }] : [];
+        });
         setCachedRoster(roster);
       };
     }).catch(() => undefined);
