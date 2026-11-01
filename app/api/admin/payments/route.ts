@@ -62,9 +62,11 @@ export async function GET(req: Request) {
     const rows = orderRows.map((order: any) => {
       const payment: any = paymentByOrder.get(order.razorpay_order_id);
       const registration: any = registrationMap.get(order.registration_id);
-      const status = payment?.status === 'captured' || order.status === 'paid'
+      const status = payment?.status === 'captured'
         ? 'captured'
-        : String(order.status || 'unknown').toLowerCase();
+        : order.status === 'paid'
+          ? 'paid_unverified'
+          : String(order.status || 'unknown').toLowerCase();
       const createdAt = payment?.verified_at || payment?.created_at || order.created_at;
       return {
         order_id: order.razorpay_order_id || '',
@@ -133,7 +135,8 @@ export async function GET(req: Request) {
       cancelled_count: filtered.filter((row: any) => row.status === 'cancelled').length,
       captured_amount_paise: captured.reduce((sum: number, row: any) => sum + row.amount_paise, 0),
       reconciliation_exceptions: filtered.filter((row: any) =>
-        row.status === 'captured' && (row.order_status === 'missing_order_record' || !row.payment_id)
+        row.status === 'paid_unverified'
+        || (row.status === 'captured' && row.order_status === 'missing_order_record')
       ).length,
     };
 
