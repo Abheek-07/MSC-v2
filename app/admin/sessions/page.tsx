@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { CalendarDays, Plus, RefreshCw, Trash2, ToggleLeft, ToggleRight, QrCode, Users } from 'lucide-react';
 
 type EventOption = { id: string; title: string };
+type Attendee = { id: string; name: string; email: string; registration_number: string; team_name: string; checked_in_at: string };
 type Session = {
   id: string; event_id: string; title: string; description?: string | null;
   location?: string | null; starts_at?: string | null; ends_at?: string | null;
@@ -21,6 +22,9 @@ export default function AdminSessionsPage() {
   const [events, setEvents] = useState<EventOption[]>([]);
   const [eventId, setEventId] = useState('');
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const [attendees, setAttendees] = useState<Attendee[]>([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -47,6 +51,8 @@ export default function AdminSessionsPage() {
   async function loadSessions(id = eventId) {
     if (!id) { setSessions([]); setLoading(false); return; }
     setLoading(true);
+    setSelectedSession(null);
+    setAttendees([]);
     setError('');
     try {
       const response = await fetch('/api/admin/sessions?event_id=' + encodeURIComponent(id), { cache: 'no-store' });
@@ -86,6 +92,30 @@ export default function AdminSessionsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function viewAttendance(session: Session) {
+    setSelectedSession(session);
+    setAttendanceLoading(true);
+    setAttendees([]);
+    try {
+      const response = await fetch('/api/admin/session-attendance?session_id=' + encodeURIComponent(session.id), { cache: 'no-store' });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Unable to load attendance.');
+      setAttendees(data.attendees || []);
+    } catch (err: any) {
+      setError(err.message || 'Unable to load attendance.');
+    } finally {
+      setAttendanceLoading(false);
+    }
+  }
+
+  function exportAttendance() {
+    if (!selectedSession) return;
+    const rows = [['Name', 'Email', 'Registration Number', 'Team', 'Checked In At'], ...attendees.map((a) => [a.name, a.email, a.registration_number, a.team_name, a.checked_in_at])];
+    const csv = rows.map((row) => row.map((value) => '"' + String(value || '').replace(/"/g, '""') + '"').join(',')).join('\\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = selectedSession.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-attendance.csv'; anchor.click(); URL.revokeObjectURL(url);
   }
 
   async function toggleSession(session: Session) {
@@ -169,12 +199,25 @@ export default function AdminSessionsPage() {
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
                 <div style={{ textAlign: 'center', color: 'var(--text-strong)' }}><Users size={17} /><div style={{ fontSize: 17, fontWeight: 700 }}>{session.attendance_count}</div><div style={{ fontSize: 10, color: 'var(--text-muted)' }}>Present</div></div>
+                <button onClick={() => viewAttendance(session)} className="fluent-btn fluent-btn-secondary" style={{ fontSize: 12 }}>View attendance</button>
                 <button onClick={() => toggleSession(session)} className="fluent-btn fluent-btn-secondary" style={{ fontSize: 12 }}>{session.is_active ? <ToggleRight size={15} /> : <ToggleLeft size={15} />}{session.is_active ? 'Deactivate' : 'Activate'}</button>
                 <button onClick={() => deleteSession(session)} className="fluent-btn fluent-btn-secondary" style={{ fontSize: 12, color: 'var(--danger)' }}><Trash2 size={14} /> Delete</button>
               </div>
             </article>
           ))}
       </section>
+
+      {selectedSession && (
+        <section className="fluent-card" style={{ padding: 18 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap', marginBottom: 12 }}>
+            <div><h2 style={{ margin: 0, fontSize: 17, color: 'var(--text-strong)' }}>{selectedSession.title} attendance</h2><p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-muted)' }}>{attendees.length} attendees checked in</p></div>
+            <button onClick={exportAttendance} disabled={attendees.length === 0} className="fluent-btn fluent-btn-secondary" style={{ fontSize: 12 }}>Export CSV</button>
+          </div>
+          {attendanceLoading ? <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>Loading attendance...</p> : attendees.length === 0 ? <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No attendees have checked into this session yet.</p> : (
+            <div style={{ overflowX: 'auto' }}><table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}><thead><tr><th style={{ padding: 9 }}>Attendee</th><th style={{ padding: 9 }}>Email</th><th style={{ padding: 9 }}>Registration No.</th><th style={{ padding: 9 }}>Team</th><th style={{ padding: 9 }}>Checked in</th></tr></thead><tbody>{attendees.map((attendee) => <tr key={attendee.id} style={{ borderTop: '1px solid var(--border)' }}><td style={{ padding: 9 }}>{attendee.name}</td><td style={{ padding: 9 }}>{attendee.email}</td><td style={{ padding: 9 }}>{attendee.registration_number}</td><td style={{ padding: 9 }}>{attendee.team_name || 'Individual'}</td><td style={{ padding: 9 }}>{localDateTime(attendee.checked_in_at)}</td></tr>)}</tbody></table></div>
+          )}
+        </section>
+      )}
     </div>
   );
 }
