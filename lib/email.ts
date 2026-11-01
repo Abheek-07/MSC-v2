@@ -66,7 +66,7 @@ export async function sendTicketEmail(params: SendTicketEmailParams): Promise<{ 
               </a>
             </div>
             <p style="font-size: 13px; color: #616161; text-align: center;">
-              Keep this ticket handy at check-in. You can also view it anytime with your email at <a href="${params.ticketUrl}" style="color: #0067b8;" >${safeTicketUrl}</a>
+              Keep this ticket handy at check-in. You can also view it anytime with your email at <a href="${safeTicketUrl}" style="color: #0067b8;">${safeTicketUrl}</a>
             </p>
           </div>
         `,
