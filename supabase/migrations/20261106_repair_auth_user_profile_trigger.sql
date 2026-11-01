@@ -39,7 +39,7 @@ update public.member_profiles
    set role = 'member'
  where role::text in ('user', 'core_member');
 
-do $
+do $$
 declare
   v_constraint record;
 begin
@@ -53,7 +53,7 @@ begin
     execute format('alter table public.member_profiles drop constraint %I', v_constraint.conname);
   end loop;
 end
-$;
+$$;
 
 alter table public.member_profiles
   add constraint member_profiles_role_check
