@@ -28,24 +28,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid event or registration ID.' }, { status: 400 });
     }
 
-    // Derive the event, registration and amount from trusted database records.
     const supabase = getAdminClient();
     const { data: registration, error: registrationError } = await supabase
       .from('registrations')
-      .select('id, event_id, status')
+      .select('id, event_id, user_id, status')
       .eq('id', registrationId)
       .eq('event_id', eventId)
       .maybeSingle();
 
     if (registrationError) throw registrationError;
-    if (!registration) {
-      return NextResponse.json({ error: 'Registration not found for this event.' }, { status: 404 });
-    }
-    if (registration.status === 'confirmed') {
-      return NextResponse.json({ error: 'This registration is already confirmed.' }, { status: 409 });
-    }
-    if (!['pending', 'reserved', 'awaiting_payment'].includes(String(registration.status))) {
-      return NextResponse.json({ error: 'This registration is not eligible for payment.' }, { status: 409 });
+    if (!registration) return NextResponse.json({ error: 'Registration not found for this event.' }, { status: 404 });
+    if (registration.status !== 'pending_payment') {
+      return NextResponse.json({ error: 'This registration is not awaiting payment.' }, { status: 409 });
     }
 
     const { data: event, error: eventError } = await supabase
@@ -58,29 +52,96 @@ export async function POST(req: Request) {
     if (!event) return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
 
     const fee = Number(event.form_requirements?.registration_fee);
-    if (!Number.isSafeInteger(fee) || fee <= 0) {
+    if (!Number.isSafeInteger(fee) || fee <= 0 || !Number.isSafeInteger(fee * 100)) {
       return NextResponse.json({ error: 'A valid registration fee is not configured for this event.' }, { status: 409 });
     }
-
     const amountInPaise = fee * 100;
-    if (!Number.isSafeInteger(amountInPaise)) {
-      return NextResponse.json({ error: 'Configured registration fee is invalid.' }, { status: 500 });
+
+    // Reuse an existing unexpired order. This makes repeated checkout requests idempotent.
+    const { data: previousOrder, error: previousOrderError } = await supabase
+      .from('payment_orders')
+      .select('id, razorpay_order_id, amount, currency, status, expires_at')
+      .eq('registration_id', registration.id)
+      .in('status', ['creating', 'created'])
+      .maybeSingle();
+
+    if (previousOrderError) throw previousOrderError;
+    if (previousOrder && new Date(previousOrder.expires_at).getTime() > Date.now()) {
+      if (previousOrder.status === 'created' && previousOrder.razorpay_order_id) {
+        return NextResponse.json({
+          success: true,
+          order_id: previousOrder.razorpay_order_id,
+          amount: previousOrder.amount,
+          currency: previousOrder.currency,
+          reused: true,
+        });
+      }
+      return NextResponse.json({ error: 'Payment order creation is already in progress. Retry shortly.' }, { status: 409 });
     }
 
-    // Never fabricate an order ID when Razorpay is unavailable.
-    const order = await getRazorpayClient().orders.create({
-      amount: amountInPaise,
-      currency: 'INR',
-      receipt: `msc_${registration.id.replace(/-/g, '').slice(0, 20)}_${Date.now().toString(36)}`,
-      notes: { event_id: String(eventId), registration_id: String(registrationId) },
-    });
+    if (previousOrder) {
+      const { error } = await supabase.from('payment_orders')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', previousOrder.id);
+      if (error) throw error;
+    }
 
-    return NextResponse.json({
-      success: true,
-      order_id: order.id,
-      amount: order.amount,
-      currency: order.currency,
-    });
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const { data: orderRecord, error: insertError } = await supabase
+      .from('payment_orders')
+      .insert({
+        event_id: registration.event_id,
+        registration_id: registration.id,
+        user_id: registration.user_id,
+        idempotency_key: registration.id,
+        amount: amountInPaise,
+        currency: 'INR',
+        status: 'creating',
+        expires_at: expiresAt,
+      })
+      .select('id')
+      .single();
+
+    if (insertError) {
+      // A concurrent request may have won the active-order unique constraint.
+      if (insertError.code === '23505') {
+        return NextResponse.json({ error: 'A payment order is already being created. Retry shortly.' }, { status: 409 });
+      }
+      throw insertError;
+    }
+
+    try {
+      const gatewayOrder = await getRazorpayClient().orders.create({
+        amount: amountInPaise,
+        currency: 'INR',
+        receipt: `msc_${registration.id.replace(/-/g, '').slice(0, 20)}`,
+        notes: { event_id: registration.event_id, registration_id: registration.id },
+      });
+
+      const { error: updateError } = await supabase
+        .from('payment_orders')
+        .update({
+          razorpay_order_id: gatewayOrder.id,
+          status: 'created',
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', orderRecord.id)
+        .eq('status', 'creating');
+
+      if (updateError) throw updateError;
+
+      return NextResponse.json({
+        success: true,
+        order_id: gatewayOrder.id,
+        amount: gatewayOrder.amount,
+        currency: gatewayOrder.currency,
+      });
+    } catch (gatewayError) {
+      await supabase.from('payment_orders')
+        .update({ status: 'failed', updated_at: new Date().toISOString() })
+        .eq('id', orderRecord.id);
+      throw gatewayError;
+    }
   } catch (err) {
     console.error('[Razorpay create-order error]:', err);
     return NextResponse.json({ error: 'Unable to create payment order. Please try again.' }, { status: 502 });
