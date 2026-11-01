@@ -74,6 +74,19 @@ export async function POST(req: Request) {
       hash_payload: crypto.randomUUID(),
     })) : [];
 
+    // The team leader is also an individual attendee and must have their own QR.
+    if (requestedTeamName && !members.some((member: any) => member.email === normalizedEmail)) {
+      members.unshift({
+        fullName: String(form_data?.full_name || normalizedEmail.split('@')[0]),
+        email: normalizedEmail,
+        regNum: String(form_data?.registration_number || form_data?.reg_num || ''),
+        year: String(form_data?.year || ''),
+        branch: String(form_data?.branch || ''),
+        checked_in: false,
+        hash_payload: crypto.randomUUID(),
+      });
+    }
+
     const normalizedTeamData = requestedTeamName ? {
       team_name: requestedTeamName,
       members,
