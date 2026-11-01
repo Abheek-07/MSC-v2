@@ -76,6 +76,9 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
   const [cachingInProgress, setCachingInProgress] = useState(false);
   const [syncingInProgress, setSyncingInProgress] = useState(false);
   const [teamModalData, setTeamModalData] = useState<ScanResult | null>(null);
+  const [manualQuery, setManualQuery] = useState('');
+  const [cachedRoster, setCachedRoster] = useState<Array<{ hash_payload: string; name: string; reg_number: string; team_name: string }>>([]);
+  const [sessionAttendanceCount, setSessionAttendanceCount] = useState<number | null>(null);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const soundEnabledRef = useRef(soundEnabled);
@@ -170,6 +173,25 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       const data = await res.json();
       if (!Array.isArray(data.registrations)) throw new Error('Registration response was incomplete.');
       const records: any[] = data.registrations;
+      const roster = records.flatMap((rec) => {
+        const members = Array.isArray(rec.team_members) ? rec.team_members : [];
+        if (members.length) {
+          return members.filter((member: any) => typeof member.hash_payload === 'string' && member.hash_payload)
+            .map((member: any) => ({
+              hash_payload: member.hash_payload,
+              name: member.fullName || member.name || 'Team member',
+              reg_number: member.regNum || member.reg_number || member.registration_number || '',
+              team_name: rec.team_name || '',
+            }));
+        }
+        return rec.hash_payload ? [{
+          hash_payload: rec.hash_payload,
+          name: rec.lead_name || rec.name || 'Attendee',
+          reg_number: rec.reg_number || rec.registration_number || '',
+          team_name: rec.team_name || '',
+        }] : [];
+      });
+      setCachedRoster(roster);
       if (typeof data.total_count === 'number' && data.total_count > records.length) throw new Error('Only part of this event roster was returned. Offline caching is disabled until pagination is implemented.');
 
       const db = await openDB();
@@ -256,11 +278,13 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
 
       for (const item of items) {
         try {
-          const res = await fetch('/api/admin/checkin', {
+          const endpoint = item.session_id ? '/api/admin/session-checkin' : '/api/admin/checkin';
+          const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               event_id: item.event_id,
+              session_id: item.session_id || undefined,
               hash_payload: item.hash_payload,
               team_mode: item.team_mode || (item.checkin_type === 'all' ? 'all' : 'lead_only'),
               member_id: item.member_id,
@@ -300,12 +324,60 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     updateDBCounts();
+    openDB().then((db) => {
+      const tx = db.transaction('cached_registrations', 'readonly');
+      const request = tx.objectStore('cached_registrations').index('event_id').getAll(IDBKeyRange.only(eventId));
+      request.onsuccess = () => {
+        const rows = request.result || [];
+        const roster = rows.filter((row: any) => !row.is_team_member).flatMap((row: any) => {
+          if (Array.isArray(row.team_members) && row.team_members.length) {
+            return row.team_members.filter((member: any) => member.hash_payload).map((member: any) => ({
+              hash_payload: member.hash_payload,
+              name: member.name || member.fullName || 'Team member',
+              reg_number: member.reg_number || '',
+              team_name: row.team_name || '',
+            }));
+          }
+          return row.hash_payload ? [{
+            hash_payload: row.hash_payload,
+            name: row.lead_name || 'Attendee',
+            reg_number: row.reg_number || '',
+            team_name: row.team_name || '',
+          }] : [];
+        });
+        setCachedRoster(roster);
+      };
+    }).catch(() => undefined);
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [syncOfflineQueue, updateDBCounts]);
+  }, [eventId, syncOfflineQueue, updateDBCounts]);
+
+  useEffect(() => {
+    if (!sessionId) {
+      setSessionAttendanceCount(null);
+      return;
+    }
+    let active = true;
+    const refreshCount = async () => {
+      try {
+        const response = await fetch(`/api/admin/session-attendance?session_id=${encodeURIComponent(sessionId)}`, { cache: 'no-store' });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (active && data.success && Array.isArray(data.attendees)) setSessionAttendanceCount(data.attendees.length);
+      } catch {
+        // Keep the last server-confirmed count while offline.
+      }
+    };
+    refreshCount();
+    const interval = window.setInterval(refreshCount, 20000);
+    return () => {
+      active = false;
+      window.clearInterval(interval);
+    };
+  }, [sessionId]);
 
   const onScanSuccessRef = useRef<(decodedText: string) => Promise<void>>(() => Promise.resolve());
 
@@ -394,12 +466,6 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       }
     }
 
-    // Session attendance is online-only in this release. Never fall back to event-level offline state.
-    if (sessionId && !navigator.onLine) {
-      result = { outcome: 'invalid', message: 'Session check-in requires an internet connection. Reconnect before scanning.', timestamp: new Date().toLocaleTimeString(), offline: true, hashPayload: hash };
-      setScanResult(result); setRecentScans((prev) => [result, ...prev.slice(0, 9)]); playFeedback('invalid'); return;
-    }
-
     // 1. Try Online API if network is available
     if (navigator.onLine) {
       try {
@@ -461,12 +527,6 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       }
     }
 
-    // A network failure must not be converted into an event-wide check-in while a session is selected.
-    if (sessionId) {
-      result = { outcome: 'invalid', message: 'Could not reach the session attendance service. No attendance was recorded.', timestamp: new Date().toLocaleTimeString(), hashPayload: hash };
-      setScanResult(result); setRecentScans((prev) => [result, ...prev.slice(0, 9)]); playFeedback('invalid'); return;
-    }
-
     // 2. Offline Mode with IndexedDB
     try {
       const db = await openDB();
@@ -479,7 +539,35 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         req.onerror = () => resolve(null);
       });
 
-      if (!cachedRec || cachedRec.event_id !== eventId) {
+      // A queued scan counts as a local duplicate for this exact event/session.
+      // The database remains authoritative across devices when the queue syncs.
+      let alreadyQueued = false;
+      {
+        const queueRead = db.transaction('offline_queue', 'readonly');
+        const queueItems = await new Promise<any[]>((resolve) => {
+          const request = queueRead.objectStore('offline_queue').getAll();
+          request.onsuccess = () => resolve(request.result || []);
+          request.onerror = () => resolve([]);
+        });
+        alreadyQueued = queueItems.some((item) =>
+          item.event_id === eventId &&
+          (item.session_id || null) === (sessionId || null) &&
+          item.hash_payload === hash
+        );
+      }
+
+      if (alreadyQueued) {
+        result = {
+          outcome: 'already_checked_in',
+          message: 'Already scanned on this device. Waiting for server sync.',
+          name: cachedRec?.lead_name,
+          regNum: cachedRec?.reg_number,
+          teamName: cachedRec?.team_name,
+          timestamp: new Date().toLocaleTimeString(),
+          offline: true,
+          hashPayload: hash,
+        };
+      } else if (!cachedRec || cachedRec.event_id !== eventId) {
         result = {
           outcome: 'invalid',
           message: 'Ticket not found in this event’s local cache (Offline Mode).',
@@ -487,7 +575,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
           offline: true,
           hashPayload: hash,
         };
-      } else if (cachedRec.checked_in) {
+      } else if (!sessionId && cachedRec.checked_in) {
         result = {
           outcome: 'already_checked_in',
           message: `Already Checked In (Offline Cache)`,
@@ -518,13 +606,17 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         }
         // Mark locally checked in only after the operator chooses a team mode.
         const writeTx = db.transaction(['cached_registrations', 'offline_queue'], 'readwrite');
-        cachedRec.checked_in = true;
-        cachedRec.checked_in_at = new Date().toISOString();
-        writeTx.objectStore('cached_registrations').put(cachedRec);
+        // Session attendance is scoped to a session, not the event-wide cache flag.
+        if (!sessionId) {
+          cachedRec.checked_in = true;
+          cachedRec.checked_in_at = new Date().toISOString();
+          writeTx.objectStore('cached_registrations').put(cachedRec);
+        }
 
         // Queue for server sync
         writeTx.objectStore('offline_queue').add({
           event_id: eventId,
+          session_id: sessionId || null,
           hash_payload: hash,
           team_mode: cachedRec.is_team_member ? 'member' : (teamMode || 'lead_only'),
           member_id: cachedRec.member_id,
@@ -536,7 +628,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
 
         result = {
           outcome: 'success',
-          message: 'Check-in Granted (Queued Offline for Sync)',
+          message: 'Offline scan queued. Server confirmation is pending.',
           name: cachedRec.lead_name,
           regNum: cachedRec.reg_number,
           teamName: cachedRec.team_name,
@@ -732,7 +824,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {!sessionId && <button
+          <button
             onClick={cacheRegistrations}
             disabled={cachingInProgress}
             className="fluent-btn fluent-btn-secondary"
@@ -740,8 +832,10 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
             title="Download attendee records for offline emergency turnstile check"
           >
             <Database size={14} /> {cachingInProgress ? 'Caching...' : 'Cache Registrations'}
-          </button>}
-          {sessionId && <span className="fluent-badge badge-warning" style={{ fontSize: 11 }}>Session check-in requires internet</span>}
+          </button>
+          {sessionId && <span className="fluent-badge badge-success" style={{ fontSize: 11 }}>
+            Session attendance: {sessionAttendanceCount === null ? 'Loading…' : sessionAttendanceCount}
+          </span>}
 
           {pendingQueueCount > 0 && isOnline && (
             <button
@@ -809,6 +903,44 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
           <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '12px', textAlign: 'center' }}>
             Present an attendee digital pass or physical badge QR code.
           </span>
+        </div>
+
+        {/* Manual attendee lookup uses the event roster cached by an admin. */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
+          <label htmlFor="manual-attendee-search" style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
+            Manual attendee lookup
+          </label>
+          <input
+            id="manual-attendee-search"
+            type="search"
+            value={manualQuery}
+            onChange={(event) => setManualQuery(event.target.value)}
+            placeholder="Search name or registration number"
+            style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg)', color: 'var(--text-body)' }}
+          />
+          {manualQuery.trim() && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+              {cachedRoster.filter((person) =>
+                person.name.toLowerCase().includes(manualQuery.trim().toLowerCase()) ||
+                person.reg_number.toLowerCase().includes(manualQuery.trim().toLowerCase())
+              ).slice(0, 8).map((person) => (
+                <button
+                  key={person.hash_payload}
+                  type="button"
+                  onClick={() => { setManualQuery(''); processCheckin(person.hash_payload); }}
+                  style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', textAlign: 'left', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg-soft)', color: 'var(--text-body)', cursor: 'pointer' }}
+                >
+                  <span><strong>{person.name}</strong>{person.team_name ? <small style={{ display: 'block', color: 'var(--text-muted)' }}>{person.team_name}</small> : null}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{person.reg_number}</span>
+                </button>
+              ))}
+              {cachedRoster.filter((person) =>
+                person.name.toLowerCase().includes(manualQuery.trim().toLowerCase()) ||
+                person.reg_number.toLowerCase().includes(manualQuery.trim().toLowerCase())
+              ).length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>No attendee found in the cached roster. Refresh the roster while online.</span>}
+            </div>
+          )}
+          {cachedRoster.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '8px 0 0' }}>Download the attendee roster while online to enable manual lookup and offline scanning.</p>}
         </div>
 
         {/* Scan Status & Session Turnstile History */}

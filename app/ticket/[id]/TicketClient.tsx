@@ -119,10 +119,6 @@ export default function TicketClient({
     );
   }
 
-  const checkinUrl = activeQrPayload
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/ticket/${activeQrPayload}`
-    : '';
-
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh', padding: '40px 0 100px 0' }}>
       <div className="container" style={{ maxWidth: '640px' }}>
@@ -299,18 +295,15 @@ export default function TicketClient({
 
             {/* QR Section */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 0' }}>
-              {checkinUrl ? (
+              {activeQrPayload ? (
                 <div style={{ padding: '14px', background: '#ffffff', border: '2px solid #0067b8', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0, 103, 184, 0.1)' }}>
-                  <QRCodeSVG value={checkinUrl} size={190} level="H" includeMargin={false} />
+                  <QRCodeSVG value={activeQrPayload} size={190} level="H" includeMargin={false} />
                 </div>
               ) : (
                 <div style={{ maxWidth: '320px', padding: '16px', border: '1px solid #d97706', borderRadius: '8px', color: '#92400e', background: '#fffbeb', textAlign: 'center', fontSize: '13px' }}>
                   This member does not have an individual QR token yet. Ask the event administrator to run the team-member QR migration.
                 </div>
               )}
-              <span style={{ fontSize: '12px', color: '#64748b', marginTop: '12px', fontFamily: 'monospace', wordBreak: 'break-all', textAlign: 'center', maxWidth: '100%', padding: '0 8px' }}>
-                TOKEN: {activeQrPayload || 'NOT GENERATED'}
-              </span>
               <span style={{ fontSize: '11px', color: '#0067b8', fontWeight: 600, marginTop: '4px', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Present for Individual Turnstile Entry
               </span>
