@@ -48,7 +48,7 @@ begin
   end if;
 
   if p_member_index is null then
-    v_old_token := v_registration.hash_payload::text;
+    v_old_token := coalesce(v_registration.hash_payload::text, v_registration.id::text);
     update public.registrations
     set hash_payload = p_new_token::uuid, updated_at = now()
     where id = p_registration_id;
