@@ -29,6 +29,24 @@ export default async function TicketPage({ params }: TicketPageProps) {
         .or(`hash_payload.eq.${id},id.eq.${id}`)
         .maybeSingle();
       reg = data;
+      // A member QR is stored inside its parent registration's team_data JSON.
+      // Resolve it separately from the team's own registration token.
+      if (!reg) {
+        const { data: memberRows } = await supabase
+          .from('registrations')
+          .select('*, events(title, date_start, location)')
+          .contains('team_data', { members: [{ hash_payload: id }] })
+          .limit(2);
+        const matches = (memberRows || []).flatMap((row: any) =>
+          (row.team_data?.members || [])
+            .map((member: any, index: number) => ({ row, member, index }))
+            .filter((entry: any) => entry.member.hash_payload === id)
+        );
+        if (matches.length === 1) {
+          reg = matches[0].row;
+          matchedMemberIndex = matches[0].index;
+        }
+      }
     } else {
       // Non-UUID input: search by registration number, ticket_id, or email
       const { data } = await supabase
@@ -67,12 +85,19 @@ export default async function TicketPage({ params }: TicketPageProps) {
     }
 
     if (reg) {
-      let teamMembers = reg.team_data?.members || [];
+      let teamMembers = (reg.team_data?.members || []).map((member: any, index: number) => ({
+        ...member,
+        id: member.id || `${reg.id}-m-${index}`,
+        fullName: member.fullName || member.name || 'Team member',
+        email: member.email || '',
+        regNum: member.regNum || member.reg_number || member.registration_number || '',
+        checked_in: Boolean(member.checked_in),
+      }));
       const rawTeam = reg.team_data?.team_name?.trim();
       const isTeam = rawTeam && !['individual', 'solo', '-', 'n/a', 'none'].includes(rawTeam.toLowerCase());
 
       // If team members are not embedded, look up all sibling records sharing team_id or team_name
-      if (isTeam && teamMembers.length <= 1) {
+      if (isTeam && teamMembers.length === 0) {
         const teamId = reg.team_data?.team_id;
         let tQuery = supabase
           .from('registrations')
@@ -92,8 +117,7 @@ export default async function TicketPage({ params }: TicketPageProps) {
             const sEmail = s.lead_email;
             if (
               matchedMemberIndex === undefined &&
-              !isUUID &&
-              (sReg.toLowerCase().includes(id.toLowerCase()) || sEmail.toLowerCase().includes(id.toLowerCase()))
+              (s.id === reg.id || (!isUUID && (sReg.toLowerCase().includes(id.toLowerCase()) || sEmail.toLowerCase().includes(id.toLowerCase()))))
             ) {
               matchedMemberIndex = idx;
             }
