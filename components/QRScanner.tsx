@@ -76,6 +76,8 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
   const [cachingInProgress, setCachingInProgress] = useState(false);
   const [syncingInProgress, setSyncingInProgress] = useState(false);
   const [teamModalData, setTeamModalData] = useState<ScanResult | null>(null);
+  const [manualQuery, setManualQuery] = useState('');
+  const [cachedRoster, setCachedRoster] = useState<Array<{ hash_payload: string; name: string; reg_number: string; team_name: string }>>([]);
 
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const soundEnabledRef = useRef(soundEnabled);
@@ -170,6 +172,25 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       const data = await res.json();
       if (!Array.isArray(data.registrations)) throw new Error('Registration response was incomplete.');
       const records: any[] = data.registrations;
+      const roster = records.flatMap((rec) => {
+        const members = Array.isArray(rec.team_members) ? rec.team_members : [];
+        if (members.length) {
+          return members.filter((member: any) => typeof member.hash_payload === 'string' && member.hash_payload)
+            .map((member: any) => ({
+              hash_payload: member.hash_payload,
+              name: member.fullName || member.name || 'Team member',
+              reg_number: member.regNum || member.reg_number || member.registration_number || '',
+              team_name: rec.team_name || '',
+            }));
+        }
+        return rec.hash_payload ? [{
+          hash_payload: rec.hash_payload,
+          name: rec.lead_name || rec.name || 'Attendee',
+          reg_number: rec.reg_number || rec.registration_number || '',
+          team_name: rec.team_name || '',
+        }] : [];
+      });
+      setCachedRoster(roster);
       if (typeof data.total_count === 'number' && data.total_count > records.length) throw new Error('Only part of this event roster was returned. Offline caching is disabled until pagination is implemented.');
 
       const db = await openDB();
@@ -302,6 +323,21 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     updateDBCounts();
+    openDB().then((db) => {
+      const tx = db.transaction('cached_registrations', 'readonly');
+      const request = tx.objectStore('cached_registrations').index('event_id').getAll(IDBKeyRange.only(eventId));
+      request.onsuccess = () => {
+        const rows = request.result || [];
+        const roster = rows.filter((row: any) => !row.is_team_member && row.hash_payload)
+          .map((row: any) => ({
+            hash_payload: row.hash_payload,
+            name: row.lead_name || 'Attendee',
+            reg_number: row.reg_number || '',
+            team_name: row.team_name || '',
+          }));
+        setCachedRoster(roster);
+      };
+    }).catch(() => undefined);
 
     return () => {
       window.removeEventListener('online', handleOnline);
@@ -831,6 +867,44 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
           <span style={{ fontSize: '12px', color: 'var(--text-muted)', marginTop: '12px', textAlign: 'center' }}>
             Present an attendee digital pass or physical badge QR code.
           </span>
+        </div>
+
+        {/* Manual attendee lookup uses the event roster cached by an admin. */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '16px' }}>
+          <label htmlFor="manual-attendee-search" style={{ display: 'block', fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px' }}>
+            Manual attendee lookup
+          </label>
+          <input
+            id="manual-attendee-search"
+            type="search"
+            value={manualQuery}
+            onChange={(event) => setManualQuery(event.target.value)}
+            placeholder="Search name or registration number"
+            style={{ width: '100%', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg)', color: 'var(--text-body)' }}
+          />
+          {manualQuery.trim() && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', marginTop: '10px' }}>
+              {cachedRoster.filter((person) =>
+                person.name.toLowerCase().includes(manualQuery.trim().toLowerCase()) ||
+                person.reg_number.toLowerCase().includes(manualQuery.trim().toLowerCase())
+              ).slice(0, 8).map((person) => (
+                <button
+                  key={person.hash_payload}
+                  type="button"
+                  onClick={() => { setManualQuery(''); processCheckin(person.hash_payload); }}
+                  style={{ display: 'flex', justifyContent: 'space-between', gap: '12px', textAlign: 'left', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg-soft)', color: 'var(--text-body)', cursor: 'pointer' }}
+                >
+                  <span><strong>{person.name}</strong>{person.team_name ? <small style={{ display: 'block', color: 'var(--text-muted)' }}>{person.team_name}</small> : null}</span>
+                  <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>{person.reg_number}</span>
+                </button>
+              ))}
+              {cachedRoster.filter((person) =>
+                person.name.toLowerCase().includes(manualQuery.trim().toLowerCase()) ||
+                person.reg_number.toLowerCase().includes(manualQuery.trim().toLowerCase())
+              ).length === 0 && <span style={{ color: 'var(--text-muted)', fontSize: '12px' }}>No attendee found in the cached roster. Refresh the roster while online.</span>}
+            </div>
+          )}
+          {cachedRoster.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: '8px 0 0' }}>Download the attendee roster while online to enable manual lookup and offline scanning.</p>}
         </div>
 
         {/* Scan Status & Session Turnstile History */}
