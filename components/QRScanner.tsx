@@ -426,7 +426,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         } else if (data.already_checked_in) {
           result = {
             outcome: 'already_checked_in',
-            message: `Already Checked In at ${data.checked_in_at || 'prior turnstile'}`,
+            message: sessionId ? 'Already checked into this session.' : `Already Checked In at ${data.checked_in_at || 'prior turnstile'}`,
             name: data.participant_name || 'Participant',
             regNum: data.registration_number,
             teamName: data.team_name,
@@ -436,7 +436,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         } else {
           result = {
             outcome: 'success',
-            message: 'Admission Check-in Confirmed!',
+            message: sessionId ? 'Session attendance recorded!' : 'Admission Check-in Confirmed!',
             name: data.participant_name || 'Participant',
             regNum: data.registration_number,
             teamName: data.team_name,
@@ -619,6 +619,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event_id: eventId,
+          session_id: sessionId,
           hash_payload: hashPayload,
           member_id: memberId,
         }),
