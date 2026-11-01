@@ -34,6 +34,31 @@ $$;
 -- PostgreSQL requires a newly-added enum value to be committed before use.
 commit;
 
+-- Normalize legacy role values and enforce the two roles used by the app.
+update public.member_profiles
+   set role = 'member'
+ where role::text in ('user', 'core_member');
+
+do $
+declare
+  v_constraint record;
+begin
+  for v_constraint in
+    select conname
+      from pg_constraint
+     where conrelid = 'public.member_profiles'::regclass
+       and contype = 'c'
+       and pg_get_constraintdef(oid) like '%role%'
+  loop
+    execute format('alter table public.member_profiles drop constraint %I', v_constraint.conname);
+  end loop;
+end
+$;
+
+alter table public.member_profiles
+  add constraint member_profiles_role_check
+  check (role::text in ('admin', 'member'));
+
 create or replace function public.handle_new_user()
 returns trigger
 language plpgsql
