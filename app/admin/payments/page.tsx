@@ -136,7 +136,7 @@ export default function PaymentsAdminPage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 10 }}>
           <label style={labelStyle}>Search<input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Attendee, email, payment ID..." style={inputStyle} /></label>
           <label style={labelStyle}>Event<select value={eventId} onChange={(e) => setEventId(e.target.value)} style={inputStyle}><option value="">All events</option>{data?.events.map((event) => <option key={event.id} value={event.id}>{event.title}</option>)}</select></label>
-          <label style={labelStyle}>Status<select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}><option value="all">All statuses</option><option value="captured">Captured</option><option value="created">Pending</option><option value="creating">Creating</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select></label>
+          <label style={labelStyle}>Status<select value={status} onChange={(e) => setStatus(e.target.value)} style={inputStyle}><option value="all">All statuses</option><option value="captured">Captured</option><option value="paid_unverified">Paid, missing payment record</option><option value="created">Pending</option><option value="creating">Creating</option><option value="failed">Failed</option><option value="cancelled">Cancelled</option></select></label>
           <label style={labelStyle}>From<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} style={inputStyle} /></label>
           <label style={labelStyle}>To<input type="date" value={to} onChange={(e) => setTo(e.target.value)} style={inputStyle} /></label>
         </div>
