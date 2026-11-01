@@ -283,11 +283,16 @@ export default function EventDetailClient({
             prefill: { name: leadName, email: leadEmail, contact: leadPhone },
             theme: { color: '#0067b8' },
             handler: async function (response: any) {
-              await fetch('/api/razorpay/verify-payment', {
+              const verifyRes = await fetch('/api/razorpay/verify-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(response),
               });
+              const verifyData = await verifyRes.json();
+              if (!verifyRes.ok || !verifyData.success) {
+                setErrorMsg(verifyData.error || 'Payment verification failed. Your ticket is not confirmed yet.');
+                return;
+              }
               setConfirmedTicket({
                 hash_payload: data.hash_payload,
                 status: 'confirmed',
