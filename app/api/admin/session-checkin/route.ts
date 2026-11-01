@@ -91,6 +91,10 @@ export async function POST(req: Request) {
       attendeeToken = leader.hash_payload;
     }
 
+    const matchedMember = memberIndex !== null ? registration.team_data?.members?.[memberIndex] : null;
+    const participantName = matchedMember?.fullName || matchedMember?.name || registration.form_data?.full_name || registration.form_data?.name || String(registration.lead_email || '').split('@')[0];
+    const participantRegNumber = matchedMember?.regNum || matchedMember?.reg_number || matchedMember?.registration_number || registration.form_data?.registration_number || registration.form_data?.reg_num || 'N/A';
+
     if (body.preview === true) {
       const { data: attendanceRows, error: attendanceError } = await db.from('session_attendance')
         .select('attendee_token').eq('session_id', sessionId);
@@ -106,8 +110,8 @@ export async function POST(req: Request) {
       return noStoreJson({
         success: true,
         is_team: isTeamRoot || (memberIndex === null && Boolean(registration.team_data?.team_name)),
-        participant_name: registration.form_data?.full_name || registration.form_data?.name || String(registration.lead_email || '').split('@')[0],
-        registration_number: registration.form_data?.registration_number || registration.form_data?.reg_num || 'N/A',
+        participant_name: participantName,
+        registration_number: participantRegNumber,
         team_name: registration.team_data?.team_name || '',
         team_members: members,
         already_checked_in: attended.has(attendeeToken),
@@ -128,8 +132,8 @@ export async function POST(req: Request) {
     return noStoreJson({
       success: true,
       already_checked_in: Boolean(rpc.data.already_checked_in),
-      participant_name: registration.form_data?.full_name || registration.form_data?.name || String(registration.lead_email || '').split('@')[0],
-      registration_number: registration.form_data?.registration_number || registration.form_data?.reg_num || 'N/A',
+      participant_name: participantName,
+      registration_number: participantRegNumber,
       team_name: registration.team_data?.team_name || '',
       session_title: session.title,
       checked_in_at: rpc.data.checked_in_at,
