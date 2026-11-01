@@ -77,7 +77,7 @@ export default function TicketManagementPage() {
         <div><strong style={{ color: 'var(--text-strong)' }}>{row.event_title}</strong><div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 4 }}>{row.lead_name} · {row.lead_email}</div></div>
         <span style={{ color: 'var(--text-muted)', fontSize: 12 }}>{row.team_name || 'Individual registration'}</span>
       </div>
-      <Attendee name={row.lead_name} email={row.lead_email} role="Lead / Individual" onResend={() => void act(row.id, null, 'resend')} onRegenerate={() => void act(row.id, null, 'regenerate')} busy={busy} id={row.id} index={null}/>
+      {row.members.length === 0 && <Attendee name={row.lead_name} email={row.lead_email} role="Individual" onResend={() => void act(row.id, null, 'resend')} onRegenerate={() => void act(row.id, null, 'regenerate')} busy={busy} id={row.id} index={null}/>}
       {row.members.map((member) => <Attendee key={member.index} name={member.name} email={member.email} role={member.role} onResend={() => void act(row.id, member.index, 'resend')} onRegenerate={() => void act(row.id, member.index, 'regenerate')} busy={busy} id={row.id} index={member.index}/>)}
     </section>)}
   </div>;
