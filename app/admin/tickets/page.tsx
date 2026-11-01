@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { RefreshCw, Mail, RotateCw, Search, Ticket } from 'lucide-react';
 
 type Member = { index: number; name: string; email: string; hash_payload: string; role: string };
@@ -96,5 +97,5 @@ function Attendee({ name, email, role, onResend, onRegenerate, busy, id, index }
     </div>
   </div>;
 }
-const cardStyle: React.CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 };
+const cardStyle: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 16 };
 const buttonStyle: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 10px', border: '1px solid var(--border)', borderRadius: 7, background: 'var(--surface)', color: 'var(--text-body)', cursor: 'pointer', fontSize: 12 };
