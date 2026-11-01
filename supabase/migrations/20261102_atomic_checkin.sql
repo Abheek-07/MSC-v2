@@ -54,8 +54,10 @@ begin
         or (v_team_id is null and v_team_name is not null and lower(r.team_data->>'team_name') = lower(v_team_name))
         or r.id = p_registration_id);
   elsif p_team_mode = 'member' and p_member_index is not null then
-    if jsonb_typeof(v_reg.team_data->'members') is distinct from 'array'
-       or jsonb_array_length(v_reg.team_data->'members') <= p_member_index then
+    if jsonb_typeof(v_reg.team_data->'members') is distinct from 'array' then
+      return jsonb_build_object('success', false, 'error', 'Team member not found');
+    end if;
+    if jsonb_array_length(v_reg.team_data->'members') <= p_member_index then
       return jsonb_build_object('success', false, 'error', 'Team member not found');
     end if;
     v_already_checked_in := coalesce((v_reg.team_data->'members'->p_member_index->>'checked_in')::boolean, false);
