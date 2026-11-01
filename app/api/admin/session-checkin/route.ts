@@ -83,6 +83,14 @@ export async function POST(req: Request) {
       attendeeToken = registration.hash_payload || registration.id;
     }
 
+    const isTeamRoot = memberIndex === null && Boolean(registration.team_data?.team_name) && Array.isArray(registration.team_data?.members) && registration.team_data.members.length > 0;
+    if (isTeamRoot) {
+      const leader = registration.team_data.members[0];
+      if (!leader || !isValidUUID(leader.hash_payload)) return noStoreJson({ success: false, error: 'Team leader ticket token is missing. Run the individual QR migration.' }, 409);
+      memberIndex = 0;
+      attendeeToken = leader.hash_payload;
+    }
+
     if (body.preview === true) {
       const { data: attendanceRows, error: attendanceError } = await db.from('session_attendance')
         .select('attendee_token').eq('session_id', sessionId);
@@ -97,7 +105,7 @@ export async function POST(req: Request) {
       })) : [];
       return noStoreJson({
         success: true,
-        is_team: memberIndex === null && Boolean(registration.team_data?.team_name),
+        is_team: isTeamRoot || (memberIndex === null && Boolean(registration.team_data?.team_name)),
         participant_name: registration.form_data?.full_name || registration.form_data?.name || String(registration.lead_email || '').split('@')[0],
         registration_number: registration.form_data?.registration_number || registration.form_data?.reg_num || 'N/A',
         team_name: registration.team_data?.team_name || '',
