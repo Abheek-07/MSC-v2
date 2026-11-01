@@ -26,19 +26,14 @@ export async function POST(req: Request) {
     if (event.event === 'payment.captured') {
       const payment = event.payload?.payment?.entity;
       if (
-        !payment ||
-        typeof payment.id !== 'string' ||
-        typeof payment.order_id !== 'string' ||
-        payment.status !== 'captured' ||
-        payment.currency !== 'INR' ||
-        !Number.isSafeInteger(payment.amount) ||
-        payment.amount <= 0
+        !payment || typeof payment.id !== 'string' || typeof payment.order_id !== 'string' ||
+        payment.status !== 'captured' || payment.currency !== 'INR' ||
+        !Number.isSafeInteger(payment.amount) || payment.amount <= 0
       ) {
         return NextResponse.json({ error: 'Invalid captured-payment payload.' }, { status: 400 });
       }
 
-      const supabase = getAdminClient();
-      const { error } = await supabase.rpc('confirm_captured_payment', {
+      const { data, error } = await getAdminClient().rpc('confirm_captured_payment', {
         p_razorpay_payment_id: payment.id,
         p_razorpay_order_id: payment.order_id,
         p_amount: payment.amount,
@@ -49,6 +44,10 @@ export async function POST(req: Request) {
       if (error) {
         console.error('[Razorpay webhook confirmation failed]:', error.message);
         return NextResponse.json({ error: 'Payment confirmation could not be recorded.' }, { status: 503 });
+      }
+      if (!data || data.success !== true) {
+        console.error('[Razorpay webhook confirmation rejected]:', data?.error || 'Unknown RPC rejection');
+        return NextResponse.json({ error: 'Payment confirmation was rejected.' }, { status: 409 });
       }
     }
 
