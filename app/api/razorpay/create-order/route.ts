@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const supabase = getAdminClient();
     const { data: registration, error: registrationError } = await supabase
       .from('registrations')
-      .select('id, event_id, user_id, status')
+      .select('id, event_id, user_id, status, form_data')
       .eq('id', registrationId)
       .eq('event_id', eventId)
       .maybeSingle();
@@ -40,6 +40,16 @@ export async function POST(req: Request) {
     if (!registration) return NextResponse.json({ error: 'Registration not found for this event.' }, { status: 404 });
     if (registration.status !== 'pending_payment') {
       return NextResponse.json({ error: 'This registration is not awaiting payment.' }, { status: 409 });
+    }
+    if (
+      registration.form_data?.no_refund_policy_accepted !== true ||
+      registration.form_data?.no_refund_policy_version !== '2026-11-01' ||
+      !registration.form_data?.no_refund_policy_accepted_at
+    ) {
+      return NextResponse.json(
+        { error: 'No-refund policy acceptance is required before payment.' },
+        { status: 403 }
+      );
     }
 
     const { data: event, error: eventError } = await supabase
