@@ -95,8 +95,6 @@ export async function POST(req: Request) {
         error: authError.message || 'Auth creation failed', 
         code: authError.code,
         status: authError.status,
-        details: authError.details,
-        hint: authError.hint
       }, 400);
     }
 
