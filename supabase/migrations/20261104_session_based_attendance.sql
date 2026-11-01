@@ -98,7 +98,7 @@ begin
        or jsonb_array_length(v_registration.team_data->'members') <= p_member_index then
       return jsonb_build_object('success', false, 'error', 'Team member not found');
     end if;
-    if v_registration.team_data->'members'->p_member_index->>'hash_payload' <> p_attendee_token then
+    if v_registration.team_data->'members'->p_member_index->>'hash_payload' is distinct from p_attendee_token then
       return jsonb_build_object('success', false, 'error', 'Member ticket does not match the selected attendee');
     end if;
   else
