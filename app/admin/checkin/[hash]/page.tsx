@@ -2,6 +2,7 @@ import React from 'react';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { requireAdmin } from '@/lib/api-security';
 import DirectCheckinClient from './DirectCheckinClient';
 
 export const dynamic = 'force-dynamic';
@@ -12,6 +13,9 @@ interface CheckinPageProps {
 }
 
 export default async function DirectCheckinPage({ params }: CheckinPageProps) {
+  const auth = await requireAdmin();
+  if ('error' in auth) return <div>Admin access required.</div>;
+
   const { hash } = await params;
 
   if (!hash) {
@@ -161,14 +165,8 @@ export default async function DirectCheckinPage({ params }: CheckinPageProps) {
     }
   }
 
-  // If solo attendee and not checked in yet, record check-in
+  // Check-in is performed only after an authenticated admin confirms the action.
   const wasAlreadyCheckedIn = Boolean(reg.checked_in);
-  if (!isTeam && !wasAlreadyCheckedIn) {
-    await supabase
-      .from('registrations')
-      .update({ checked_in: true, updated_at: new Date().toISOString() })
-      .eq('id', reg.id);
-  }
 
   const initialRegData = {
     id: reg.id,
@@ -178,7 +176,7 @@ export default async function DirectCheckinPage({ params }: CheckinPageProps) {
     college: college,
     event_title: eventTitle,
     event_id: reg.event_id,
-    checked_in: !isTeam ? true : wasAlreadyCheckedIn,
+    checked_in: wasAlreadyCheckedIn,
     team_name: rawTeam,
     team_id: reg.team_data?.team_id,
     is_team: isTeam,
