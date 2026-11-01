@@ -542,7 +542,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       // A queued scan counts as a local duplicate for this exact event/session.
       // The database remains authoritative across devices when the queue syncs.
       let alreadyQueued = false;
-      if (sessionId) {
+      {
         const queueRead = db.transaction('offline_queue', 'readonly');
         const queueItems = await new Promise<any[]>((resolve) => {
           const request = queueRead.objectStore('offline_queue').getAll();
@@ -551,7 +551,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
         });
         alreadyQueued = queueItems.some((item) =>
           item.event_id === eventId &&
-          item.session_id === sessionId &&
+          (item.session_id || null) === (sessionId || null) &&
           item.hash_payload === hash
         );
       }
