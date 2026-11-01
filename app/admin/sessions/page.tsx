@@ -44,8 +44,9 @@ export default function AdminSessionsPage() {
         const options = (data.events || []).map((event: any) => ({ id: event.id, title: event.title }));
         setEvents(options);
         if (options.length) setEventId(options[0].id);
+        else setLoading(false);
       })
-      .catch((err) => setError(err.message || 'Unable to load events.'));
+      .catch((err) => { setError(err.message || 'Unable to load events.'); setLoading(false); });
   }, []);
 
   async function loadSessions(id = eventId) {
@@ -96,6 +97,7 @@ export default function AdminSessionsPage() {
 
   async function viewAttendance(session: Session) {
     setSelectedSession(session);
+    setError('');
     setAttendanceLoading(true);
     setAttendees([]);
     try {
