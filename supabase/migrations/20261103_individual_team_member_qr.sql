@@ -1,0 +1,31 @@
+-- Give every embedded team member a stable, independent QR token.
+-- Safe to re-run: existing non-empty member tokens are preserved.
+update public.registrations r
+set team_data = jsonb_set(
+  r.team_data,
+  '{members}',
+  (
+    select jsonb_agg(
+      case
+        when jsonb_typeof(m.value) = 'object'
+          and coalesce(nullif(trim(m.value->>'hash_payload'), ''), '') = ''
+        then jsonb_set(m.value, '{hash_payload}', to_jsonb(gen_random_uuid()::text), true)
+        else m.value
+      end
+      order by m.ordinality
+    )
+    from jsonb_array_elements(r.team_data->'members')
+      with ordinality as m(value, ordinality)
+  ),
+  true
+)
+where jsonb_typeof(r.team_data->'members') = 'array'
+  and exists (
+    select 1
+    from jsonb_array_elements(r.team_data->'members') as member(value)
+    where jsonb_typeof(member.value) = 'object'
+      and coalesce(nullif(trim(member.value->>'hash_payload'), ''), '') = ''
+  );
+
+comment on column public.registrations.team_data is
+  'Team JSON. Embedded members receive independent hash_payload UUIDs for individual QR check-in.';
