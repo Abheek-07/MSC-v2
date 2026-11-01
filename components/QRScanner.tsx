@@ -40,7 +40,7 @@ interface QRScannerProps {
 
 // Simple IndexedDB Helper
 const DB_NAME = 'msc_scanner_db';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -51,9 +51,10 @@ function openDB(): Promise<IDBDatabase> {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
-      if (!db.objectStoreNames.contains('cached_registrations')) {
-        db.createObjectStore('cached_registrations', { keyPath: 'hash_payload' });
-      }
+      // Rebuild the disposable cache so legacy global keys cannot cross event boundaries.
+      if (db.objectStoreNames.contains('cached_registrations')) db.deleteObjectStore('cached_registrations');
+      const cacheStore = db.createObjectStore('cached_registrations', { keyPath: ['event_id', 'hash_payload'] });
+      cacheStore.createIndex('event_id', 'event_id', { unique: false });
       if (!db.objectStoreNames.contains('offline_queue')) {
         db.createObjectStore('offline_queue', { keyPath: 'id', autoIncrement: true });
       }
@@ -162,32 +163,51 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
   const cacheRegistrations = async () => {
     setCachingInProgress(true);
     try {
-      const res = await fetch(`/api/admin/registrations?event_id=${eventId}&limit=1000`);
-      let records: any[] = [];
-      if (res.ok) {
-        const data = await res.json();
-        records = data.registrations || [];
-      }
-
-      // Cache real records without injecting mock data
+      const res = await fetch(`/api/admin/registrations?event_id=${encodeURIComponent(eventId)}&limit=1000`, { cache: 'no-store' });
+      if (!res.ok) throw new Error(`Could not download registrations (HTTP ${res.status}).`);
+      const data = await res.json();
+      if (!Array.isArray(data.registrations)) throw new Error('Registration response was incomplete.');
+      const records: any[] = data.registrations;
+      if (typeof data.total_count === 'number' && data.total_count > records.length) throw new Error('Only part of this event roster was returned. Offline caching is disabled until pagination is implemented.');
 
       const db = await openDB();
       const tx = db.transaction('cached_registrations', 'readwrite');
       const store = tx.objectStore('cached_registrations');
-      records.forEach((rec) => {
-        store.put({
+      // Replace this event's snapshot only after a complete server response.
+      const cursorRequest = store.index('event_id').openCursor(IDBKeyRange.only(eventId));
+      cursorRequest.onsuccess = () => {
+        const cursor = cursorRequest.result;
+        if (cursor) {
+          cursor.delete();
+          cursor.continue();
+          return;
+        }
+        records.forEach((rec) => {
+          store.put({
           hash_payload: rec.hash_payload || rec.id,
-          event_id: rec.event_id || eventId,
+          event_id: eventId,
           lead_name: rec.lead_name || rec.name,
           reg_number: rec.reg_number || rec.registration_number,
           team_name: rec.team_name || '',
-          team_members: rec.team_members || [],
+          team_members: (rec.team_members || []).map((member: any, index: number) => ({
+            ...member,
+            id: `${rec.id}-m-${index}`,
+            name: member.fullName || member.name || 'Team member',
+            email: member.email || '',
+            reg_number: member.regNum || member.reg_number || member.registration_number || '',
+            checked_in: Boolean(member.checked_in),
+          })),
           checked_in: rec.checked_in || false,
           checked_in_at: rec.checked_in_at || null,
+          });
         });
-      });
+      };
 
-      await new Promise((resolve) => (tx.oncomplete = resolve));
+      await new Promise<void>((resolve, reject) => {
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
       await updateDBCounts();
     } catch (err) {
       console.error('Failed to cache registrations:', err);
@@ -217,18 +237,26 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
 
       for (const item of items) {
         try {
-          await fetch('/api/admin/checkin', {
+          const res = await fetch('/api/admin/checkin', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               event_id: item.event_id,
               hash_payload: item.hash_payload,
-              checkin_type: item.checkin_type,
+              team_mode: item.team_mode || (item.checkin_type === 'all' ? 'all' : 'lead_only'),
+              member_id: item.member_id,
             }),
           });
-          // Delete from queue
-          const deleteTx = db.transaction('offline_queue', 'readwrite');
-          deleteTx.objectStore('offline_queue').delete(item.id);
+          const data = await res.json().catch(() => ({}));
+          if (res.ok && (data.success || data.already_checked_in)) {
+            const deleteTx = db.transaction('offline_queue', 'readwrite');
+            deleteTx.objectStore('offline_queue').delete(item.id);
+            await new Promise<void>((resolve, reject) => {
+              deleteTx.oncomplete = () => resolve();
+              deleteTx.onerror = () => reject(deleteTx.error);
+              deleteTx.onabort = () => reject(deleteTx.error);
+            });
+          }
         } catch {
           // Keep in queue for next sync
         }
@@ -309,6 +337,44 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
   const processCheckin = useCallback(async (hash: string, teamMode?: 'all' | 'lead_only') => {
     let result: ScanResult;
 
+    // Resolve team details without changing attendance. The operator must choose
+    // a team action before the first check-in mutation is sent.
+    if (navigator.onLine && !teamMode) {
+      try {
+        const previewRes = await fetch('/api/admin/checkin', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_id: eventId, hash_payload: hash, preview: true }),
+        });
+        const preview = await previewRes.json();
+        if (!previewRes.ok || !preview.success) {
+          result = { outcome: 'invalid', message: preview.error || 'Ticket could not be verified.', timestamp: new Date().toLocaleTimeString(), hashPayload: hash };
+          setScanResult(result);
+          setRecentScans((prev) => [result, ...prev.slice(0, 9)]);
+          playFeedback('invalid');
+          return;
+        }
+        if (preview.is_team && (preview.team_members?.length || 0) > 1) {
+          result = {
+            outcome: 'idle',
+            message: 'Team verified. Select who should be checked in.',
+            name: preview.participant_name || 'Participant',
+            regNum: preview.registration_number,
+            teamName: preview.team_name,
+            isTeam: true,
+            teamMembers: preview.team_members || [],
+            timestamp: new Date().toLocaleTimeString(),
+            hashPayload: hash,
+          };
+          setScanResult(result);
+          setTeamModalData(result);
+          return;
+        }
+      } catch {
+        // Network failure falls through to the event-scoped offline cache.
+      }
+    }
+
     // 1. Try Online API if network is available
     if (navigator.onLine) {
       try {
@@ -374,17 +440,17 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
       const db = await openDB();
       const tx = db.transaction('cached_registrations', 'readonly');
       const store = tx.objectStore('cached_registrations');
-      const req = store.get(hash);
+      const req = store.get([eventId, hash]);
 
       const cachedRec = await new Promise<any>((resolve) => {
         req.onsuccess = () => resolve(req.result);
         req.onerror = () => resolve(null);
       });
 
-      if (!cachedRec) {
+      if (!cachedRec || cachedRec.event_id !== eventId) {
         result = {
           outcome: 'invalid',
-          message: 'Ticket not found in local cache (Offline Mode).',
+          message: 'Ticket not found in this event’s local cache (Offline Mode).',
           timestamp: new Date().toLocaleTimeString(),
           offline: true,
           hashPayload: hash,
@@ -401,7 +467,24 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
           hashPayload: hash,
         };
       } else {
-        // Mark locally checked in
+        if (Boolean(cachedRec.team_name) && (cachedRec.team_members?.length || 0) > 1 && !teamMode) {
+          result = {
+            outcome: 'idle',
+            message: 'Team found in offline cache. Select who should be checked in.',
+            name: cachedRec.lead_name,
+            regNum: cachedRec.reg_number,
+            teamName: cachedRec.team_name,
+            isTeam: true,
+            teamMembers: cachedRec.team_members,
+            timestamp: new Date().toLocaleTimeString(),
+            offline: true,
+            hashPayload: hash,
+          };
+          setScanResult(result);
+          setTeamModalData(result);
+          return;
+        }
+        // Mark locally checked in only after the operator chooses a team mode.
         const writeTx = db.transaction(['cached_registrations', 'offline_queue'], 'readwrite');
         cachedRec.checked_in = true;
         cachedRec.checked_in_at = new Date().toISOString();
@@ -411,7 +494,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
         writeTx.objectStore('offline_queue').add({
           event_id: eventId,
           hash_payload: hash,
-          checkin_type: teamMode || 'standard',
+          team_mode: teamMode || 'lead_only',
           timestamp: new Date().toISOString(),
         });
 
@@ -452,19 +535,57 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
   }, [eventId, playFeedback, updateDBCounts]);
 
   const checkInSingleMember = async (memberId: string | undefined, memberEmail: string, hashPayload: string) => {
+    if (!memberId || !/^[0-9a-f-]{36}-m-\d+$/i.test(memberId)) {
+      setScanResult({ outcome: 'invalid', message: 'This cached team member has no valid member identifier. Refresh the attendee cache before checking them in.', timestamp: new Date().toLocaleTimeString(), hashPayload });
+      return;
+    }
     try {
+      if (!navigator.onLine) {
+        const db = await openDB();
+        const tx = db.transaction(['cached_registrations', 'offline_queue'], 'readwrite');
+        const cacheStore = tx.objectStore('cached_registrations');
+        const cached = await new Promise<any>((resolve, reject) => {
+          const request = cacheStore.get([eventId, hashPayload]);
+          request.onsuccess = () => resolve(request.result);
+          request.onerror = () => reject(request.error);
+        });
+        if (!cached || cached.event_id !== eventId) throw new Error('Team is missing from this event cache.');
+        const index = Number(memberId.split('-m-').pop());
+        if (!Number.isInteger(index) || index < 0 || index >= (cached.team_members || []).length) throw new Error('Member is not present in the cached roster.');
+        cached.team_members[index] = { ...cached.team_members[index], checked_in: true };
+        cacheStore.put(cached);
+        tx.objectStore('offline_queue').add({
+          event_id: eventId,
+          hash_payload: hashPayload,
+          member_id: memberId,
+          team_mode: 'member',
+          timestamp: new Date().toISOString(),
+        });
+        await new Promise<void>((resolve, reject) => {
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => reject(tx.error);
+          tx.onabort = () => reject(tx.error);
+        });
+        setTeamModalData((prev) => prev ? {
+          ...prev,
+          teamMembers: (prev.teamMembers || []).map((m: any) => m.id === memberId ? { ...m, checked_in: true } : m),
+        } : null);
+        setScanResult({ outcome: 'success', message: 'Member check-in queued offline. Server confirmation is pending.', timestamp: new Date().toLocaleTimeString(), offline: true, hashPayload });
+        await updateDBCounts();
+        playFeedback('success');
+        return;
+      }
       const res = await fetch('/api/admin/checkin', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           event_id: eventId,
           hash_payload: hashPayload,
-          member_id: memberId && !memberId.includes('-m-') ? memberId : undefined,
-          member_email: memberEmail,
+          member_id: memberId,
         }),
       });
       const data = await res.json();
-      if (data.success) {
+      if (res.ok && data.success) {
         setTeamModalData((prev) => {
           if (!prev) return null;
           const updated = (prev.teamMembers || []).map((m: any) => {
@@ -496,10 +617,24 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
     }
 
     let hash = decodedText.trim();
-    if (hash.includes('/admin/checkin/')) {
-      hash = hash.split('/admin/checkin/')[1].split('?')[0];
-    } else if (hash.includes('/ticket/')) {
-      hash = hash.split('/ticket/')[1].split('?')[0];
+    try {
+      const parsed = new URL(decodedText);
+      const parts = parsed.pathname.split('/').filter(Boolean);
+      const checkinIndex = parts.indexOf('checkin');
+      const ticketIndex = parts.indexOf('ticket');
+      if (parts.includes('admin') && checkinIndex >= 0 && parts[checkinIndex + 1]) {
+        hash = decodeURIComponent(parts[checkinIndex + 1]);
+      } else if (ticketIndex >= 0 && parts[ticketIndex + 1]) {
+        hash = decodeURIComponent(parts[ticketIndex + 1]);
+      } else if (parsed.protocol === 'http:' || parsed.protocol === 'https:') {
+        hash = '';
+      }
+    } catch {
+      // Plain identifiers remain supported.
+    }
+    if (!hash || hash.length > 512) {
+      setScanResult({ outcome: 'invalid', message: 'QR code format is not recognized.', timestamp: new Date().toLocaleTimeString() });
+      return;
     }
 
     await processCheckin(hash);
@@ -644,19 +779,19 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
                 borderRadius: 'var(--radius-sm)',
                 border: '2px solid',
                 background:
-                  scanResult.outcome === 'success'
+                  (scanResult.outcome === 'success' || scanResult.outcome === 'idle')
                     ? 'var(--success-bg)'
                     : scanResult.outcome === 'already_checked_in'
                     ? 'var(--warning-bg)'
                     : 'var(--danger-bg)',
                 borderColor:
-                  scanResult.outcome === 'success'
+                  (scanResult.outcome === 'success' || scanResult.outcome === 'idle')
                     ? 'var(--success)'
                     : scanResult.outcome === 'already_checked_in'
                     ? 'var(--warning)'
                     : 'var(--danger)',
                 color:
-                  scanResult.outcome === 'success'
+                  (scanResult.outcome === 'success' || scanResult.outcome === 'idle')
                     ? 'var(--success)'
                     : scanResult.outcome === 'already_checked_in'
                     ? 'var(--warning)'
@@ -664,11 +799,12 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                {scanResult.outcome === 'success' && <CheckCircle2 size={28} />}
+                {(scanResult.outcome === 'success' || scanResult.outcome === 'idle') && <CheckCircle2 size={28} />}
                 {scanResult.outcome === 'already_checked_in' && <AlertTriangle size={28} />}
                 {scanResult.outcome === 'invalid' && <XCircle size={28} />}
                 <h3 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>
                   {scanResult.outcome === 'success' && (scanResult.offline ? 'CHECK-IN QUEUED (OFFLINE)' : 'CHECK-IN GRANTED')}
+                  {scanResult.outcome === 'idle' && 'TEAM VERIFIED · ACTION REQUIRED'}
                   {scanResult.outcome === 'already_checked_in' && 'ALREADY CHECKED IN'}
                   {scanResult.outcome === 'invalid' && 'INVALID TICKET'}
                 </h3>

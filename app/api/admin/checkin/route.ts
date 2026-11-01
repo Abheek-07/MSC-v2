@@ -56,6 +56,32 @@ export async function POST(req: Request) {
     }
     if (!registrationId) return noStoreJson({ success: false, error: 'No exact registration matched this ticket.' }, 404);
 
+    if (body.preview === true) {
+      const preview = await db.from('registrations')
+        .select('id,event_id,status,lead_email,form_data,team_data')
+        .eq('id', registrationId).eq('event_id', eventId).maybeSingle();
+      if (preview.error) throw preview.error;
+      if (!preview.data || preview.data.status !== 'confirmed') {
+        return noStoreJson({ success: false, error: 'Registration is not confirmed.' }, 409);
+      }
+      const teamData = preview.data.team_data || {};
+      const members = Array.isArray(teamData.members) ? teamData.members.map((m: any, i: number) => ({
+        id: registrationId + '-m-' + i,
+        name: m.fullName || m.name || 'Team member',
+        email: m.email || '',
+        reg_number: m.regNum || m.reg_number || m.registration_number || '',
+        checked_in: Boolean(m.checked_in)
+      })) : [];
+      return noStoreJson({
+        success: true,
+        is_team: Boolean(teamData.team_name),
+        participant_name: preview.data.form_data?.full_name || preview.data.form_data?.name || String(preview.data.lead_email || '').split('@')[0],
+        registration_number: preview.data.form_data?.registration_number || preview.data.form_data?.reg_num || 'N/A',
+        team_name: teamData.team_name || '',
+        team_members: members
+      });
+    }
+
     const rpc = await db.rpc('checkin_registration', {
       p_event_id: eventId,
       p_registration_id: registrationId,

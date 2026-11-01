@@ -24,7 +24,7 @@ export async function GET(req: Request) {
     const supabase = getAdminClient();
     let query = supabase
       .from('registrations')
-      .select('*, events(title)')
+      .select('*, events(title)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -32,7 +32,7 @@ export async function GET(req: Request) {
       query = query.eq('event_id', eventId);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) throw error;
 
     const registrations = (data || []).map((r: any) => ({
@@ -52,7 +52,7 @@ export async function GET(req: Request) {
       created_at: r.created_at,
     }));
 
-    return noStoreJson({ success: true, registrations });
+    return noStoreJson({ success: true, registrations, total_count: count ?? registrations.length });
   } catch (err: any) {
     console.error('Error fetching admin registrations:', err);
     return noStoreJson({ error: err.message }, 500);
