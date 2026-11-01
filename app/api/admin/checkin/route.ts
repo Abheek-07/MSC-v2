@@ -11,20 +11,18 @@ export async function POST(req: Request) {
     const auth = await requireAdmin();
     if ('error' in auth) return auth.error;
     const limit = await checkRateLimit(auth.user.id, 'api');
-    if (!limit.success) return noStoreJson({ error: 'Rate limit exceeded. Try again shortly.' }, 429, { 'Retry-After': '60' });
+    if (!limit.success) return noStoreJson({ error: 'Rate limit exceeded.' }, 429, { 'Retry-After': '60' });
 
-    const raw = await enforcePayloadSize(req, 8 * 1024);
+    const raw = await enforcePayloadSize(req, 8192);
     let body: Record<string, unknown>;
-    try { body = JSON.parse(raw); } catch {
-      return noStoreJson({ success: false, error: 'Invalid request body.' }, 400);
-    }
+    try { body = JSON.parse(raw); } catch { return noStoreJson({ success: false, error: 'Invalid request body.' }, 400); }
 
     const eventId = typeof body.event_id === 'string' ? body.event_id : '';
     const token = typeof body.hash_payload === 'string' ? body.hash_payload.trim() : '';
     const memberId = typeof body.member_id === 'string' ? body.member_id.trim() : '';
-    const teamMode = body.team_mode === 'all' ? 'all' : 'lead_only';
     if (!isValidUUID(eventId)) return noStoreJson({ success: false, error: 'A valid event_id is required.' }, 400);
 
+    const db = getAdminClient();
     let registrationId = '';
     let memberIndex: number | null = null;
     if (memberId) {
@@ -38,42 +36,46 @@ export async function POST(req: Request) {
         return noStoreJson({ success: false, error: 'Invalid member identifier.' }, 400);
       }
     } else if (isValidUUID(token)) {
-      registrationId = token;
+      const hash = await db.from('registrations').select('id').eq('event_id', eventId).eq('hash_payload', token).maybeSingle();
+      if (hash.error) throw hash.error;
+      if (hash.data) registrationId = hash.data.id;
+      if (!registrationId) {
+        const byId = await db.from('registrations').select('id').eq('event_id', eventId).eq('id', token).maybeSingle();
+        if (byId.error) throw byId.error;
+        if (byId.data) registrationId = byId.data.id;
+      }
     } else if (token.length >= 5 && token.length <= 254 && /^[a-zA-Z0-9@._ -]+$/.test(token)) {
-      const db = getAdminClient();
       const fields = token.includes('@')
         ? [['lead_email', token.toLowerCase()]]
         : [['form_data->>registration_number', token], ['form_data->>reg_num', token], ['form_data->>ticket_id', token]];
       for (const [field, value] of fields) {
-        const found = await db.from('registrations').select('id')
-          .eq('event_id', eventId).eq(field, value).eq('status', 'confirmed').limit(1).maybeSingle();
+        const found = await db.from('registrations').select('id').eq('event_id', eventId).eq(field, value).eq('status', 'confirmed').limit(1).maybeSingle();
         if (found.error) throw found.error;
         if (found.data) { registrationId = found.data.id; break; }
       }
     }
-    if (!registrationId) return noStoreJson({ success: false, error: 'No exact confirmed registration matched this ticket.' }, 404);
+    if (!registrationId) return noStoreJson({ success: false, error: 'No exact registration matched this ticket.' }, 404);
 
-    const db = getAdminClient();
     const rpc = await db.rpc('checkin_registration', {
       p_event_id: eventId,
       p_registration_id: registrationId,
-      p_team_mode: memberIndex !== null ? 'member' : teamMode,
+      p_team_mode: memberIndex !== null ? 'member' : body.team_mode === 'all' ? 'all' : 'lead_only',
       p_member_index: memberIndex
     });
     if (rpc.error) {
       console.error('[Atomic check-in RPC error]:', rpc.error.message);
-      return noStoreJson({ success: false, error: 'Check-in is temporarily unavailable. Apply the atomic check-in migration first.' }, 503);
+      return noStoreJson({ success: false, error: 'Check-in is unavailable. Apply the atomic check-in migration.' }, 503);
     }
     const result = rpc.data;
-    if (!result?.success) return noStoreJson({ success: false, error: result?.error || 'Check-in was rejected.' }, 409);
+    if (!result?.success) return noStoreJson({ success: false, error: result?.error || 'Check-in rejected.' }, 409);
 
-    const members = Array.isArray(result.team_data?.members) ? result.team_data.members.map((member: any, index: number) => ({
-      id: `${registrationId}-m-${index}`,
-      name: member.fullName || member.name || 'Team member',
-      email: member.email || '',
-      reg_number: member.regNum || member.reg_number || member.registration_number || '',
-      role: index === 0 ? 'Leader' : 'Member',
-      checked_in: Boolean(member.checked_in)
+    const members = Array.isArray(result.team_data?.members) ? result.team_data.members.map((m: any, i: number) => ({
+      id: registrationId + '-m-' + i,
+      name: m.fullName || m.name || 'Team member',
+      email: m.email || '',
+      reg_number: m.regNum || m.reg_number || m.registration_number || '',
+      role: i === 0 ? 'Leader' : 'Member',
+      checked_in: Boolean(m.checked_in)
     })) : [];
     return noStoreJson({
       success: true,
@@ -83,10 +85,10 @@ export async function POST(req: Request) {
       registration_number: result.form_data?.registration_number || result.form_data?.reg_num || 'N/A',
       team_name: result.team_data?.team_name || '',
       team_members: members,
-      message: result.already_checked_in ? 'This registration was already checked in.' : 'Check-in completed successfully.'
+      message: result.already_checked_in ? 'Already checked in.' : 'Check-in completed.'
     });
   } catch (error) {
     console.error('[Admin check-in error]:', error);
-    return noStoreJson({ success: false, error: 'Check-in failed due to a server error.' }, 500);
+    return noStoreJson({ success: false, error: 'Check-in failed.' }, 500);
   }
 }
