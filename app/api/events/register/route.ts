@@ -1,21 +1,22 @@
 import { NextResponse } from 'next/server';
-import {
-  enforcePayloadSize,
-  isValidUUID,
-  isValidEmail,
-} from '@/lib/security';
+import { enforcePayloadSize, isValidUUID, isValidEmail } from '@/lib/security';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { sendTicketEmail } from '@/lib/email';
 import crypto from 'crypto';
 
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: Request) {
   try {
-    // 1. Enforce payload size limit (64KB)
     const rawBody = await enforcePayloadSize(req, 64 * 1024);
-    const body = JSON.parse(rawBody);
+    let body: Record<string, any>;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: 'Invalid request body.' }, { status: 400 });
+    }
 
-    // 2. Rate limit check (5/min for registration)
     const clientIp = getClientIP(req.headers);
     const rateLimit = await checkRateLimit(`register_${clientIp}`, 'register');
     if (!rateLimit.success) {
@@ -26,176 +27,148 @@ export async function POST(req: Request) {
     }
 
     const { event_id, lead_email, form_data, team_data, idempotency_key } = body;
-
-    // 3. Strict Input Validations
     if (!isValidUUID(event_id)) {
       return NextResponse.json({ error: 'Invalid event identifier format.' }, { status: 400 });
     }
-
     if (!isValidEmail(lead_email)) {
       return NextResponse.json({ error: 'Invalid lead email format.' }, { status: 400 });
     }
-
     if (idempotency_key && !isValidUUID(idempotency_key)) {
       return NextResponse.json({ error: 'Invalid idempotency key format.' }, { status: 400 });
     }
-
-    // 4. Application-level registration logic
-    const supabase = getAdminClient();
-
-    // Check if already registered
-    const { data: existing } = await supabase
-      .from('registrations')
-      .select('id, hash_payload')
-      .eq('event_id', event_id)
-      .eq('lead_email', lead_email.toLowerCase().trim())
-      .maybeSingle();
-
-    if (existing) {
-      return NextResponse.json({
-        success: true,
-        registration_id: existing.id,
-        hash_payload: existing.hash_payload,
-        status: existing.status,
-        replayed: true,
-      });
+    if (form_data !== undefined && (!form_data || typeof form_data !== 'object' || Array.isArray(form_data))) {
+      return NextResponse.json({ error: 'Invalid registration form data.' }, { status: 400 });
     }
 
-    // Check event capacity & status
-    const { data: event } = await supabase
+    const supabase = getAdminClient();
+    const normalizedEmail = lead_email.toLowerCase().trim();
+
+    // Read event metadata for business rules and confirmation email.
+    // Capacity and insert are intentionally NOT checked here; the database RPC
+    // locks the event row and performs both operations in one transaction.
+    const { data: event, error: eventError } = await supabase
       .from('events')
-      .select('id, title, date_start, location, status, registration_open, date_end, max_capacity, form_requirements')
+      .select('id, title, date_start, date_end, location, status, registration_open, form_requirements')
       .eq('id', event_id)
-      .single();
+      .maybeSingle();
 
+    if (eventError) throw eventError;
     if (!event) return NextResponse.json({ error: 'Event not found.' }, { status: 404 });
-
-    const isPaid = event.form_requirements?.event_pricing === 'paid';
 
     const isEventCompleted =
       event.status === 'completed' ||
-      Boolean(
-        event.date_end &&
-          !isNaN(new Date(event.date_end).getTime()) &&
-          new Date(event.date_end).getTime() < Date.now()
-      );
+      Boolean(event.date_end && new Date(event.date_end).getTime() < Date.now());
 
-    if (isEventCompleted || !event.registration_open)
+    if (isEventCompleted || !event.registration_open) {
+      return NextResponse.json({ error: 'Registrations are closed for this event.' }, { status: 400 });
+    }
+
+    const isPaidEvent = event.form_requirements?.event_pricing === 'paid';
+    if (isPaidEvent && body.no_refund_policy_accepted !== true) {
       return NextResponse.json(
-        { error: 'Registrations are closed as this event has concluded.' },
+        { error: 'You must accept the no-refund policy before registering for a paid event.' },
         { status: 400 }
       );
-
-    // Count existing registrations
-    const { count } = await supabase
-      .from('registrations')
-      .select('id', { count: 'exact', head: true })
-      .eq('event_id', event_id)
-      .neq('status', 'cancelled');
-
-    const isWaitlisted = event.max_capacity && (count || 0) >= event.max_capacity;
-
-    const hashPayload = crypto.randomUUID();
-    let teamId = null;
-
-    // Build team data
-    let teamData = null;
-    const requestedTeamName = team_data?.team_name || team_data?.teamName;
-    const lookingForMembers = Boolean(team_data?.looking_for_members ?? team_data?.lookingForMembers);
-
-    if (requestedTeamName) {
-      const { data: team, error: teamError } = await supabase
-        .from('teams')
-        .insert({
-          event_id: event_id,
-          team_name: requestedTeamName,
-          leader_name: form_data?.full_name || '',
-          leader_email: lead_email.toLowerCase().trim(),
-          leader_year: form_data?.year || '',
-          leader_branch: form_data?.branch || null,
-          looking_for_members: lookingForMembers,
-        })
-        .select('id')
-        .single();
-
-      if (teamError) {
-        console.error('Team creation failed:', teamError);
-        return NextResponse.json({ error: 'Failed to create team. Please try again.' }, { status: 500 });
-      }
-      teamId = team.id;
-
-      teamData = {
-        team_id: teamId,
-        team_name: requestedTeamName,
-        members: (team_data.members || []).map((m: any) => ({
-          fullName: m.fullName,
-          email: m.email?.toLowerCase().trim(),
-          regNum: m.regNum || m.reg_number || '',
-          year: m.year,
-          branch: m.branch,
-          checked_in: false,
-        })),
-        leadIndex: 0,
-      };
     }
 
-    // Determine status
-    let status = isPaid ? 'pending_payment' : 'confirmed';
-    if (isWaitlisted) status = 'waitlisted';
+    const normalizedFormData = {
+      ...(form_data || {}),
+      ...(isPaidEvent ? {
+        no_refund_policy_accepted: true,
+        no_refund_policy_version: '2026-11-01',
+        no_refund_policy_accepted_at: new Date().toISOString(),
+      } : {}),
+    };
 
-    // Insert registration
-    const registrationId = crypto.randomUUID();
-    const { error: regError } = await supabase
-      .from('registrations')
-      .insert({
-        id: registrationId,
-        event_id: event_id,
-        lead_email: lead_email.toLowerCase().trim(),
-        hash_payload: hashPayload,
-        form_data: form_data || {},
-        team_data: teamData,
-        status,
-        idempotency_key: idempotency_key || null,
-        reservation_expires_at: isPaid ? new Date(Date.now() + 15 * 60 * 1000).toISOString() : null,
+    const requestedTeamName = String(team_data?.team_name || team_data?.teamName || '').trim();
+    const members = Array.isArray(team_data?.members) ? team_data.members.map((member: any) => ({
+      fullName: String(member.fullName || member.name || '').trim(),
+      email: typeof member.email === 'string' ? member.email.toLowerCase().trim() : '',
+      regNum: String(member.regNum || member.reg_number || '').trim(),
+      year: String(member.year || ''),
+      branch: String(member.branch || ''),
+      checked_in: false,
+      hash_payload: crypto.randomUUID(),
+    })) : [];
+
+    // The team leader is also an individual attendee and must have their own QR.
+    if (requestedTeamName && !members.some((member: any) => member.email === normalizedEmail)) {
+      members.unshift({
+        fullName: String(form_data?.full_name || normalizedEmail.split('@')[0]),
+        email: normalizedEmail,
+        regNum: String(form_data?.registration_number || form_data?.reg_num || ''),
+        year: String(form_data?.year || ''),
+        branch: String(form_data?.branch || ''),
+        checked_in: false,
+        hash_payload: crypto.randomUUID(),
       });
-
-    if (regError) {
-      console.error('Registration insert failed:', regError);
-      if (teamId) {
-        await supabase.from('teams').delete().eq('id', teamId);
-      }
-      return NextResponse.json({ error: 'Registration failed. Please try again.' }, { status: 500 });
     }
 
-    if (teamId) {
-      const { error: teamLinkError } = await supabase
-        .from('teams')
-        .update({ registration_id: registrationId })
-        .eq('id', teamId);
+    const normalizedTeamData = requestedTeamName ? {
+      team_name: requestedTeamName,
+      members,
+      looking_for_members: Boolean(team_data?.looking_for_members ?? team_data?.lookingForMembers),
+      leader_name: String(form_data?.full_name || ''),
+      leader_year: String(form_data?.year || ''),
+      leader_branch: String(form_data?.branch || ''),
+      leadIndex: 0,
+    } : null;
 
-      if (teamLinkError) {
-        console.error('Team registration link failed:', teamLinkError);
-      }
+    const effectiveIdempotencyKey = idempotency_key || crypto.randomUUID();
+    const { data: result, error: registrationError } = await supabase.rpc('register_for_event', {
+      p_event_id: event_id,
+      p_user_id: null,
+      p_lead_email: normalizedEmail,
+      p_form_data: normalizedFormData,
+      p_team_data: normalizedTeamData,
+      p_idempotency_key: effectiveIdempotencyKey,
+    });
+
+    if (registrationError) {
+      console.error('[Registration RPC failed]:', registrationError.message);
+      return NextResponse.json({ error: 'Registration could not be completed. Please retry.' }, { status: 503 });
+    }
+    if (!result || result.success !== true) {
+      return NextResponse.json({ error: result?.error || 'Registration was rejected.' }, { status: 409 });
     }
 
-    // 6. Asynchronously send confirmation email if confirmed
-    if (status === 'confirmed') {
+    const registrationId = result.registration_id;
+    const hashPayload = result.hash_payload;
+    const status = result.status;
+
+    // Do not dispatch duplicate confirmation emails when an idempotent request replays.
+    if (status === 'confirmed' && !result.replayed && hashPayload) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mscsrmap.xyz';
-      const ticketUrl = `${appUrl}/ticket/${hashPayload}`;
-      const attendeeName =
-        team_data?.members?.[0]?.fullName ||
-        form_data?.full_name ||
-        lead_email.split('@')[0];
+      const recipients = new Set<string>();
+      for (const member of members) {
+        const memberEmail = member.email;
+        if (!memberEmail || recipients.has(memberEmail)) continue;
+        recipients.add(memberEmail);
+        sendTicketEmail({
+          to: memberEmail,
+          name: member.fullName || memberEmail.split('@')[0],
+          eventTitle: event.title,
+          eventDate: event.date_start,
+          eventLocation: event.location,
+          ticketUrl: `${appUrl}/ticket/${member.hash_payload}`,
+          qrPayload: member.hash_payload,
+        }).catch((error) => console.error('[Member ticket email dispatcher]:', error));
+      }
 
-      sendTicketEmail({
-        to: lead_email,
-        name: attendeeName,
-        eventTitle: event.title,
-        eventDate: event.date_start,
-        eventLocation: event.location,
-        ticketUrl,
-        qrPayload: hashPayload,
-      }).catch((e) => console.error('[Email Dispatcher Error]:', e));
+      // Solo registrations, or teams without member email addresses, receive the
+      // lead ticket as a fallback. Team members with emails each receive their own QR.
+      if (recipients.size === 0) {
+        const attendeeName = form_data?.full_name || normalizedEmail.split('@')[0];
+        sendTicketEmail({
+          to: normalizedEmail,
+          name: attendeeName,
+          eventTitle: event.title,
+          eventDate: event.date_start,
+          eventLocation: event.location,
+          ticketUrl: `${appUrl}/ticket/${hashPayload}`,
+          qrPayload: hashPayload,
+        }).catch((error) => console.error('[Ticket email dispatcher]:', error));
+      }
     }
 
     return NextResponse.json({
@@ -203,8 +176,10 @@ export async function POST(req: Request) {
       registration_id: registrationId,
       hash_payload: hashPayload,
       status,
+      replayed: Boolean(result.replayed),
+      reservation_expires_at: result.reservation_expires_at || null,
     });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[API register error]:', err);
     return NextResponse.json({ error: 'Registration failed due to server error.' }, { status: 500 });
   }

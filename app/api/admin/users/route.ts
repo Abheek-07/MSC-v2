@@ -3,6 +3,7 @@ import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
 import { guardRoleChange, guardAdminRemoval } from '@/lib/single-admin';
+import { isValidEmail } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,14 +53,19 @@ export async function POST(req: Request) {
     }
 
     const { email, password, full_name, role, department, year } = await req.json();
+    const cleanEmail = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    const cleanName = typeof full_name === 'string' ? full_name.trim() : '';
 
-    if (!email || !password || password.length < 8) {
+    if (!isValidEmail(cleanEmail) || typeof password !== 'string' || password.length < 8) {
       return noStoreJson(
         { error: 'Valid email and password (minimum 8 characters) required' },
         400
       );
     }
 
+    if (role && !VALID_ROLES.includes(role as (typeof VALID_ROLES)[number])) {
+      return noStoreJson({ error: 'Invalid role. Choose admin or member.' }, 400);
+    }
     const assignedRole = role === 'admin' ? 'admin' : 'member';
     const supabase = getAdminClient();
 
@@ -77,10 +83,10 @@ export async function POST(req: Request) {
 
     // Provision user via Supabase Auth Admin API
     const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-      email,
+      email: cleanEmail,
       password,
       email_confirm: true,
-      user_metadata: { full_name, role: assignedRole },
+      user_metadata: { full_name: cleanName || cleanEmail.split('@')[0], role: assignedRole },
     });
 
     if (authError) {
@@ -89,8 +95,6 @@ export async function POST(req: Request) {
         error: authError.message || 'Auth creation failed', 
         code: authError.code,
         status: authError.status,
-        details: authError.details,
-        hint: authError.hint
       }, 400);
     }
 
@@ -99,8 +103,8 @@ export async function POST(req: Request) {
         .from('member_profiles')
         .upsert({
           id: authUser.user.id,
-          email,
-          full_name: full_name || email.split('@')[0],
+          email: cleanEmail,
+          full_name: cleanName || cleanEmail.split('@')[0],
           role: assignedRole,
           department: department || 'CSE',
           year_of_study: year || '3rd Year',
@@ -112,8 +116,10 @@ export async function POST(req: Request) {
 
       if (profError) {
         console.error('Profile creation error:', profError);
+        // Avoid leaving an Auth account behind when its profile cannot be saved.
+        await supabase.auth.admin.deleteUser(authUser.user.id);
         return noStoreJson(
-          { error: profError.message || 'Profile creation failed', code: profError.code, details: profError.details, hint: profError.hint, user: authUser.user },
+          { error: profError.message || 'Profile creation failed', code: profError.code, details: profError.details, hint: profError.hint },
           500
         );
       }

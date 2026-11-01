@@ -13,7 +13,6 @@ import {
   Shield,
   AlertTriangle,
   ArrowLeft,
-  Users,
 } from 'lucide-react';
 
 interface TicketMember {
@@ -59,9 +58,7 @@ export default function TicketClient({
 }) {
   const ticketRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
-  const [passViewMode, setPassViewMode] = useState<'team' | 'individual'>(
-    initialMatchedIndex !== undefined && initialMatchedIndex > 0 ? 'individual' : 'team'
-  );
+  // Team tickets are always issued as individual member passes. There is no shared team QR.
   const [selectedMemberIndex, setSelectedMemberIndex] = useState(initialMatchedIndex || 0);
 
   const isTeam = Boolean(
@@ -72,20 +69,21 @@ export default function TicketClient({
 
   const teamMembers = ticket?.team_data?.members || [];
   const currentMember = teamMembers[selectedMemberIndex] || null;
+  const activeQrPayload = isTeam
+    ? (currentMember?.hash_payload || '')
+    : (ticket?.hash_payload || '');
 
   const downloadTicketImage = async () => {
-    if (!ticketRef.current) return;
+    if (!ticketRef.current || (isTeam && !activeQrPayload)) return;
     setDownloading(true);
     try {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(ticketRef.current, { cacheBust: true, pixelRatio: 2 });
       const link = document.createElement('a');
-      const filenameSuffix = passViewMode === 'individual' && currentMember
+      const filenameSuffix = isTeam && currentMember
         ? `${currentMember.fullName.replace(/\s+/g, '_')}_Individual`
-        : isTeam
-        ? `${ticket?.team_data?.team_name?.replace(/\s+/g, '_')}_Team`
         : ticket?.lead_name.replace(/\s+/g, '_');
-      link.download = `MSC_Ticket_${filenameSuffix}_${ticket?.hash_payload.slice(0, 8)}.png`;
+      link.download = `MSC_Ticket_${filenameSuffix}_${(activeQrPayload || ticket?.hash_payload || 'pass').slice(0, 8)}.png`;
       link.href = dataUrl;
       link.click();
     } catch (err) {
@@ -121,14 +119,6 @@ export default function TicketClient({
     );
   }
 
-  // Determine QR URL based on view mode
-  const activeQrPayload =
-    passViewMode === 'individual' && currentMember?.hash_payload
-      ? currentMember.hash_payload
-      : ticket.hash_payload;
-
-  const checkinUrl = `${typeof window !== 'undefined' ? window.location.origin : ''}/admin/checkin/${activeQrPayload}${isTeam && passViewMode === 'team' ? '?mode=team' : ''}`;
-
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh', padding: '40px 0 100px 0' }}>
       <div className="container" style={{ maxWidth: '640px' }}>
@@ -144,104 +134,49 @@ export default function TicketClient({
               className="fluent-btn fluent-btn-secondary"
               style={{ fontSize: '13px', padding: '6px 14px' }}
             >
-              Print Pass
+              Save as PDF
             </button>
             <button
               onClick={downloadTicketImage}
-              disabled={downloading}
+              disabled={downloading || (isTeam && !activeQrPayload)}
               className="fluent-btn fluent-btn-primary"
               style={{ fontSize: '13px', padding: '6px 14px' }}
             >
-              <Download size={14} /> {downloading ? 'Exporting PNG...' : `Download ${passViewMode === 'team' ? 'Team Pass' : 'Individual Pass'}`}
+              <Download size={14} /> {downloading ? 'Exporting PNG...' : `Download $Individual Pass`}
             </button>
           </div>
         </div>
 
-        {/* Team vs Individual Pass View Mode Switcher */}
+        {/* Individual member pass selector. Every member has a separate QR token. */}
         {isTeam && (
-          <div
-            style={{
-              background: 'var(--surface)',
-              border: '1px solid var(--border)',
-              borderRadius: 'var(--radius-sm)',
-              padding: '12px 16px',
-              marginBottom: '16px',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '10px',
-              boxShadow: 'var(--shadow-rest)',
-            }}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)' }}>
-                Pass Download Type:
-              </span>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                <button
-                  type="button"
-                  onClick={() => setPassViewMode('team')}
-                  style={{
-                    background: passViewMode === 'team' ? 'var(--brand)' : 'var(--bg-soft)',
-                    color: passViewMode === 'team' ? '#ffffff' : 'var(--text-body)',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '6px 14px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '6px',
-                  }}
-                >
-                  <Users size={14} /> Entire Team Pass
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPassViewMode('individual')}
-                  style={{
-                    background: passViewMode === 'individual' ? 'var(--brand)' : 'var(--bg-soft)',
-                    color: passViewMode === 'individual' ? '#ffffff' : 'var(--text-body)',
-                    border: 'none',
-                    borderRadius: 'var(--radius-sm)',
-                    padding: '6px 14px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                  }}
-                >
-                  Individual Pass
-                </button>
-              </div>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: '16px', boxShadow: 'var(--shadow-rest)' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '10px' }}>
+              Individual Member Passes
             </div>
-
-            {/* If Individual Pass mode is selected, show member picker */}
-            {passViewMode === 'individual' && teamMembers.length > 0 && (
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: '10px', display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Select Member Pass:</span>
-                <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  {teamMembers.map((m, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setSelectedMemberIndex(idx)}
-                      style={{
-                        background: selectedMemberIndex === idx ? 'var(--brand-soft)' : 'var(--bg-soft)',
-                        border: selectedMemberIndex === idx ? '1px solid var(--brand)' : '1px solid var(--border)',
-                        color: selectedMemberIndex === idx ? 'var(--brand)' : 'var(--text-body)',
-                        borderRadius: 'var(--radius-sm)',
-                        padding: '4px 10px',
-                        fontSize: '11px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {m.fullName} {m.role ? `(${m.role})` : idx === 0 ? '(Lead)' : ''}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              {teamMembers.map((member, index) => (
+                <button
+                  key={member.id || member.hash_payload || index}
+                  type="button"
+                  onClick={() => setSelectedMemberIndex(index)}
+                  style={{
+                    background: selectedMemberIndex === index ? 'var(--brand-soft)' : 'var(--bg-soft)',
+                    border: selectedMemberIndex === index ? '1px solid var(--brand)' : '1px solid var(--border)',
+                    color: selectedMemberIndex === index ? 'var(--brand)' : 'var(--text-body)',
+                    borderRadius: 'var(--radius-sm)',
+                    padding: '6px 10px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {member.fullName} {member.role ? `(${member.role})` : index === 0 ? '(Lead)' : '(Member)'}
+                </button>
+              ))}
+            </div>
+            <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '10px 0 0' }}>
+              Each member must present their own QR code at check-in.
+            </p>
           </div>
         )}
 
@@ -333,7 +268,7 @@ export default function TicketClient({
                     letterSpacing: '0.05em',
                   }}
                 >
-                  {passViewMode === 'team' ? 'TEAM PASS' : 'MEMBER PASS'}
+                  MEMBER PASS
                 </span>
               )}
             </div>
@@ -360,19 +295,17 @@ export default function TicketClient({
 
             {/* QR Section */}
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '16px 0' }}>
-              <div style={{ padding: '14px', background: '#ffffff', border: '2px solid #0067b8', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0, 103, 184, 0.1)' }}>
-                <QRCodeSVG
-                  value={checkinUrl}
-                  size={190}
-                  level="H"
-                  includeMargin={false}
-                />
-              </div>
-              <span style={{ fontSize: '12px', color: '#64748b', marginTop: '12px', fontFamily: 'monospace', wordBreak: 'break-all', textAlign: 'center', maxWidth: '100%', padding: '0 8px' }}>
-                TOKEN: {activeQrPayload}
-              </span>
+              {activeQrPayload ? (
+                <div style={{ padding: '14px', background: '#ffffff', border: '2px solid #0067b8', borderRadius: '10px', boxShadow: '0 4px 16px rgba(0, 103, 184, 0.1)' }}>
+                  <QRCodeSVG value={activeQrPayload} size={190} level="H" includeMargin={false} />
+                </div>
+              ) : (
+                <div style={{ maxWidth: '320px', padding: '16px', border: '1px solid #d97706', borderRadius: '8px', color: '#92400e', background: '#fffbeb', textAlign: 'center', fontSize: '13px' }}>
+                  This member does not have an individual QR token yet. Ask the event administrator to run the team-member QR migration.
+                </div>
+              )}
               <span style={{ fontSize: '11px', color: '#0067b8', fontWeight: 600, marginTop: '4px', textAlign: 'center', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {passViewMode === 'team' ? 'Present for Entire Team Turnstile Check-In' : 'Present for Individual Turnstile Entry'}
+                Present for Individual Turnstile Entry
               </span>
             </div>
 
@@ -390,7 +323,7 @@ export default function TicketClient({
                 fontSize: '13px',
               }}
             >
-              {passViewMode === 'individual' && currentMember ? (
+              {isTeam && currentMember ? (
                 <>
                   <div>
                     <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: 700 }}>

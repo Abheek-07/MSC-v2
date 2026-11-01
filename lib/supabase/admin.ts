@@ -1,19 +1,28 @@
 import { createClient as createSupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 
-let adminClient: ReturnType<typeof createSupabaseClient> | null = null;
+type UntypedDatabaseClient = SupabaseClient<any>;
+
+let adminClient: UntypedDatabaseClient | null = null;
 
 /**
- * Returns the Supabase client with the service-role key.
- * This client bypasses RLS and must ONLY be used in server-only secure contexts
- * where the user identity and permission has already been independently verified.
+ * Creates a server-only Supabase service-role client.
+ * Never expose this client to browser code. Its key bypasses Row Level Security.
  */
-export function getAdminClient(): any {
+export function getAdminClient(): UntypedDatabaseClient {
   if (adminClient) return adminClient;
 
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.supabase.co';
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'placeholder-service-role-key';
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  adminClient = createSupabaseClient(supabaseUrl, serviceRoleKey, {
+  if (!supabaseUrl || !/^https:\/\//.test(supabaseUrl)) {
+    throw new Error('NEXT_PUBLIC_SUPABASE_URL is missing or invalid.');
+  }
+  if (!serviceRoleKey || serviceRoleKey.toLowerCase().includes('placeholder')) {
+    throw new Error('SUPABASE_SERVICE_ROLE_KEY is missing or invalid.');
+  }
+
+  adminClient = createSupabaseClient<any>(supabaseUrl, serviceRoleKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,

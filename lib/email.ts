@@ -15,6 +15,12 @@ interface SendTicketEmailParams {
   qrPayload: string;
 }
 
+function escapeHtml(value: string): string {
+  return value.replace(/[&<>"']/g, (character) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  })[character] || character);
+}
+
 export async function sendTicketEmail(params: SendTicketEmailParams): Promise<{ success: boolean; error?: string }> {
   const apiKey = process.env.RESEND_API_KEY;
 
@@ -24,6 +30,11 @@ export async function sendTicketEmail(params: SendTicketEmailParams): Promise<{ 
   }
 
   try {
+    const safeName = escapeHtml(params.name);
+    const safeEventTitle = escapeHtml(params.eventTitle);
+    const safeEventDate = escapeHtml(params.eventDate);
+    const safeEventLocation = escapeHtml(params.eventLocation);
+    const safeTicketUrl = escapeHtml(params.ticketUrl);
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -42,20 +53,20 @@ export async function sendTicketEmail(params: SendTicketEmailParams): Promise<{ 
             </div>
             <h2 style="font-size: 22px; color: #17253d; margin: 0 0 12px 0;">You're Confirmed!</h2>
             <p style="font-size: 15px; color: #17253d; line-height: 1.5;">
-              Hi <strong>${params.name}</strong>,<br/>
-              Your registration for <strong>${params.eventTitle}</strong> is confirmed.
+              Hi <strong>${safeName}</strong>,<br/>
+              Your registration for <strong>${safeEventTitle}</strong> is confirmed.
             </p>
             <div style="background: #f5f5f5; border-left: 4px solid #0067b8; padding: 16px; margin: 20px 0;">
-              <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Date:</strong> ${params.eventDate}</p>
-              <p style="margin: 0; font-size: 14px;"><strong>Venue:</strong> ${params.eventLocation}</p>
+              <p style="margin: 0 0 8px 0; font-size: 14px;"><strong>Date:</strong> ${safeEventDate}</p>
+              <p style="margin: 0; font-size: 14px;"><strong>Venue:</strong> ${safeEventLocation}</p>
             </div>
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${params.ticketUrl}" style="background-color: #0067b8; color: #ffffff; text-decoration: none; padding: 12px 28px; font-weight: 600; border-radius: 2px; display: inline-block; font-size: 15px;">
+              <a href="${safeTicketUrl}" style="background-color: #0067b8; color: #ffffff; text-decoration: none; padding: 12px 28px; font-weight: 600; border-radius: 2px; display: inline-block; font-size: 15px;">
                 View Digital Ticket & QR Code
               </a>
             </div>
             <p style="font-size: 13px; color: #616161; text-align: center;">
-              Keep this ticket handy at check-in. You can also view it anytime with your email at <a href="${params.ticketUrl}" style="color: #0067b8;">${params.ticketUrl}</a>
+              Keep this ticket handy at check-in. You can also view it anytime with your email at <a href="${safeTicketUrl}" style="color: #0067b8;">${safeTicketUrl}</a>
             </p>
           </div>
         `,

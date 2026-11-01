@@ -1,6 +1,20 @@
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
+import { randomUUID } from 'node:crypto';
+
+function ensureTeamMemberQrTokens(teamData: any) {
+  if (!teamData || !Array.isArray(teamData.members)) return teamData;
+  return {
+    ...teamData,
+    members: teamData.members.map((member: any) => {
+      if (!member || typeof member !== 'object' || Array.isArray(member)) return member;
+      const existingToken = typeof member.hash_payload === 'string' ? member.hash_payload.trim() : '';
+      const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(existingToken);
+      return { ...member, hash_payload: isUuid ? existingToken : randomUUID() };
+    }),
+  };
+}
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +38,7 @@ export async function GET(req: Request) {
     const supabase = getAdminClient();
     let query = supabase
       .from('registrations')
-      .select('*, events(title)')
+      .select('*, events(title)', { count: 'exact' })
       .order('created_at', { ascending: false })
       .limit(limit);
 
@@ -32,7 +46,7 @@ export async function GET(req: Request) {
       query = query.eq('event_id', eventId);
     }
 
-    const { data, error } = await query;
+    const { data, error, count } = await query;
     if (error) throw error;
 
     const registrations = (data || []).map((r: any) => ({
@@ -52,7 +66,7 @@ export async function GET(req: Request) {
       created_at: r.created_at,
     }));
 
-    return noStoreJson({ success: true, registrations });
+    return noStoreJson({ success: true, registrations, total_count: count ?? registrations.length });
   } catch (err: any) {
     console.error('Error fetching admin registrations:', err);
     return noStoreJson({ error: err.message }, 500);
@@ -139,7 +153,7 @@ export async function POST(req: Request) {
             phone: item.phone || item.Phone || '',
             college: item.college || item.College || 'SRM University AP',
           },
-          team_data: item.team_data || ((item.team_name || item.Team || item.team) ? { team_name: item.team_name || item.Team || item.team } : null),
+          team_data: ensureTeamMemberQrTokens(item.team_data || ((item.team_name || item.Team || item.team) ? { team_name: item.team_name || item.Team || item.team } : null)),
           created_at: item.created_at || new Date().toISOString(),
         };
 
