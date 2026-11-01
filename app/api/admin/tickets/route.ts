@@ -114,7 +114,7 @@ export async function POST(req: Request) {
       qrPayload: token,
     });
     if (!emailResult.success) {
-      return noStoreJson({ success: false, token_updated: action === 'regenerate', error: 'Ticket updated, but email delivery failed. Use the ticket link to share it manually.' }, 502);
+      return noStoreJson({ success: false, token_updated: action === 'regenerate', ticket_url: ticketUrl, error: 'Ticket updated, but email delivery failed. Use the returned ticket URL to share it manually.' }, 502);
     }
     return noStoreJson({ success: true, action, ticket_url: ticketUrl, email: attendeeEmail });
   } catch (error) {
