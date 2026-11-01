@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('[Create-user] auth error:', JSON.stringify(error, null, 2));
-      return noStoreJson({ error: error.message || 'Auth creation failed', code: error.code, status: error.status, status: error.status }, 400);
+      return noStoreJson({ error: error.message || 'Auth creation failed', code: error.code, status: error.status }, 400);
     }
 
     if (data?.user) {
