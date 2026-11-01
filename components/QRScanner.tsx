@@ -505,7 +505,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
           offline: true,
           hashPayload: hash,
         };
-      } else if (cachedRec.checked_in) {
+      } else if (!sessionId && cachedRec.checked_in) {
         result = {
           outcome: 'already_checked_in',
           message: `Already Checked In (Offline Cache)`,
