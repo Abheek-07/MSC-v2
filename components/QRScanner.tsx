@@ -779,19 +779,19 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
                 borderRadius: 'var(--radius-sm)',
                 border: '2px solid',
                 background:
-                  scanResult.outcome === 'success'
+                  (scanResult.outcome === 'success' || scanResult.outcome === 'idle')
                     ? 'var(--success-bg)'
                     : scanResult.outcome === 'already_checked_in'
                     ? 'var(--warning-bg)'
                     : 'var(--danger-bg)',
                 borderColor:
-                  scanResult.outcome === 'success'
+                  (scanResult.outcome === 'success' || scanResult.outcome === 'idle')
                     ? 'var(--success)'
                     : scanResult.outcome === 'already_checked_in'
                     ? 'var(--warning)'
                     : 'var(--danger)',
                 color:
-                  scanResult.outcome === 'success'
+                  (scanResult.outcome === 'success' || scanResult.outcome === 'idle')
                     ? 'var(--success)'
                     : scanResult.outcome === 'already_checked_in'
                     ? 'var(--warning)'
@@ -799,11 +799,12 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
               }}
             >
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '12px' }}>
-                {scanResult.outcome === 'success' && <CheckCircle2 size={28} />}
+                {(scanResult.outcome === 'success' || scanResult.outcome === 'idle') && <CheckCircle2 size={28} />}
                 {scanResult.outcome === 'already_checked_in' && <AlertTriangle size={28} />}
                 {scanResult.outcome === 'invalid' && <XCircle size={28} />}
                 <h3 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>
                   {scanResult.outcome === 'success' && (scanResult.offline ? 'CHECK-IN QUEUED (OFFLINE)' : 'CHECK-IN GRANTED')}
+                  {scanResult.outcome === 'idle' && 'TEAM VERIFIED · ACTION REQUIRED'}
                   {scanResult.outcome === 'already_checked_in' && 'ALREADY CHECKED IN'}
                   {scanResult.outcome === 'invalid' && 'INVALID TICKET'}
                 </h3>
