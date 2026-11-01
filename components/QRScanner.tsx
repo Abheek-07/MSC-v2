@@ -183,22 +183,39 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
           return;
         }
         records.forEach((rec) => {
-          store.put({
-          hash_payload: rec.hash_payload || rec.id,
-          event_id: eventId,
-          lead_name: rec.lead_name || rec.name,
-          reg_number: rec.reg_number || rec.registration_number,
-          team_name: rec.team_name || '',
-          team_members: (rec.team_members || []).map((member: any, index: number) => ({
+          const parentHash = rec.hash_payload || rec.id;
+          const normalizedMembers = (rec.team_members || []).map((member: any, index: number) => ({
             ...member,
             id: `${rec.id}-m-${index}`,
             name: member.fullName || member.name || 'Team member',
             email: member.email || '',
             reg_number: member.regNum || member.reg_number || member.registration_number || '',
             checked_in: Boolean(member.checked_in),
-          })),
-          checked_in: rec.checked_in || false,
-          checked_in_at: rec.checked_in_at || null,
+          }));
+          store.put({
+            hash_payload: parentHash,
+            event_id: eventId,
+            lead_name: rec.lead_name || rec.name,
+            reg_number: rec.reg_number || rec.registration_number,
+            team_name: rec.team_name || '',
+            team_members: normalizedMembers,
+            checked_in: rec.checked_in || false,
+            checked_in_at: rec.checked_in_at || null,
+          });
+          // Cache each member token as its own scannable record for offline admission.
+          normalizedMembers.forEach((member: any, index: number) => {
+            if (!member.hash_payload) return;
+            store.put({
+              hash_payload: member.hash_payload,
+              event_id: eventId,
+              lead_name: member.name,
+              reg_number: member.reg_number,
+              team_name: rec.team_name || '',
+              checked_in: Boolean(member.checked_in),
+              is_team_member: true,
+              member_id: `${rec.id}-m-${index}`,
+              parent_hash_payload: parentHash,
+            });
           });
         });
       };
@@ -467,7 +484,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
           hashPayload: hash,
         };
       } else {
-        if (Boolean(cachedRec.team_name) && (cachedRec.team_members?.length || 0) > 1 && !teamMode) {
+        if (!cachedRec.is_team_member && Boolean(cachedRec.team_name) && (cachedRec.team_members?.length || 0) > 1 && !teamMode) {
           result = {
             outcome: 'idle',
             message: 'Team found in offline cache. Select who should be checked in.',
@@ -494,7 +511,8 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
         writeTx.objectStore('offline_queue').add({
           event_id: eventId,
           hash_payload: hash,
-          team_mode: teamMode || 'lead_only',
+          team_mode: cachedRec.is_team_member ? 'member' : (teamMode || 'lead_only'),
+          member_id: cachedRec.member_id,
           timestamp: new Date().toISOString(),
         });
 
@@ -507,7 +525,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
           name: cachedRec.lead_name,
           regNum: cachedRec.reg_number,
           teamName: cachedRec.team_name,
-          isTeam: Boolean(cachedRec.team_name),
+          isTeam: !cachedRec.is_team_member && Boolean(cachedRec.team_name),
           teamMembers: cachedRec.team_members,
           timestamp: new Date().toLocaleTimeString(),
           offline: true,
