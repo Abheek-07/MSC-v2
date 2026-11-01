@@ -44,6 +44,26 @@ export async function POST(req: Request) {
         if (byId.error) throw byId.error;
         if (byId.data) registrationId = byId.data.id;
       }
+      if (!registrationId) {
+        const memberRows = await db.from('registrations')
+          .select('id,team_data')
+          .eq('event_id', eventId)
+          .eq('status', 'confirmed')
+          .contains('team_data', { members: [{ hash_payload: token }] })
+          .limit(2);
+        if (memberRows.error) throw memberRows.error;
+        const memberMatches = (memberRows.data || []).flatMap((row: any) =>
+          (row.team_data?.members || [])
+            .map((member: any, index: number) => ({ row, member, index }))
+            .filter((entry: any) => entry.member.hash_payload === token)
+        );
+        if (memberMatches.length === 1) {
+          registrationId = memberMatches[0].row.id;
+          memberIndex = memberMatches[0].index;
+        } else if (memberMatches.length > 1) {
+          return noStoreJson({ success: false, error: 'This member QR token is duplicated. Contact an administrator.' }, 409);
+        }
+      }
     } else if (token.length >= 5 && token.length <= 254 && /^[a-zA-Z0-9@._ -]+$/.test(token)) {
       const fields = token.includes('@')
         ? [['lead_email', token.toLowerCase()]]
@@ -74,7 +94,7 @@ export async function POST(req: Request) {
       })) : [];
       return noStoreJson({
         success: true,
-        is_team: Boolean(teamData.team_name),
+        is_team: memberIndex === null && Boolean(teamData.team_name),
         participant_name: preview.data.form_data?.full_name || preview.data.form_data?.name || String(preview.data.lead_email || '').split('@')[0],
         registration_number: preview.data.form_data?.registration_number || preview.data.form_data?.reg_num || 'N/A',
         team_name: teamData.team_name || '',
@@ -106,7 +126,7 @@ export async function POST(req: Request) {
     return noStoreJson({
       success: true,
       already_checked_in: Boolean(result.already_checked_in),
-      is_team: Boolean(result.team_data?.team_name),
+      is_team: memberIndex === null && Boolean(result.team_data?.team_name),
       participant_name: result.form_data?.full_name || result.form_data?.name || String(result.lead_email || '').split('@')[0],
       registration_number: result.form_data?.registration_number || result.form_data?.reg_num || 'N/A',
       team_name: result.team_data?.team_name || '',

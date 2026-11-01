@@ -71,7 +71,21 @@ export async function POST(req: Request) {
       year: String(member.year || ''),
       branch: String(member.branch || ''),
       checked_in: false,
+      hash_payload: crypto.randomUUID(),
     })) : [];
+
+    // The team leader is also an individual attendee and must have their own QR.
+    if (requestedTeamName && !members.some((member: any) => member.email === normalizedEmail)) {
+      members.unshift({
+        fullName: String(form_data?.full_name || normalizedEmail.split('@')[0]),
+        email: normalizedEmail,
+        regNum: String(form_data?.registration_number || form_data?.reg_num || ''),
+        year: String(form_data?.year || ''),
+        branch: String(form_data?.branch || ''),
+        checked_in: false,
+        hash_payload: crypto.randomUUID(),
+      });
+    }
 
     const normalizedTeamData = requestedTeamName ? {
       team_name: requestedTeamName,
@@ -108,17 +122,36 @@ export async function POST(req: Request) {
     // Do not dispatch duplicate confirmation emails when an idempotent request replays.
     if (status === 'confirmed' && !result.replayed && hashPayload) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mscsrmap.xyz';
-      const attendeeName = members[0]?.fullName || form_data?.full_name || normalizedEmail.split('@')[0];
+      const recipients = new Set<string>();
+      for (const member of members) {
+        const memberEmail = member.email;
+        if (!memberEmail || recipients.has(memberEmail)) continue;
+        recipients.add(memberEmail);
+        sendTicketEmail({
+          to: memberEmail,
+          name: member.fullName || memberEmail.split('@')[0],
+          eventTitle: event.title,
+          eventDate: event.date_start,
+          eventLocation: event.location,
+          ticketUrl: `${appUrl}/ticket/${member.hash_payload}`,
+          qrPayload: member.hash_payload,
+        }).catch((error) => console.error('[Member ticket email dispatcher]:', error));
+      }
 
-      sendTicketEmail({
-        to: normalizedEmail,
-        name: attendeeName,
-        eventTitle: event.title,
-        eventDate: event.date_start,
-        eventLocation: event.location,
-        ticketUrl: `${appUrl}/ticket/${hashPayload}`,
-        qrPayload: hashPayload,
-      }).catch((error) => console.error('[Ticket email dispatcher]:', error));
+      // Solo registrations, or teams without member email addresses, receive the
+      // lead ticket as a fallback. Team members with emails each receive their own QR.
+      if (recipients.size === 0) {
+        const attendeeName = form_data?.full_name || normalizedEmail.split('@')[0];
+        sendTicketEmail({
+          to: normalizedEmail,
+          name: attendeeName,
+          eventTitle: event.title,
+          eventDate: event.date_start,
+          eventLocation: event.location,
+          ticketUrl: `${appUrl}/ticket/${hashPayload}`,
+          qrPayload: hashPayload,
+        }).catch((error) => console.error('[Ticket email dispatcher]:', error));
+      }
     }
 
     return NextResponse.json({

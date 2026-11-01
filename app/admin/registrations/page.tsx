@@ -33,6 +33,7 @@ interface RegistrationRecord {
   team_name?: string;
   team_id?: string;
   team_size?: number;
+  team_members?: Array<{ id?: string; fullName?: string; name?: string; hash_payload?: string; regNum?: string; email?: string; role?: string }>;
   created_at: string;
 }
 
@@ -68,6 +69,7 @@ export default function AdminRegistrationsPage() {
           team_name: r.team_data?.team_name || '',
           team_id: r.team_data?.team_id,
           team_size: r.team_data?.team_size,
+          team_members: r.team_data?.members || [],
           created_at: r.created_at,
         }));
         setRegistrations(mapped);
@@ -733,22 +735,51 @@ export default function AdminRegistrationsPage() {
                 </div>
               )}
 
-              {/* Scannable Turnstile QR Code */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
-                <div style={{ padding: '10px', background: '#ffffff', border: '2px solid #0067b8', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0, 103, 184, 0.08)' }}>
-                  <QRCodeSVG
-                    value={typeof window !== 'undefined' ? `${window.location.origin}/admin/checkin/${selectedBadge.ticket_id || selectedBadge.id}` : `https://msc-srmap.in/admin/checkin/${selectedBadge.id}`}
-                    size={140}
-                    level="H"
-                  />
+              {/* Every embedded team member receives a separate QR token. Never issue a shared team QR. */}
+              {selectedBadge.team_members && selectedBadge.team_members.length > 0 ? (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '14px', margin: '16px 0' }}>
+                  {selectedBadge.team_members.map((member, index) => {
+                    const memberToken = member.hash_payload;
+                    const memberName = member.fullName || member.name || `Team member ${index + 1}`;
+                    const memberUrl = memberToken && typeof window !== 'undefined'
+                      ? `${window.location.origin}/ticket/${memberToken}`
+                      : '';
+                    return (
+                      <div key={member.id || memberToken || index} style={{ border: '1px solid #dbe3ec', borderRadius: '8px', padding: '12px', textAlign: 'center', breakInside: 'avoid' }}>
+                        <div style={{ fontSize: '13px', fontWeight: 700, color: '#0f172a', marginBottom: '3px' }}>{memberName}</div>
+                        <div style={{ fontSize: '10px', color: '#64748b', marginBottom: '8px' }}>{member.role || (index === 0 ? 'Leader' : 'Member')} · {member.regNum || 'No registration number'}</div>
+                        {memberUrl ? (
+                          <QRCodeSVG value={memberUrl} size={132} level="H" />
+                        ) : (
+                          <div style={{ minHeight: '132px', display: 'grid', placeItems: 'center', color: '#92400e', background: '#fffbeb', fontSize: '11px', padding: '8px' }}>
+                            Individual token pending. Run the team-member QR migration.
+                          </div>
+                        )}
+                        <div style={{ fontSize: '9px', fontFamily: 'monospace', color: '#64748b', wordBreak: 'break-all', marginTop: '6px' }}>
+                          {memberToken || 'TOKEN NOT GENERATED'}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
-
-              <div style={{ fontSize: '10px', fontFamily: 'monospace', color: '#64748b', wordBreak: 'break-all', marginBottom: '4px' }}>
-                TOKEN: {selectedBadge.ticket_id || selectedBadge.id}
-              </div>
+              ) : (
+                <>
+                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+                    <div style={{ padding: '10px', background: '#ffffff', border: '2px solid #0067b8', borderRadius: '8px', boxShadow: '0 4px 10px rgba(0, 103, 184, 0.08)' }}>
+                      <QRCodeSVG
+                        value={typeof window !== 'undefined' ? `${window.location.origin}/admin/checkin/${selectedBadge.ticket_id || selectedBadge.id}` : `https://msc-srmap.in/admin/checkin/${selectedBadge.id}`}
+                        size={140}
+                        level="H"
+                      />
+                    </div>
+                  </div>
+                  <div style={{ fontSize: '10px', fontFamily: 'monospace', color: '#64748b', wordBreak: 'break-all', marginBottom: '4px' }}>
+                    TOKEN: {selectedBadge.ticket_id || selectedBadge.id}
+                  </div>
+                </>
+              )}
               <div style={{ fontSize: '10px', color: '#0067b8', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>
-                OFFICIAL TURNSTILE ENTRY PASS &bull; SCAN FOR ADMISSION
+                INDIVIDUAL TURNSTILE ENTRY PASS &bull; SCAN FOR ADMISSION
               </div>
             </div>
 
