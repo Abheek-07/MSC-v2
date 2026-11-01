@@ -243,7 +243,7 @@ export default function QRScanner({ eventId, eventTitle }: QRScannerProps) {
             body: JSON.stringify({
               event_id: item.event_id,
               hash_payload: item.hash_payload,
-              team_mode: item.team_mode,
+              team_mode: item.team_mode || (item.checkin_type === 'all' ? 'all' : 'lead_only'),
               member_id: item.member_id,
             }),
           });
