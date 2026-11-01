@@ -3,12 +3,6 @@ const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
   compress: true,
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   serverExternalPackages: ['html5-qrcode'],
   experimental: {
     optimizePackageImports: [
@@ -29,17 +23,13 @@ const nextConfig = {
   },
   cleanDistDir: true,
   webpack: (config, { dev }) => {
-    // Fast source maps in development for faster compilation
     if (dev) {
       config.devtool = 'eval-cheap-module-source-map';
     }
-
-    // Suppress Webpack cache serialization warnings (PackFileCacheStrategy)
     config.infrastructureLogging = {
       ...(config.infrastructureLogging || {}),
       level: 'error',
     };
-
     return config;
   },
   async headers() {

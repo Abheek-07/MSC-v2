@@ -40,7 +40,7 @@ jobs:
           cache: 'npm'
 
       - name: NPM Security Audit
-        run: npm audit --audit-level=critical
+        run: npm audit --audit-level=high
 
   typecheck:
     name: Typecheck (tsc)
@@ -79,6 +79,26 @@ jobs:
 
       - name: Run ESLint
         run: npx eslint . --max-warnings 999
+
+
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Run Unit Tests
+        run: npm test
 
   build:
     name: Next.js Production Build

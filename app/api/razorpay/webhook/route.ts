@@ -7,39 +7,53 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: Request) {
   try {
     const rawBody = await req.text();
+    if (Buffer.byteLength(rawBody, 'utf8') > 1024 * 1024) {
+      return NextResponse.json({ error: 'Webhook payload too large.' }, { status: 413 });
+    }
+
     const signature = req.headers.get('x-razorpay-signature');
-
-    if (!signature) {
-      return NextResponse.json({ error: 'Missing webhook signature header' }, { status: 400 });
+    if (!signature || !verifyWebhookSignature(rawBody, signature)) {
+      return NextResponse.json({ error: 'Invalid webhook signature.' }, { status: 403 });
     }
 
-    const isValid = verifyWebhookSignature(rawBody, signature);
-    const isMock = process.env.RAZORPAY_WEBHOOK_SECRET?.includes('placeholder');
-
-    if (!isValid && !isMock) {
-      return NextResponse.json({ error: 'Invalid webhook signature' }, { status: 403 });
+    let event: any;
+    try {
+      event = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: 'Invalid webhook payload.' }, { status: 400 });
     }
 
-    const event = JSON.parse(rawBody);
-
-    // Only process payment.captured events
     if (event.event === 'payment.captured') {
-      const paymentEntity = event.payload.payment.entity;
-      const { id: paymentId, order_id: orderId, amount, email } = paymentEntity;
+      const payment = event.payload?.payment?.entity;
+      if (
+        !payment || typeof payment.id !== 'string' || typeof payment.order_id !== 'string' ||
+        payment.status !== 'captured' || payment.currency !== 'INR' ||
+        !Number.isSafeInteger(payment.amount) || payment.amount <= 0
+      ) {
+        return NextResponse.json({ error: 'Invalid captured-payment payload.' }, { status: 400 });
+      }
 
-      const supabase = getAdminClient();
-      await supabase.rpc('confirm_captured_payment', {
-        p_razorpay_payment_id: paymentId,
-        p_razorpay_order_id: orderId,
-        p_amount: amount,
-        p_payer_email: email || 'payer@srmap.edu.in',
-        p_gateway_payload: paymentEntity,
+      const { data, error } = await getAdminClient().rpc('confirm_captured_payment', {
+        p_razorpay_payment_id: payment.id,
+        p_razorpay_order_id: payment.order_id,
+        p_amount: payment.amount,
+        p_payer_email: payment.email || null,
+        p_gateway_payload: payment,
       });
+
+      if (error) {
+        console.error('[Razorpay webhook confirmation failed]:', error.message);
+        return NextResponse.json({ error: 'Payment confirmation could not be recorded.' }, { status: 503 });
+      }
+      if (!data || data.success !== true) {
+        console.error('[Razorpay webhook confirmation rejected]:', data?.error || 'Unknown RPC rejection');
+        return NextResponse.json({ error: 'Payment confirmation was rejected.' }, { status: 409 });
+      }
     }
 
     return NextResponse.json({ status: 'ok' });
-  } catch (err: any) {
+  } catch (err) {
     console.error('[Razorpay webhook error]:', err);
-    return NextResponse.json({ error: 'Webhook processing error' }, { status: 500 });
+    return NextResponse.json({ error: 'Webhook processing error.' }, { status: 500 });
   }
 }
