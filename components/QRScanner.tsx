@@ -353,7 +353,7 @@ export default function QRScanner({ eventId, eventTitle, sessionId, sessionTitle
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [syncOfflineQueue, updateDBCounts]);
+  }, [eventId, syncOfflineQueue, updateDBCounts]);
 
   useEffect(() => {
     if (!sessionId) {
