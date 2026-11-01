@@ -96,8 +96,9 @@ export async function POST(req: Request) {
     const participantRegNumber = matchedMember?.regNum || matchedMember?.reg_number || matchedMember?.registration_number || registration.form_data?.registration_number || registration.form_data?.reg_num || 'N/A';
 
     if (body.preview === true) {
+      const relevantTokens = [attendeeToken, ...(Array.isArray(registration.team_data?.members) ? registration.team_data.members.map((member: any) => member.hash_payload).filter((value: any) => typeof value === 'string') : [])];
       const { data: attendanceRows, error: attendanceError } = await db.from('session_attendance')
-        .select('attendee_token').eq('session_id', sessionId);
+        .select('attendee_token').eq('session_id', sessionId).in('attendee_token', Array.from(new Set(relevantTokens)));
       if (attendanceError) throw attendanceError;
       const attended = new Set((attendanceRows || []).map((row: any) => row.attendee_token));
       const members = Array.isArray(registration.team_data?.members) ? registration.team_data.members.map((m: any, index: number) => ({
