@@ -109,12 +109,13 @@ export async function POST(req: Request) {
     if (!process.env.RESEND_API_KEY) {
       return noStoreJson({ success: false, token_updated: action === 'regenerate', error: 'Email delivery is not configured. Set RESEND_API_KEY before using resend or regeneration.' }, 503);
     }
+    const relatedEvent = Array.isArray(registration.events) ? registration.events[0] : registration.events;
     const emailResult = await sendTicketEmail({
       to: attendeeEmail,
       name: attendeeName,
-      eventTitle: registration.events?.title || 'MSC Event',
-      eventDate: registration.events?.date_start || '',
-      eventLocation: registration.events?.location || '',
+      eventTitle: relatedEvent?.title || 'MSC Event',
+      eventDate: relatedEvent?.date_start || '',
+      eventLocation: relatedEvent?.location || '',
       ticketUrl,
       qrPayload: token,
     });
