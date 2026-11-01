@@ -138,7 +138,7 @@ export default function TicketClient({
               className="fluent-btn fluent-btn-secondary"
               style={{ fontSize: '13px', padding: '6px 14px' }}
             >
-              Print Pass
+              Save as PDF
             </button>
             <button
               onClick={downloadTicketImage}
