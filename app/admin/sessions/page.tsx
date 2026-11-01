@@ -113,7 +113,7 @@ export default function AdminSessionsPage() {
   function exportAttendance() {
     if (!selectedSession) return;
     const rows = [['Name', 'Email', 'Registration Number', 'Team', 'Checked In At'], ...attendees.map((a) => [a.name, a.email, a.registration_number, a.team_name, a.checked_in_at])];
-    const csv = rows.map((row) => row.map((value) => '"' + String(value || '').replace(/"/g, '""') + '"').join(',')).join('\\n');
+    const csv = rows.map((row) => row.map((value) => '"' + String(value || '').replace(/"/g, '""') + '"').join(',')).join('\n');
     const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
     const anchor = document.createElement('a'); anchor.href = url; anchor.download = selectedSession.title.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-attendance.csv'; anchor.click(); URL.revokeObjectURL(url);
   }
