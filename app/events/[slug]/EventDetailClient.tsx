@@ -142,6 +142,7 @@ export default function EventDetailClient({
 
   // Submit / Loading
   const [submitting, setSubmitting] = useState(false);
+  const [noRefundAccepted, setNoRefundAccepted] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmedTicket, setConfirmedTicket] = useState<any | null>(null);
 
@@ -193,6 +194,10 @@ export default function EventDetailClient({
       setErrorMsg('Registrations are closed for this event.');
       return;
     }
+    if (!isFree && !noRefundAccepted) {
+      setErrorMsg('Please accept the no-refund policy before continuing to payment.');
+      return;
+    }
     setSubmitting(true);
     setErrorMsg(null);
 
@@ -202,6 +207,7 @@ export default function EventDetailClient({
       event_id: event.id,
       lead_email: leadEmail,
       idempotency_key: idempotencyKey,
+      no_refund_policy_accepted: isFree || noRefundAccepted,
       form_data: {
         full_name: leadName,
         is_internal: isInternalStudent,
@@ -277,11 +283,16 @@ export default function EventDetailClient({
             prefill: { name: leadName, email: leadEmail, contact: leadPhone },
             theme: { color: '#0067b8' },
             handler: async function (response: any) {
-              await fetch('/api/razorpay/verify-payment', {
+              const verifyRes = await fetch('/api/razorpay/verify-payment', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(response),
               });
+              const verifyData = await verifyRes.json();
+              if (!verifyRes.ok || !verifyData.success) {
+                setErrorMsg(verifyData.error || 'Payment verification failed. Your ticket is not confirmed yet.');
+                return;
+              }
               setConfirmedTicket({
                 hash_payload: data.hash_payload,
                 status: 'confirmed',
@@ -1078,6 +1089,21 @@ export default function EventDetailClient({
                   </div>
                 )}
 
+
+                {!isFree && (
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '12px', lineHeight: 1.5, color: 'var(--text-muted)' }}>
+                    <input
+                      type="checkbox"
+                      checked={noRefundAccepted}
+                      onChange={(e) => setNoRefundAccepted(e.target.checked)}
+                      required
+                      style={{ marginTop: '2px', accentColor: 'var(--brand)' }}
+                    />
+                    <span>
+                      I understand and agree that all successful payments are final and non-refundable. MSC will not accept refund requests after payment.
+                    </span>
+                  </label>
+                )}
                 <button
                   type="submit"
                   disabled={submitting}

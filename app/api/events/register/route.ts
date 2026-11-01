@@ -63,6 +63,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Registrations are closed for this event.' }, { status: 400 });
     }
 
+    const isPaidEvent = event.form_requirements?.event_pricing === 'paid';
+    if (isPaidEvent && body.no_refund_policy_accepted !== true) {
+      return NextResponse.json(
+        { error: 'You must accept the no-refund policy before registering for a paid event.' },
+        { status: 400 }
+      );
+    }
+
+    const normalizedFormData = {
+      ...(form_data || {}),
+      ...(isPaidEvent ? {
+        no_refund_policy_accepted: true,
+        no_refund_policy_version: '2026-11-01',
+        no_refund_policy_accepted_at: new Date().toISOString(),
+      } : {}),
+    };
+
     const requestedTeamName = String(team_data?.team_name || team_data?.teamName || '').trim();
     const members = Array.isArray(team_data?.members) ? team_data.members.map((member: any) => ({
       fullName: String(member.fullName || member.name || '').trim(),
@@ -102,7 +119,7 @@ export async function POST(req: Request) {
       p_event_id: event_id,
       p_user_id: null,
       p_lead_email: normalizedEmail,
-      p_form_data: form_data || {},
+      p_form_data: normalizedFormData,
       p_team_data: normalizedTeamData,
       p_idempotency_key: effectiveIdempotencyKey,
     });
