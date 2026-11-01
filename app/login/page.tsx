@@ -10,7 +10,6 @@ export default function LoginPage() {
   const router = useRouter();
   const [mode, setMode] = useState<'signin' | 'signup' | 'reset'>('signin');
   const [fullName, setFullName] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -208,7 +207,7 @@ export default function LoginPage() {
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
                 <label style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-strong)' }}>Password</label>
-                <button
+                {mode === 'signin' && <button
                   type="button"
                   onClick={() => {
                     setMode('reset');
@@ -224,7 +223,7 @@ export default function LoginPage() {
                   }}
                 >
                   Forgot password?
-                </button>
+                </button>}
               </div>
               <input
                 type="password"
