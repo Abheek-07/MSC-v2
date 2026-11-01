@@ -67,6 +67,12 @@ export async function POST(req: Request) {
       }
     }
     if (!registrationId) return noStoreJson({ success: false, error: 'No exact registration matched this ticket.' }, 404);
+    if (token && isValidUUID(token)) {
+      const { data: revokedToken, error: revokedError } = await db.from('ticket_token_revocations')
+        .select('id').eq('token', token).maybeSingle();
+      if (revokedError) throw revokedError;
+      if (revokedToken) return noStoreJson({ success: false, error: 'This ticket QR has been revoked. Ask the attendee for their latest ticket.' }, 409);
+    }
 
     const { data: registration, error: registrationError } = await db.from('registrations')
       .select('id,event_id,status,hash_payload,lead_email,form_data,team_data')
@@ -81,6 +87,13 @@ export async function POST(req: Request) {
       attendeeToken = member.hash_payload;
     } else if (!attendeeToken || (attendeeToken !== registration.hash_payload && attendeeToken !== registration.id)) {
       attendeeToken = registration.hash_payload || registration.id;
+    }
+
+    if (attendeeToken && isValidUUID(attendeeToken)) {
+      const { data: revokedAttendeeToken, error: revokedAttendeeError } = await db.from('ticket_token_revocations')
+        .select('id').eq('token', attendeeToken).maybeSingle();
+      if (revokedAttendeeError) throw revokedAttendeeError;
+      if (revokedAttendeeToken) return noStoreJson({ success: false, error: 'This ticket QR has been revoked. Ask the attendee for their latest ticket.' }, 409);
     }
 
     const isTeamRoot = memberIndex === null && Boolean(registration.team_data?.team_name) && Array.isArray(registration.team_data?.members) && registration.team_data.members.length > 0;

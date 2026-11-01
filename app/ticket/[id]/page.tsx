@@ -18,6 +18,10 @@ export default async function TicketPage({ params }: TicketPageProps) {
 
   try {
     const supabase = getAdminClient();
+    const { data: revokedToken, error: revokedError } = await supabase
+      .from('ticket_token_revocations').select('id').eq('token', id).maybeSingle();
+    if (revokedError) throw revokedError;
+    if (revokedToken) return <TicketClient invalid={true} />;
     const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
     let reg: any = null;
     let matchedMemberIndex: number | undefined = undefined;
