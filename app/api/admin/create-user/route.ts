@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
     const supabase = getAdminClient();
 
     const { data, error } = await supabase.auth.admin.createUser({
-      email,
+      email: email.trim().toLowerCase(),
       password,
       email_confirm: true,
       user_metadata: { full_name, role: assignedRole },
@@ -69,7 +69,7 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       console.error('[Create-user] auth error:', JSON.stringify(error, null, 2));
-      return noStoreJson({ error: error.message || 'Auth creation failed', code: error.code, status: error.status, details: error.details, hint: error.hint }, 400);
+      return noStoreJson({ error: error.message || 'Auth creation failed', code: error.code, status: error.status }, 400);
     }
 
     if (data?.user) {
@@ -86,9 +86,9 @@ export async function POST(req: NextRequest) {
 
       if (profErr) {
         console.error('[Create-user] profile upsert failed:', profErr);
-        // Return the actual database error
+        await supabase.auth.admin.deleteUser(data.user.id);
         return noStoreJson(
-          { error: profErr.message || 'Profile upsert failed', code: profErr.code, details: profErr.details, hint: profErr.hint, user: data.user },
+          { error: profErr.message || 'Profile upsert failed', code: profErr.code, details: profErr.details, hint: profErr.hint },
           500
         );
       }
