@@ -1,49 +1,28 @@
-import { NextResponse } from 'next/server';
-import { enforcePayloadSize, isValidEmail, encryptSecret } from '@/lib/security';
+import { NextRequest } from 'next/server';
+import { enforcePayloadSize } from '@/lib/security';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
-import { getAdminClient } from '@/lib/supabase/admin';
+import { handleResetRequest, resetRequestResponse } from '@/lib/password-reset';
 
-export async function POST(req: Request) {
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest) {
   try {
-    const rawBody = await enforcePayloadSize(req, 8 * 1024);
-    const body = JSON.parse(rawBody);
-
     const clientIp = getClientIP(req.headers);
-    const rateLimit = await checkRateLimit(`pwd_reset_${clientIp}`, 'auth');
-    if (!rateLimit.success) {
-      return NextResponse.json({ error: 'Too many requests. Please wait a minute.' }, { status: 429 });
+    const limit = await checkRateLimit(`pwd_reset_${clientIp}`, 'auth');
+    if (!limit.success) {
+      return resetRequestResponse({ status: 429, body: { error: 'Too many requests. Please wait a minute.' }, headers: { 'Cache-Control': 'no-store' } });
     }
-
-    const { email, proposedPassword } = body;
-
-    if (!isValidEmail(email)) {
-      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 });
+    const raw = await enforcePayloadSize(req, 8 * 1024);
+    let body: unknown;
+    try { body = JSON.parse(raw); } catch {
+      return resetRequestResponse({ status: 400, body: { error: 'Invalid request body' } });
     }
-
-    if (!proposedPassword || proposedPassword.length < 8) {
-      return NextResponse.json({ error: 'Password must be at least 8 characters long.' }, { status: 400 });
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return resetRequestResponse({ status: 400, body: { error: 'Invalid request body' } });
     }
-
-    // Encrypt proposed password with AES-256-GCM (iv:authTag:ciphertext hex)
-    const encryptedPassword = encryptSecret(proposedPassword);
-
-    const supabase = getAdminClient();
-    try {
-      await supabase.from('password_reset_requests').insert({
-        email: email.toLowerCase().trim(),
-        new_password: encryptedPassword,
-        status: 'pending',
-      });
-    } catch {
-      // Memory fallback for demo
-    }
-
-    return NextResponse.json({
-      success: true,
-      message: 'Password reset request encrypted and queued for admin review.',
-    });
-  } catch (err: any) {
-    console.error('[Reset-request error]:', err);
-    return NextResponse.json({ error: 'Failed to submit reset request.' }, { status: 500 });
+    return resetRequestResponse(await handleResetRequest(body as Record<string, unknown>, clientIp));
+  } catch (error) {
+    console.error('[Reset request] failed:', error);
+    return resetRequestResponse({ status: 500, body: { error: 'Failed to submit reset request.' } });
   }
 }
