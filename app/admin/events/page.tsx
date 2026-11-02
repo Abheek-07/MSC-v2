@@ -137,7 +137,7 @@ export default function AdminEventsPage() {
       status: 'upcoming',
       date_start: defaultStart.toISOString().slice(0, 16),
       date_end: defaultEnd.toISOString().slice(0, 16),
-      image_url: 'https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/hackmsc1.jpg',
+      image_url: 'https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png',
       max_capacity: 150,
       registration_open: true,
       is_published: true,
