@@ -195,10 +195,6 @@ The application uses database objects for member profiles, events, registrations
 5. Verify RLS policies, triggers, functions, and required extensions.
 6. Confirm the application works with the expected public and server-side keys.
 
-**Migration caution:** The current `20261103_individual_team_member_qr.sql` file appears to contain malformed and duplicated SQL fragments. It must be reviewed and corrected before applying it. Do not assume that running every SQL file in sequence on a fresh project is currently a safe bootstrap procedure.
-
-Some migrations are intended to evolve an existing database. Coordinate with the maintainers before applying them to any shared environment. Never use the Supabase service-role key in browser code.
-
 ## Project structure
 
 The main application areas are:
