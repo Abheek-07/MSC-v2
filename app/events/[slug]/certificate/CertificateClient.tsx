@@ -5,6 +5,7 @@ import Link from 'next/link';
 // html-to-image dynamically loaded on download
 import { Award, Download, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import { EventItem } from '@/lib/data/mock-fallback';
+import { escapeHtml, sanitizeCertificateHtml } from '@/lib/sanitize';
 
 const DEFAULT_CERTIFICATE_TEMPLATE = `<div style="width: 860px; height: 580px; padding: 48px 40px; background: #ffffff; border: 12px solid #0067b8; box-sizing: border-box; text-align: center; position: relative; font-family: 'Segoe UI', system-ui, sans-serif; color: #242424; margin: 0 auto; box-shadow: 0 8px 32px rgba(0,0,0,0.1);">
   <div style="display: flex; justify-content: center; align-items: center; gap: 8px; margin-bottom: 12px;">
@@ -129,18 +130,20 @@ export default function CertificateClient({
     }
   };
 
-  // Substitute tokens in template
-  const rawTemplate = event.certificate_html || DEFAULT_CERTIFICATE_TEMPLATE;
+  // Substitute tokens in template with strict HTML escaping and template sanitization
+  const rawTemplate = sanitizeCertificateHtml(event.certificate_html || DEFAULT_CERTIFICATE_TEMPLATE);
   const renderedHtml = verifiedParticipant
-    ? rawTemplate
-        .replace(/\{\{NAME\}\}/g, verifiedParticipant.name)
-        .replace(/\{\{EVENT_TITLE\}\}/g, event.title)
-        .replace(/\{\{COLLEGE_NAME\}\}/g, verifiedParticipant.college || 'SRM University-AP')
-        .replace(/\{\{EVENT_DATE\}\}/g, verifiedParticipant.event_date || new Date(event.date_start).toLocaleDateString())
-        .replace(/\{\{TICKET_ID\}\}/g, verifiedParticipant.ticket_id || 'MSC-VERIFIED')
-        .replace(/\{\{REG_NUMBER\}\}/g, verifiedParticipant.registration_number || 'N/A')
-        .replace(/\{\{ROLE\}\}/g, verifiedParticipant.role || 'Participant')
-        .replace(/\{\{ISSUED_DATE\}\}/g, verifiedParticipant.issued_date || new Date().toLocaleDateString())
+    ? sanitizeCertificateHtml(
+        rawTemplate
+          .replace(/\{\{NAME\}\}/g, escapeHtml(verifiedParticipant.name))
+          .replace(/\{\{EVENT_TITLE\}\}/g, escapeHtml(event.title))
+          .replace(/\{\{COLLEGE_NAME\}\}/g, escapeHtml(verifiedParticipant.college || 'SRM University-AP'))
+          .replace(/\{\{EVENT_DATE\}\}/g, escapeHtml(verifiedParticipant.event_date || new Date(event.date_start).toLocaleDateString()))
+          .replace(/\{\{TICKET_ID\}\}/g, escapeHtml(verifiedParticipant.ticket_id || 'MSC-VERIFIED'))
+          .replace(/\{\{REG_NUMBER\}\}/g, escapeHtml(verifiedParticipant.registration_number || 'N/A'))
+          .replace(/\{\{ROLE\}\}/g, escapeHtml(verifiedParticipant.role || 'Participant'))
+          .replace(/\{\{ISSUED_DATE\}\}/g, escapeHtml(verifiedParticipant.issued_date || new Date().toLocaleDateString()))
+      )
     : '';
 
   return (

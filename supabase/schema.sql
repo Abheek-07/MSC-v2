@@ -32,11 +32,33 @@ $$;
 
 -- Auto-create profile on signup
 create or replace function public.handle_new_user()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
 begin
-  insert into public.member_profiles (id, email, role, is_onboarded)
-  values (new.id, new.email, 'member', false)
-  on conflict (id) do nothing;
+  insert into public.member_profiles (
+    id,
+    email,
+    full_name,
+    role,
+    is_onboarded
+  )
+  values (
+    new.id,
+    new.email,
+    nullif(trim(new.raw_user_meta_data ->> 'full_name'), ''),
+    'member',
+    false
+  )
+  on conflict (id) do update
+    set email = excluded.email,
+        full_name = coalesce(
+          nullif(public.member_profiles.full_name, ''),
+          excluded.full_name
+        );
+
   return new;
 end;
 $$;
@@ -185,231 +207,60 @@ create table if not exists public.payment_orders (
   unique (user_id, event_id, idempotency_key)
 );
 
+-- Ensure all table columns exist on upgraded/pre-existing databases before compiling functions:
+alter table public.teams
+  add column if not exists registration_id uuid references public.registrations(id) on delete cascade,
+  add column if not exists looking_for_members boolean not null default false,
+  add column if not exists leader_year text,
+  add column if not exists leader_branch text;
+
+alter table public.payments
+  add column if not exists registration_id uuid references public.registrations(id) on delete set null,
+  add column if not exists event_id uuid references public.events(id) on delete set null,
+  add column if not exists user_id uuid references auth.users(id) on delete set null,
+  add column if not exists razorpay_order_id text,
+  add column if not exists razorpay_payment_id text,
+  add column if not exists charge_type text,
+  add column if not exists payer_email text,
+  add column if not exists gateway_payload jsonb,
+  add column if not exists verified_at timestamptz;
+
+alter table public.payment_orders
+  add column if not exists registration_id uuid references public.registrations(id) on delete restrict,
+  add column if not exists event_id uuid references public.events(id) on delete restrict,
+  add column if not exists user_id uuid references auth.users(id) on delete set null,
+  add column if not exists idempotency_key uuid,
+  add column if not exists razorpay_order_id text,
+  add column if not exists amount integer,
+  add column if not exists currency text default 'INR',
+  add column if not exists status text default 'creating',
+  add column if not exists expires_at timestamptz,
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table public.registrations
+  add column if not exists idempotency_key uuid,
+  add column if not exists reservation_expires_at timestamptz,
+  add column if not exists checked_in boolean not null default false,
+  add column if not exists status text not null default 'confirmed',
+  add column if not exists form_data jsonb not null default '{}'::jsonb,
+  add column if not exists team_data jsonb,
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table public.password_reset_requests
+  add column if not exists expires_at timestamptz,
+  add column if not exists updated_at timestamptz not null default now();
+
+alter table public.events
+  add column if not exists show_opening_soon boolean not null default false,
+  add column if not exists max_capacity integer,
+  add column if not exists is_published boolean not null default true,
+  add column if not exists certificate_html text,
+  add column if not exists gallery_urls text[] not null default '{}',
+  add column if not exists form_requirements jsonb not null default '{}'::jsonb;
+
 -- ==============================================================================
 -- SECURITY DEFINER RPCs
 -- ==============================================================================
-
--- Atomic event registration RPC
-create or replace function public.register_for_event(
-  p_event_id uuid,
-  p_user_id uuid,
-  p_lead_email text,
-  p_form_data jsonb,
-  p_team_data jsonb,
-  p_idempotency_key uuid
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_event record;
-  v_existing record;
-  v_confirmed_count int;
-  v_status text;
-  v_expires_at timestamptz;
-  v_registration_id uuid;
-  v_hash_payload uuid;
-begin
-  -- 1. Check idempotency: if registration with same key exists, return it
-  if p_idempotency_key is not null then
-    select * into v_existing from public.registrations where idempotency_key = p_idempotency_key;
-    if found then
-      return jsonb_build_object(
-        'success', true,
-        'registration_id', v_existing.id,
-        'hash_payload', v_existing.hash_payload,
-        'status', v_existing.status,
-        'replayed', true
-      );
-    end if;
-  end if;
-
-  -- 2. Lock event row for atomic check
-  select * into v_event from public.events where id = p_event_id for update;
-  if not found then
-    return jsonb_build_object('success', false, 'error', 'Event not found');
-  end if;
-
-  if not v_event.registration_open then
-    return jsonb_build_object('success', false, 'error', 'Registration is closed for this event');
-  end if;
-
-  -- Check duplicate registration
-  if p_user_id is not null then
-    select * into v_existing from public.registrations
-    where event_id = p_event_id and user_id = p_user_id and status != 'cancelled';
-    if found then
-      return jsonb_build_object(
-        'success', true,
-        'registration_id', v_existing.id,
-        'hash_payload', v_existing.hash_payload,
-        'status', v_existing.status,
-        'replayed', true
-      );
-    end if;
-  end if;
-
-  select * into v_existing from public.registrations
-  where event_id = p_event_id and lower(lead_email) = lower(p_lead_email) and status != 'cancelled';
-  if found then
-    return jsonb_build_object(
-      'success', true,
-      'registration_id', v_existing.id,
-      'hash_payload', v_existing.hash_payload,
-      'status', v_existing.status,
-      'replayed', true
-    );
-  end if;
-
-  -- 3. Check capacity
-  select count(*) into v_confirmed_count
-  from public.registrations
-  where event_id = p_event_id
-    and (status = 'confirmed' or (status = 'pending_payment' and reservation_expires_at > now()));
-
-  -- Determine initial status
-  if v_event.max_capacity is not null and v_confirmed_count >= v_event.max_capacity then
-    v_status := 'waitlisted';
-    v_expires_at := null;
-  elsif (v_event.form_requirements->>'event_pricing') = 'paid' then
-    v_status := 'pending_payment';
-    v_expires_at := now() + interval '15 minutes';
-  else
-    v_status := 'confirmed';
-    v_expires_at := null;
-  end if;
-
-  -- 4. Insert registration
-  insert into public.registrations (
-    event_id,
-    user_id,
-    lead_email,
-    form_data,
-    team_data,
-    status,
-    idempotency_key,
-    reservation_expires_at
-  ) values (
-    p_event_id,
-    p_user_id,
-    p_lead_email,
-    p_form_data,
-    p_team_data,
-    v_status,
-    p_idempotency_key,
-    v_expires_at
-  ) returning id, hash_payload into v_registration_id, v_hash_payload;
-
-  -- 5. If team is looking for members, register in matchmaking table
-  if p_team_data is not null and (p_team_data->>'looking_for_members')::boolean is true then
-    insert into public.teams (
-      event_id,
-      registration_id,
-      team_name,
-      leader_name,
-      leader_email,
-      leader_year,
-      leader_branch,
-      looking_for_members
-    ) values (
-      p_event_id,
-      v_registration_id,
-      coalesce(p_team_data->>'team_name', 'Team'),
-      coalesce(p_team_data->>'leader_name', ''),
-      p_lead_email,
-      coalesce(p_team_data->>'leader_year', ''),
-      coalesce(p_team_data->>'leader_branch', ''),
-      true
-    );
-  end if;
-
-  return jsonb_build_object(
-    'success', true,
-    'registration_id', v_registration_id,
-    'hash_payload', v_hash_payload,
-    'status', v_status,
-    'reservation_expires_at', v_expires_at
-  );
-end;
-$$;
-
--- Atomic payment confirmation RPC
-create or replace function public.confirm_captured_payment(
-  p_razorpay_payment_id text,
-  p_razorpay_order_id text,
-  p_amount int,
-  p_payer_email text,
-  p_gateway_payload jsonb
-)
-returns jsonb
-language plpgsql
-security definer
-set search_path = public
-as $$
-declare
-  v_order record;
-begin
-  -- 1. Find matching payment order
-  select * into v_order
-  from public.payment_orders
-  where razorpay_order_id = p_razorpay_order_id
-  for update;
-
-  if not found then
-    return jsonb_build_object('success', false, 'error', 'Payment order not found');
-  end if;
-
-  -- Amount verification
-  if v_order.amount != p_amount then
-    return jsonb_build_object('success', false, 'error', 'Amount mismatch');
-  end if;
-
-  -- 2. Idempotent insert into payments
-  insert into public.payments (
-    event_id,
-    registration_id,
-    user_id,
-    razorpay_order_id,
-    razorpay_payment_id,
-    amount,
-    payer_email,
-    status,
-    gateway_payload,
-    verified_at
-  ) values (
-    v_order.event_id,
-    v_order.registration_id,
-    v_order.user_id,
-    p_razorpay_order_id,
-    p_razorpay_payment_id,
-    p_amount,
-    p_payer_email,
-    'captured',
-    p_gateway_payload,
-    now()
-  ) on conflict (razorpay_payment_id) do nothing;
-
-  -- 3. Update payment order
-  update public.payment_orders
-  set status = 'paid', updated_at = now()
-  where id = v_order.id;
-
-  -- 4. Confirm registration
-  update public.registrations
-  set status = 'confirmed',
-      reservation_expires_at = null,
-      updated_at = now()
-  where id = v_order.registration_id;
-
-  return jsonb_build_object(
-    'success', true,
-    'registration_id', v_order.registration_id,
-    'status', 'confirmed'
-  );
-end;
-$$;
 
 -- Cron helper: Expire abandoned payment holds
 create or replace function public.expire_payment_reservations()
@@ -455,54 +306,68 @@ alter table public.payments enable row level security;
 alter table public.payment_orders enable row level security;
 
 -- 1. member_profiles
+drop policy if exists "member_profiles_owner_read" on public.member_profiles;
 create policy "member_profiles_owner_read" on public.member_profiles
   for select using (auth.uid() = id or public.current_user_role() = 'admin');
 
+drop policy if exists "member_profiles_owner_update" on public.member_profiles;
 create policy "member_profiles_owner_update" on public.member_profiles
   for update using (auth.uid() = id or public.current_user_role() = 'admin');
 
 -- 2. events
+drop policy if exists "events_public_read" on public.events;
 create policy "events_public_read" on public.events
   for select using (is_published = true or public.current_user_role() = 'admin');
 
+drop policy if exists "events_staff_write" on public.events;
 create policy "events_staff_write" on public.events
   for all using (public.current_user_role() = 'admin');
 
 -- 3. registrations
+drop policy if exists "registrations_read" on public.registrations;
 create policy "registrations_read" on public.registrations
   for select using (
     auth.uid() = user_id or
     public.current_user_role() = 'admin'
   );
 
+drop policy if exists "registrations_staff_update" on public.registrations;
 create policy "registrations_staff_update" on public.registrations
   for update using (public.current_user_role() = 'admin');
 
 -- 4. teams
+drop policy if exists "teams_public_read" on public.teams;
 create policy "teams_public_read" on public.teams
   for select using (true);
 
+drop policy if exists "teams_staff_write" on public.teams;
 create policy "teams_staff_write" on public.teams
   for all using (public.current_user_role() = 'admin');
 
 -- 5. team_members
+drop policy if exists "team_members_public_read" on public.team_members;
 create policy "team_members_public_read" on public.team_members
   for select using (true);
 
+drop policy if exists "team_members_staff_write" on public.team_members;
 create policy "team_members_staff_write" on public.team_members
   for all using (public.current_user_role() = 'admin');
 
 -- 6. gallery_items
+drop policy if exists "gallery_items_public_read" on public.gallery_items;
 create policy "gallery_items_public_read" on public.gallery_items
   for select using (true);
 
+drop policy if exists "gallery_items_staff_write" on public.gallery_items;
 create policy "gallery_items_staff_write" on public.gallery_items
   for all using (public.current_user_role() = 'admin');
 
 -- 7. password_reset_requests
+drop policy if exists "password_reset_requests_admin_read" on public.password_reset_requests;
 create policy "password_reset_requests_admin_read" on public.password_reset_requests
   for select using (public.current_user_role() = 'admin');
 
+drop policy if exists "password_reset_requests_admin_update" on public.password_reset_requests;
 create policy "password_reset_requests_admin_update" on public.password_reset_requests
   for update using (public.current_user_role() = 'admin');
 
@@ -531,13 +396,29 @@ alter table public.password_reset_requests alter column new_password drop not nu
 alter table public.password_reset_requests
   add column if not exists expires_at timestamptz;
 alter table public.password_reset_requests
+  add column if not exists updated_at timestamptz not null default now();
+alter table public.password_reset_requests
   alter column expires_at set default (now() + interval '24 hours');
 create index if not exists idx_password_reset_requests_pending_expiry
   on public.password_reset_requests(status, expires_at)
   where status = 'pending';
 
 -- Payment order ownership supports guest registrations.
+alter table public.payment_orders
+  add column if not exists registration_id uuid references public.registrations(id) on delete restrict;
 alter table public.payment_orders alter column user_id drop not null;
+
+alter table public.payments
+  add column if not exists registration_id uuid references public.registrations(id) on delete set null;
+
+alter table public.teams
+  add column if not exists registration_id uuid references public.registrations(id) on delete cascade;
+
+alter table public.registrations
+  add column if not exists idempotency_key uuid;
+alter table public.registrations
+  add column if not exists reservation_expires_at timestamptz;
+
 create unique index if not exists payment_orders_one_active_per_registration
   on public.payment_orders(registration_id)
   where status in ('creating', 'created', 'paid');
@@ -608,7 +489,9 @@ drop policy if exists "registrations_staff_delete" on public.registrations;
 --    DEFERRABLE INITIALLY DEFERRED means the check runs at COMMIT, so a SQL
 --    handover (demote old admin + promote new admin in one transaction) works.
 create or replace function public.enforce_single_admin()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+set search_path = public
+as $$
 begin
   if (select count(*) from public.member_profiles where role = 'admin') > 1 then
     raise exception 'SINGLE_ADMIN: only one admin allowed'
@@ -626,7 +509,9 @@ create constraint trigger enforce_single_admin_trigger
 
 -- 2. Prevent users from changing their own role (self-demotion / self-promotion).
 create or replace function public.protect_role_change()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql
+set search_path = public
+as $$
 begin
   if old.role is distinct from new.role then
     if old.id = auth.uid() then
@@ -663,7 +548,22 @@ notify pgrst, 'reload schema';
 -- Review and apply this migration in the Supabase project before deploying code.
 
 alter table public.payment_orders
+  add column if not exists registration_id uuid references public.registrations(id) on delete restrict;
+
+alter table public.payment_orders
   alter column user_id drop not null;
+
+alter table public.payments
+  add column if not exists registration_id uuid references public.registrations(id) on delete set null;
+
+alter table public.teams
+  add column if not exists registration_id uuid references public.registrations(id) on delete cascade;
+
+alter table public.registrations
+  add column if not exists idempotency_key uuid;
+
+alter table public.registrations
+  add column if not exists reservation_expires_at timestamptz;
 
 create unique index if not exists payment_orders_one_active_per_registration
   on public.payment_orders (registration_id)
@@ -844,9 +744,9 @@ begin
 
   if found then
     return jsonb_build_object(
-      'success', true, 'registration_id', v_existing.id,
-      'hash_payload', v_existing.hash_payload, 'status', v_existing.status,
-      'replayed', true
+      'success', false,
+      'already_registered', true,
+      'error', 'A registration for this event already exists with this email address. Please check your confirmation email or use ticket recovery.'
     );
   end if;
 
@@ -1129,6 +1029,9 @@ alter table public.password_reset_requests
 alter table public.password_reset_requests
   add column if not exists expires_at timestamptz;
 
+alter table public.password_reset_requests
+  add column if not exists updated_at timestamptz not null default now();
+
 update public.password_reset_requests
 set new_password = null,
     expires_at = coalesce(expires_at, created_at + interval '24 hours');
@@ -1183,6 +1086,9 @@ create table if not exists public.session_attendance (
   constraint session_attendance_unique_attendee
     unique (session_id, attendee_token)
 );
+
+alter table public.session_attendance
+  add column if not exists registration_id uuid references public.registrations(id) on delete cascade;
 
 create index if not exists session_attendance_session_idx
   on public.session_attendance(session_id, checked_in_at desc);
@@ -1307,6 +1213,9 @@ create table if not exists public.ticket_token_revocations (
   reason text not null default 'regenerated'
 );
 
+alter table public.ticket_token_revocations
+  add column if not exists registration_id uuid references public.registrations(id) on delete cascade;
+
 create index if not exists ticket_token_revocations_registration_idx
   on public.ticket_token_revocations(registration_id);
 
@@ -1388,68 +1297,5 @@ notify pgrst, 'reload schema';
 
 
 -- >>> 20261106_repair_auth_user_profile_trigger.sql
--- Repair the profile provisioning trigger used by the Admin > Users flow.
--- Public self-registration remains disabled in the application UI.
---
--- The two-role migration (20261011_two_roles_member_admin.sql) already adds
--- the 'member' enum value, migrates legacy roles, and installs the role check.
--- This migration only makes the auth.users profile trigger safe and idempotent.
-
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public, pg_temp
-as $$
-begin
-  insert into public.member_profiles (
-    id,
-    email,
-    full_name,
-    role,
-    is_onboarded
-  )
-  values (
-    new.id,
-    new.email,
-    nullif(trim(new.raw_user_meta_data ->> 'full_name'), ''),
-    'member',
-    false
-  )
-  on conflict (id) do update
-    set email = excluded.email,
-        full_name = coalesce(
-          nullif(public.member_profiles.full_name, ''),
-          excluded.full_name
-        );
-
-  return new;
-end;
-$$;
-
--- Ensure the auth.users trigger invokes the repaired function.
-drop trigger if exists on_auth_user_created on auth.users;
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function public.handle_new_user();
-
--- Confirm the trigger exists after installation.
-do $$
-begin
-  if not exists (
-    select 1
-      from pg_trigger t
-      join pg_class c on c.oid = t.tgrelid
-      join pg_namespace n on n.oid = c.relnamespace
-     where n.nspname = 'auth'
-       and c.relname = 'users'
-       and t.tgname = 'on_auth_user_created'
-       and not t.tgisinternal
-  ) then
-    raise exception 'Failed to install on_auth_user_created trigger';
-  end if;
-end
-$$;
-
 notify pgrst, 'reload schema';
 

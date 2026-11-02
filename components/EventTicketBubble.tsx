@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
-import { Ticket, Search, X, Calendar, MapPin, ArrowRight, AlertCircle, ExternalLink } from 'lucide-react';
+import { Ticket, Search, X, Calendar, MapPin, ArrowRight, AlertCircle, ExternalLink, CheckCircle2 } from 'lucide-react';
 
 interface ResolvedTicket {
   hash_payload: string;
@@ -19,6 +19,7 @@ export default function EventTicketBubble() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ResolvedTicket[] | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Focus input on modal open & lock body scroll
@@ -52,6 +53,7 @@ export default function EventTicketBubble() {
 
     setLoading(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
     setResults(null);
 
     try {
@@ -66,6 +68,9 @@ export default function EventTicketBubble() {
         throw new Error(data.error || 'Failed to search for tickets.');
       }
 
+      if (data.delivered) {
+        setSuccessMsg(data.message || 'Pass access details have been sent to your registered email.');
+      }
       setResults(data.tickets || []);
     } catch (err: any) {
       setErrorMsg(err.message || 'Lookup failed. Please verify the email or registration number.');
@@ -77,6 +82,7 @@ export default function EventTicketBubble() {
   const handleClose = () => {
     setIsOpen(false);
     setErrorMsg(null);
+    setSuccessMsg(null);
   };
 
   return (
@@ -303,6 +309,26 @@ export default function EventTicketBubble() {
               </form>
 
               {/* Error feedback */}
+              {successMsg && (
+                <div
+                  style={{
+                    marginTop: '16px',
+                    padding: '10px 12px',
+                    background: 'var(--success-bg, rgba(16, 124, 16, 0.1))',
+                    color: 'var(--success, #107c10)',
+                    border: '1px solid rgba(16, 124, 16, 0.25)',
+                    borderRadius: 'var(--radius-sm)',
+                    fontSize: '12.5px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                  }}
+                >
+                  <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+                  <span>{successMsg}</span>
+                </div>
+              )}
+
               {errorMsg && (
                 <div
                   style={{

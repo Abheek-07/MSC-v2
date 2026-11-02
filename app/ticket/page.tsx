@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Ticket, Calendar, MapPin, ArrowRight, AlertCircle, Search } from 'lucide-react';
+import { Ticket, Calendar, MapPin, ArrowRight, AlertCircle, Search, CheckCircle2 } from 'lucide-react';
 
 interface ResolvedTicket {
   hash_payload: string;
@@ -18,11 +18,13 @@ export default function TicketLookupPage() {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<ResolvedTicket[] | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
 
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setErrorMsg(null);
+    setSuccessMsg(null);
     setResults(null);
 
     try {
@@ -37,6 +39,9 @@ export default function TicketLookupPage() {
         throw new Error(data.error || 'Failed to search for tickets.');
       }
 
+      if (data.delivered) {
+        setSuccessMsg(data.message || 'Pass details sent to your registered email address.');
+      }
       setResults(data.tickets || []);
     } catch (err: any) {
       setErrorMsg(err.message || 'Lookup failed. Please check the email or registration number entered.');
@@ -121,6 +126,26 @@ export default function TicketLookupPage() {
               <span>{loading ? 'Searching...' : 'Find my pass'}</span>
             </button>
           </form>
+
+          {successMsg && (
+            <div
+              style={{
+                marginTop: '18px',
+                padding: '12px 14px',
+                background: 'var(--success-bg, rgba(16, 124, 16, 0.1))',
+                color: 'var(--success, #107c10)',
+                border: '1px solid rgba(16, 124, 16, 0.25)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <CheckCircle2 size={16} style={{ flexShrink: 0 }} />
+              <span>{successMsg}</span>
+            </div>
+          )}
 
           {errorMsg && (
             <div

@@ -1,9 +1,20 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { enforcePayloadSize } from '@/lib/security';
+import { enforcePayloadSize, isSafeLookupQuery } from '@/lib/security';
+import { sendTicketRecoveryEmail, RecoveryTicketItem } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
+
+function maskEmail(email: string): string {
+  const parts = email.split('@');
+  if (parts.length !== 2) return '***';
+  const name = parts[0];
+  const domain = parts[1];
+  const visibleLen = Math.min(2, Math.floor(name.length / 2));
+  const maskedName = name.slice(0, visibleLen) + '***' + (name.length > 3 ? name.slice(-1) : '');
+  return `${maskedName}@${domain}`;
+}
 
 export async function POST(req: Request) {
   try {
@@ -21,14 +32,18 @@ export async function POST(req: Request) {
     }
 
     const cleaned = rawQuery.trim().toLowerCase();
-    if (cleaned.length < 5 || cleaned.length > 254 || !/^[a-z0-9@._ -]+$/.test(cleaned)) {
+    if (!isSafeLookupQuery(cleaned)) {
       return NextResponse.json({ error: 'Enter a valid full email address or registration number.' }, { status: 400 });
     }
 
     const clientIp = getClientIP(req.headers);
-    const rateLimit = await checkRateLimit(`ticket_lookup_${clientIp}`, 'api');
+    // Strict rate limiting for credential recovery: 5 attempts per minute
+    const rateLimit = await checkRateLimit(`ticket_recovery_${clientIp}`, 'auth');
     if (!rateLimit.success) {
-      return NextResponse.json({ error: 'Too many search requests. Please wait a moment.' }, { status: 429 });
+      return NextResponse.json(
+        { error: 'Too many lookup requests. Please wait a moment before trying again.' },
+        { status: 429, headers: { 'Retry-After': '60' } }
+      );
     }
 
     const supabase = getAdminClient();
@@ -54,8 +69,6 @@ export async function POST(req: Request) {
     }
 
     // Team members have independent QR tokens embedded in their parent registration.
-    // Query only JSON rows containing the exact supplied identifier, then verify it
-    // again in application code before returning a token.
     const memberRowsById = new Map<string, any>();
     const memberQueries = isEmail
       ? [{ members: [{ email: cleaned }] }]
@@ -80,15 +93,49 @@ export async function POST(req: Request) {
       for (const row of rows || []) memberRowsById.set(row.id, row);
     }
 
-    const tickets = (registrationRows || [])
-      .filter((row: any) => typeof row.hash_payload === 'string' && row.hash_payload.length > 0)
-      .map((row: any) => ({
+    interface BucketData {
+      name: string;
+      tickets: RecoveryTicketItem[];
+      rawTickets: Array<{
+        hash_payload: string;
+        event_title: string;
+        date_start: string | null;
+        location: string;
+        status: string;
+        is_team_member?: boolean;
+      }>;
+    }
+    const recipientBuckets = new Map<string, BucketData>();
+    const siteUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mscsrmap.xyz';
+
+    for (const row of (registrationRows as any[]) || []) {
+      if (typeof row.hash_payload !== 'string' || !row.hash_payload) continue;
+      const email = String(row.lead_email || '').trim().toLowerCase();
+      if (!email) continue;
+      const attendeeName = row.form_data?.full_name || row.form_data?.name || email.split('@')[0];
+      const eventData = Array.isArray(row.events) ? row.events[0] : row.events;
+      const eventTitle = eventData?.title || 'MSC Event';
+      const eventDate = eventData?.date_start
+        ? new Date(eventData.date_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+        : 'Upcoming';
+      const eventLocation = eventData?.location || 'SRM University AP';
+
+      const bucket: BucketData = recipientBuckets.get(email) || { name: attendeeName, tickets: [], rawTickets: [] };
+      bucket.tickets.push({
+        eventTitle,
+        ticketUrl: `${siteUrl}/ticket/${row.hash_payload}`,
+        eventDate,
+        location: eventLocation,
+      });
+      bucket.rawTickets.push({
         hash_payload: row.hash_payload,
-        event_title: row.events?.title || 'MSC Event',
-        date_start: row.events?.date_start || null,
-        location: row.events?.location || 'SRM University AP',
+        event_title: eventTitle,
+        date_start: eventData?.date_start || null,
+        location: eventLocation,
         status: row.status,
-      }));
+      });
+      recipientBuckets.set(email, bucket);
+    }
 
     for (const row of memberRowsById.values()) {
       const members = Array.isArray(row.team_data?.members) ? row.team_data.members : [];
@@ -100,21 +147,78 @@ export async function POST(req: Request) {
 
       for (const member of matchingMembers) {
         if (typeof member.hash_payload !== 'string' || !member.hash_payload) continue;
-        tickets.push({
-          hash_payload: member.hash_payload,
-          event_title: row.events?.title || 'MSC Event',
-          date_start: row.events?.date_start || null,
-          location: row.events?.location || 'SRM University AP',
-          status: row.status,
+        const email = String(member.email || row.lead_email || '').trim().toLowerCase();
+        if (!email) continue;
+        const attendeeName = member.fullName || member.name || email.split('@')[0];
+        const eventData = Array.isArray(row.events) ? row.events[0] : row.events;
+        const eventTitle = eventData?.title || 'MSC Event';
+        const eventDate = eventData?.date_start
+          ? new Date(eventData.date_start).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+          : 'Upcoming';
+        const eventLocation = eventData?.location || 'SRM University AP';
+
+        const bucket: BucketData = recipientBuckets.get(email) || { name: attendeeName, tickets: [], rawTickets: [] };
+        bucket.tickets.push({
+          eventTitle,
+          ticketUrl: `${siteUrl}/ticket/${member.hash_payload}`,
+          eventDate,
+          location: eventLocation,
         });
+        bucket.rawTickets.push({
+          hash_payload: member.hash_payload,
+          event_title: eventTitle,
+          date_start: eventData?.date_start || null,
+          location: eventLocation,
+          status: row.status,
+          is_team_member: true,
+        });
+        recipientBuckets.set(email, bucket);
       }
     }
 
+    // If no confirmed tickets matched the query:
+    if (recipientBuckets.size === 0) {
+      return NextResponse.json({
+        success: true,
+        delivered: false,
+        message: 'If an active registration exists for this identifier, ticket access instructions have been sent.',
+        tickets: [],
+      }, {
+        headers: { 'Cache-Control': 'no-store, max-age=0', 'X-Content-Type-Options': 'nosniff' },
+      });
+    }
+
+    // Dispatch recovery email to proven mailbox
+    let primaryMaskedEmail = '';
+    const allFoundTickets: any[] = [];
+
+    for (const [recipientEmail, data] of recipientBuckets.entries()) {
+      if (!primaryMaskedEmail) primaryMaskedEmail = maskEmail(recipientEmail);
+      allFoundTickets.push(...data.rawTickets);
+
+      await sendTicketRecoveryEmail({
+        to: recipientEmail,
+        name: data.name,
+        tickets: data.tickets,
+      });
+    }
+
     const uniqueTickets = Array.from(
-      new Map(tickets.map((ticket) => [ticket.hash_payload, ticket])).values()
+      new Map(allFoundTickets.map((t) => [t.hash_payload, t])).values()
     );
 
-    return NextResponse.json({ success: true, tickets: uniqueTickets }, {
+    // In local development or test environments where email dispatch is unconfigured,
+    // allow developers to inspect returned tickets, while keeping production secure.
+    const isDev = process.env.NODE_ENV !== 'production' && !process.env.RESEND_API_KEY;
+
+    return NextResponse.json({
+      success: true,
+      delivered: true,
+      masked_email: primaryMaskedEmail,
+      message: `Pass details have been dispatched to ${primaryMaskedEmail}. Please check your inbox.`,
+      tickets: isDev ? uniqueTickets : [],
+      dev_mode: isDev,
+    }, {
       headers: { 'Cache-Control': 'no-store, max-age=0', 'X-Content-Type-Options': 'nosniff' },
     });
   } catch (err) {

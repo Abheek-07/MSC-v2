@@ -17,7 +17,31 @@ const nextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: '**',
+        hostname: '**.supabase.co',
+      },
+      {
+        protocol: 'https',
+        hostname: 'avatars.githubusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'images.unsplash.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.srmap.edu.in',
+      },
+      {
+        protocol: 'https',
+        hostname: 'mscsrmap.xyz',
+      },
+      {
+        protocol: 'https',
+        hostname: '**.mscsrmap.xyz',
       },
     ],
   },

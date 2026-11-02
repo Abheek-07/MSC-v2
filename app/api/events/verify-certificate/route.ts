@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
-import { enforcePayloadSize, isValidUUID } from '@/lib/security';
+import { enforcePayloadSize, isValidUUID, isSafeLookupQuery } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +18,7 @@ export async function POST(req: Request) {
     const limited = await checkRateLimit('cert_verify_' + getClientIP(req.headers), 'api');
     if (!limited.success) return NextResponse.json({ success: false, verified: false, error: 'Too many attempts. Try again later.' }, { status: 429 });
     if (!eventKey || eventKey.length > 100 || !/^[a-zA-Z0-9-]+$/.test(eventKey)) return NextResponse.json({ success: false, verified: false, error: 'A valid event identifier is required.' }, { status: 400 });
-    if (query.length < 5 || query.length > 254 || !/^[a-z0-9@._ -]+$/.test(query)) return NextResponse.json({ success: false, verified: false, error: 'Enter the exact registered email, registration number, or ticket ID.' }, { status: 400 });
+    if (!isSafeLookupQuery(query)) return NextResponse.json({ success: false, verified: false, error: 'Enter the exact registered email, registration number, or ticket ID.' }, { status: 400 });
 
     const db = getAdminClient();
     const base = db.from('events').select('id,title,date_start,form_requirements,certificate_html').limit(1);

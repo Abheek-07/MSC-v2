@@ -3,7 +3,22 @@
 -- Review and apply this migration in the Supabase project before deploying code.
 
 alter table public.payment_orders
+  add column if not exists registration_id uuid references public.registrations(id) on delete restrict;
+
+alter table public.payment_orders
   alter column user_id drop not null;
+
+alter table public.payments
+  add column if not exists registration_id uuid references public.registrations(id) on delete set null;
+
+alter table public.teams
+  add column if not exists registration_id uuid references public.registrations(id) on delete cascade;
+
+alter table public.registrations
+  add column if not exists idempotency_key uuid;
+
+alter table public.registrations
+  add column if not exists reservation_expires_at timestamptz;
 
 create unique index if not exists payment_orders_one_active_per_registration
   on public.payment_orders (registration_id)

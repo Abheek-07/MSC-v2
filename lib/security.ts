@@ -125,6 +125,9 @@ export async function enforcePayloadSize(req: Request, maxBytes = 64 * 1024): Pr
 }
 
 /**
+ * HTML entities escape helper to prevent stored & reflected XSS
+ */
+/**
  * Clean & truncate free-text fields
  */
 export function sanitizeText(text: unknown, maxLength = 4096): string {
@@ -161,4 +164,19 @@ export function validateImageMagicBytes(buffer: Buffer): { valid: boolean; ext?:
   }
 
   return { valid: false };
+}
+
+/**
+ * Validates and sanitizes ticket/certificate lookup identifiers.
+ * Prevents PostgREST query injection via commas, parentheses, or operators.
+ */
+export function isSafeLookupQuery(raw: unknown): boolean {
+  if (typeof raw !== 'string') return false;
+  const cleaned = raw.trim().toLowerCase();
+  if (cleaned.length < 5 || cleaned.length > 254) return false;
+  // Reject PostgREST filter injection tokens and control characters
+  if (/[,():<>]|\.(eq|neq|gt|gte|lt|lte|like|ilike|is|in|cs|cd|ov|sl|sr|nxr|nxl|adj)\./i.test(cleaned)) {
+    return false;
+  }
+  return /^[a-z0-9@._ -]+$/.test(cleaned);
 }

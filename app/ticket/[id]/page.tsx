@@ -1,6 +1,7 @@
 import React from 'react';
 import TicketClient from './TicketClient';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { isValidUUID } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -22,69 +23,44 @@ export default async function TicketPage({ params }: TicketPageProps) {
       .from('ticket_token_revocations').select('id').eq('token', id).maybeSingle();
     if (revokedError) throw revokedError;
     if (revokedToken) return <TicketClient invalid={true} />;
-    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    // Bearer token verification: tickets can only be accessed with a valid secret UUID token.
+    // Unauthenticated partial string matches and ILIKE wildcard searches are prohibited to prevent PII leakage.
+    if (!isValidUUID(id)) {
+      return <TicketClient invalid={true} />;
+    }
+
     let reg: any = null;
     let matchedMemberIndex: number | undefined = undefined;
 
-    if (isUUID) {
-      const { data } = await supabase
+    // 1. Check primary registration by secret hash_payload
+    const { data: primaryData, error: primaryError } = await supabase
+      .from('registrations')
+      .select('*, events(title, date_start, location)')
+      .eq('hash_payload', id)
+      .maybeSingle();
+
+    if (primaryError) throw primaryError;
+    reg = primaryData;
+
+    // 2. If not found in primary registrations, search embedded team member QR tokens
+    if (!reg) {
+      const { data: memberRows, error: memberError } = await supabase
         .from('registrations')
         .select('*, events(title, date_start, location)')
-        .or(`hash_payload.eq.${id},id.eq.${id}`)
-        .maybeSingle();
-      reg = data;
-      // A member QR is stored inside its parent registration's team_data JSON.
-      // Resolve it separately from the team's own registration token.
-      if (!reg) {
-        const { data: memberRows } = await supabase
-          .from('registrations')
-          .select('*, events(title, date_start, location)')
-          .contains('team_data', { members: [{ hash_payload: id }] })
-          .limit(2);
-        const matches = (memberRows || []).flatMap((row: any) =>
-          (row.team_data?.members || [])
-            .map((member: any, index: number) => ({ row, member, index }))
-            .filter((entry: any) => entry.member.hash_payload === id)
-        );
-        if (matches.length === 1) {
-          reg = matches[0].row;
-          matchedMemberIndex = matches[0].index;
-        }
-      }
-    } else {
-      // Non-UUID input: search by registration number, ticket_id, or email
-      const { data } = await supabase
-        .from('registrations')
-        .select('*, events(title, date_start, location)')
-        .or(`lead_email.ilike.%${id}%,form_data->>registration_number.ilike.%${id}%,form_data->>reg_num.ilike.%${id}%,form_data->>ticket_id.ilike.%${id}%,form_data->>full_name.ilike.%${id}%`)
-        .limit(1)
-        .maybeSingle();
-      reg = data;
+        .contains('team_data', { members: [{ hash_payload: id }] })
+        .limit(2);
 
-      // If not found in primary rows, search embedded team_data->members
-      if (!reg) {
-        const { data: teamRegs } = await supabase
-          .from('registrations')
-          .select('*, events(title, date_start, location)')
-          .not('team_data', 'is', null);
+      if (memberError) throw memberError;
 
-        if (teamRegs && teamRegs.length > 0) {
-          const cleanId = id.toLowerCase().trim();
-          for (const tr of teamRegs) {
-            const members = tr.team_data?.members || [];
-            const foundIdx = members.findIndex((m: any) => {
-              const mReg = (m.regNum || m.reg_number || m.registration_number || '').toLowerCase().trim();
-              const mEmail = (m.email || '').toLowerCase().trim();
-              const mName = (m.fullName || m.name || '').toLowerCase().trim();
-              return mReg === cleanId || mReg.includes(cleanId) || mEmail === cleanId || mEmail.includes(cleanId) || mName.includes(cleanId);
-            });
-            if (foundIdx !== -1) {
-              reg = tr;
-              matchedMemberIndex = foundIdx;
-              break;
-            }
-          }
-        }
+      const matches = (memberRows || []).flatMap((row: any) =>
+        (row.team_data?.members || [])
+          .map((member: any, index: number) => ({ row, member, index }))
+          .filter((entry: any) => entry.member.hash_payload === id)
+      );
+
+      if (matches.length === 1) {
+        reg = matches[0].row;
+        matchedMemberIndex = matches[0].index;
       }
     }
 
@@ -118,10 +94,9 @@ export default async function TicketPage({ params }: TicketPageProps) {
         if (siblingRows && siblingRows.length > 0) {
           teamMembers = siblingRows.map((s: any, idx: number) => {
             const sReg = s.form_data?.registration_number || s.form_data?.reg_num || 'N/A';
-            const sEmail = s.lead_email;
             if (
               matchedMemberIndex === undefined &&
-              (s.id === reg.id || (!isUUID && (sReg.toLowerCase().includes(id.toLowerCase()) || sEmail.toLowerCase().includes(id.toLowerCase()))))
+              (s.id === reg.id || s.hash_payload === id)
             ) {
               matchedMemberIndex = idx;
             }

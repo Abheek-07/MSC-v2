@@ -15,7 +15,49 @@ export async function POST(req: NextRequest) {
   try {
     const auth = await requireAdmin();
     if ('error' in auth) return auth.error;
-    const formData = await req.formData();
+
+    // Enforce pre-parsing size ceiling if Content-Length header is present
+    const maxPayloadLimit = MAX_IMAGE_BYTES + 64 * 1024;
+    const contentLength = Number(req.headers.get('content-length') || 0);
+    if (contentLength > maxPayloadLimit) {
+      return noStoreJson({ error: 'Payload too large (max 5MB)' }, 413);
+    }
+
+    if (!req.body) {
+      return noStoreJson({ error: 'No file provided' }, 400);
+    }
+
+    // Stream byte-counter protects against chunked/missing/misleading Content-Length attacks
+    let bytesReceived = 0;
+    const byteLimiter = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, controller) {
+        bytesReceived += chunk.byteLength;
+        if (bytesReceived > maxPayloadLimit) {
+          controller.error(new Error('PAYLOAD_TOO_LARGE'));
+          return;
+        }
+        controller.enqueue(chunk);
+      },
+    });
+
+    const limitedStream = req.body.pipeThrough(byteLimiter);
+    const limitedReq = new Request(req.url, {
+      method: req.method,
+      headers: req.headers,
+      body: limitedStream,
+      // @ts-expect-error Node/undici RequestInit duplex property
+      duplex: 'half',
+    });
+
+    let formData: FormData;
+    try {
+      formData = await limitedReq.formData();
+    } catch (parseErr: any) {
+      if (parseErr?.message === 'PAYLOAD_TOO_LARGE' || bytesReceived > maxPayloadLimit) {
+        return noStoreJson({ error: 'Payload too large (max 5MB)' }, 413);
+      }
+      return noStoreJson({ error: 'Failed to parse form data' }, 400);
+    }
     const file = formData.get('file');
     const pathPrefix = (formData.get('pathPrefix') as string | null) ?? 'upload';
     const bucket = (formData.get('bucket') as string | null) ?? 'images';
