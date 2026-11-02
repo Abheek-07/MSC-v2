@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server';
 import { enforcePayloadSize, isValidUUID, isValidEmail } from '@/lib/security';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { sendTicketEmail } from '@/lib/email';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -136,45 +135,11 @@ export async function POST(req: Request) {
     const hashPayload = result.hash_payload;
     const status = result.status;
 
-    // Do not dispatch duplicate confirmation emails when an idempotent request replays.
-    if (status === 'confirmed' && !result.replayed && hashPayload) {
-      const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://mscsrmap.xyz';
-      const recipients = new Set<string>();
-      for (const member of members) {
-        const memberEmail = member.email;
-        if (!memberEmail || recipients.has(memberEmail)) continue;
-        recipients.add(memberEmail);
-        sendTicketEmail({
-          to: memberEmail,
-          name: member.fullName || memberEmail.split('@')[0],
-          eventTitle: event.title,
-          eventDate: event.date_start,
-          eventLocation: event.location,
-          ticketUrl: `${appUrl}/ticket/${member.hash_payload}`,
-          qrPayload: member.hash_payload,
-        }).catch((error) => console.error('[Member ticket email dispatcher]:', error));
-      }
-
-      // Solo registrations, or teams without member email addresses, receive the
-      // lead ticket as a fallback. Team members with emails each receive their own QR.
-      if (recipients.size === 0) {
-        const attendeeName = form_data?.full_name || normalizedEmail.split('@')[0];
-        sendTicketEmail({
-          to: normalizedEmail,
-          name: attendeeName,
-          eventTitle: event.title,
-          eventDate: event.date_start,
-          eventLocation: event.location,
-          ticketUrl: `${appUrl}/ticket/${hashPayload}`,
-          qrPayload: hashPayload,
-        }).catch((error) => console.error('[Ticket email dispatcher]:', error));
-      }
-    }
-
     return NextResponse.json({
       success: true,
       registration_id: registrationId,
       hash_payload: hashPayload,
+      ticket_url: hashPayload ? `/ticket/${hashPayload}` : null,
       status,
       replayed: Boolean(result.replayed),
       reservation_expires_at: result.reservation_expires_at || null,
