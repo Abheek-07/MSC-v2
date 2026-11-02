@@ -183,7 +183,7 @@ export default async function EventDetailPage({ params, searchParams }: EventPag
       url: BASE_URL,
       logo: 'https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png',
     },
-    ...(event.registration_open
+    ...(event.registration_open && !isCompleted
       ? {
           offers: {
             '@type': 'Offer',
