@@ -11,9 +11,9 @@
 
 <p align="center">
   <a href="https://mscsrmap.xyz">Website</a> ·
-  <a href="https://github.com/Pragnesh-10/MSC-v2">Repository</a> ·
-  <a href="https://www.linkedin.com/company/msc-srmap/">LinkedIn</a> ·
-  <a href="https://www.instagram.com/msc_srmap/">Instagram</a>
+  <a href="https://github.com/YUVRAJ-SINGH-3178/MSC-v2">Repository</a> ·
+  <a href="https://www.linkedin.com/company/microsoft-student-community-srm-university/">LinkedIn</a> ·
+  <a href="https://www.instagram.com/msc.srmap/">Instagram</a>
 </p>
 
 ---
@@ -29,7 +29,7 @@ Whether you are a student looking to participate, a visitor learning about the c
 | I am a... | Start here |
 | --- | --- |
 | **Student** | Explore [events](https://mscsrmap.xyz/events), [workshops](https://mscsrmap.xyz/workshops), and [hackathons](https://mscsrmap.xyz/hackathons). Learn about the community and take part in upcoming activities. |
-| **Visitor** | Visit the [MSC website](https://mscsrmap.xyz), read [About MSC](https://mscsrmap.xyz/about), and follow the community on [LinkedIn](https://www.linkedin.com/company/msc-srmap/) and [Instagram](https://www.instagram.com/msc_srmap/). |
+| **Visitor** | Visit the [MSC website](https://mscsrmap.xyz), read [About MSC](https://mscsrmap.xyz/about), and follow the community on [LinkedIn](https://www.linkedin.com/company/microsoft-student-community-srm-university/) and [Instagram](https://www.instagram.com/msc.srmap/). |
 | **Developer** | Continue to [Local development](#local-development), [Configuration](#environment-variables), [Database](#supabase-and-database), and [Contributing](#contributing). |
 
 ## What the platform includes
@@ -105,7 +105,7 @@ The diagram is a high-level view. Individual routes use only the services they n
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Pragnesh-10/MSC-v2.git
+git clone https://github.com/YUVRAJ-SINGH-3178/MSC-v2.git
 cd MSC-v2
 ```
 
@@ -194,10 +194,6 @@ The application uses database objects for member profiles, events, registrations
 4. Apply changes to a disposable development database first.
 5. Verify RLS policies, triggers, functions, and required extensions.
 6. Confirm the application works with the expected public and server-side keys.
-
-**Migration caution:** The current `20261103_individual_team_member_qr.sql` file appears to contain malformed and duplicated SQL fragments. It must be reviewed and corrected before applying it. Do not assume that running every SQL file in sequence on a fresh project is currently a safe bootstrap procedure.
-
-Some migrations are intended to evolve an existing database. Coordinate with the maintainers before applying them to any shared environment. Never use the Supabase service-role key in browser code.
 
 ## Project structure
 
@@ -318,9 +314,9 @@ Do not include secrets, real user data, production database exports, or unapprov
 ## Community and contact
 
 - Website: [mscsrmap.xyz](https://mscsrmap.xyz)
-- GitHub: [MSC-v2](https://github.com/Pragnesh-10/MSC-v2)
-- LinkedIn: [Microsoft Student Community SRM AP](https://www.linkedin.com/company/msc-srmap/)
-- Instagram: [@msc_srmap](https://www.instagram.com/msc_srmap/)
+- GitHub: [MSC-v2](https://github.com/YUVRAJ-SINGH-3178/MSC-v2)
+- LinkedIn: [Microsoft Student Community SRM AP](https://www.linkedin.com/company/microsoft-student-community-srm-university/)
+- Instagram: [@msc_srmap](https://www.instagram.com/msc.srmap/)
 
 For questions about participation, events, or collaboration, use the community's official channels. For repository issues, use GitHub issues or contact the project maintainers.
 
