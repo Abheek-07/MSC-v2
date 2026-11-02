@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { CheckCircle2, AlertCircle } from 'lucide-react';
 
 interface ResetRequest {
   id: string;

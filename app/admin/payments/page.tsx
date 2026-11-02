@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, CheckCircle2, Clock3, Download, RefreshCw, Search, XCircle } from 'lucide-react';
+import { Activity, AlertTriangle, CheckCircle2, Clock3, Download, RefreshCw, XCircle } from 'lucide-react';
 
 type PaymentRow = {
   order_id: string;

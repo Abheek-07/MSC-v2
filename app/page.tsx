@@ -130,7 +130,7 @@ export default async function HomePage() {
                 <div style={{ background: '#00a4ef', borderRadius: '1px' }} />
                 <div style={{ background: '#ffb900', borderRadius: '1px' }} />
               </div>
-              <span>MICROSOFT STUDENT COMMUNITY &bull; SRM UNIVERSITY-AP</span>
+              <span>STUDENT TECHNOLOGY COMMUNITY &bull; SRM UNIVERSITY-AP</span>
             </div>
 
             {/* Headline */}
@@ -259,7 +259,7 @@ export default async function HomePage() {
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '16px' }}>
                 Hands-on workshops with Microsoft Azure, production AI systems, and cloud architecture for real-world applications.
               </p>
-              <Link href="/events" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+              <Link href="/workshops" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
                 Learn more <ArrowRight size={12} />
               </Link>
             </div>
@@ -297,7 +297,7 @@ export default async function HomePage() {
               <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, flex: 1, marginBottom: '16px' }}>
                 National-scale hackathons like SYNORA and Solutions for Smart India, uniting hundreds of student innovators.
               </p>
-              <Link href="/events" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
+              <Link href="/hackathons" style={{ fontSize: '13px', fontWeight: 600, color: 'var(--brand)', display: 'inline-flex', alignItems: 'center', gap: '4px', textDecoration: 'none' }}>
                 Learn more <ArrowRight size={12} />
               </Link>
             </div>

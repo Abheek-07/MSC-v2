@@ -103,7 +103,7 @@ export default function AboutPage() {
               <div style={{ background: '#00a4ef', borderRadius: '1px' }} />
               <div style={{ background: '#ffb900', borderRadius: '1px' }} />
             </div>
-            <span>MICROSOFT STUDENT COMMUNITY &bull; ABOUT US</span>
+            <span>STUDENT CHAPTER CHARTER &bull; SRM UNIVERSITY-AP</span>
           </div>
 
           <h1

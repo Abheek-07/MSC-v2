@@ -151,14 +151,14 @@ export default function Navbar() {
                 className="brand-title"
                 style={{
                   fontSize: '15px',
-                  fontWeight: 600,
+                  fontWeight: 700,
                   color: 'var(--text-strong)',
                   letterSpacing: '-0.01em',
                   lineHeight: 1,
                   whiteSpace: 'nowrap',
                 }}
               >
-                Microsoft
+                MSC
               </span>
               <span
                 className="brand-divider"
@@ -167,7 +167,7 @@ export default function Navbar() {
                   height: '16px',
                   backgroundColor: 'var(--border-strong)',
                   flexShrink: 0,
-                  opacity: 0.5,
+                  opacity: 0.4,
                 }}
               />
               <span
@@ -175,12 +175,13 @@ export default function Navbar() {
                 style={{
                   fontSize: '13px',
                   color: 'var(--text-muted)',
+                  fontWeight: 500,
                   letterSpacing: '0.01em',
                   lineHeight: 1,
                   whiteSpace: 'nowrap',
                 }}
               >
-                Student Community
+                Student Community &bull; SRM-AP
               </span>
             </div>
           </Link>
