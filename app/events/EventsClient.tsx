@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Calendar, MapPin, Users, ExternalLink, ArrowRight } from 'lucide-react';
 import { EventItem } from '@/lib/data/mock-fallback';
+import EventTicketBubble from '@/components/EventTicketBubble';
 
 export default function EventsClient({ events }: { events: EventItem[] }) {
   const [activeCategory, setActiveCategory] = useState<string>('All');
@@ -54,7 +55,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
               <div style={{ background: '#00a4ef', borderRadius: '1px' }} />
               <div style={{ background: '#ffb900', borderRadius: '1px' }} />
             </div>
-            <span>MICROSOFT STUDENT COMMUNITY &bull; EVENTS</span>
+            <span>TECHNICAL EVENTS &bull; SRM UNIVERSITY-AP</span>
           </div>
 
           <h1
@@ -377,6 +378,46 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
               </button>
             );
           })}
+          {activeCategory === 'Hackathons' && (
+            <Link
+              href="/hackathons"
+              style={{
+                marginLeft: 'auto',
+                fontSize: '12.5px',
+                color: 'var(--brand)',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+                padding: '6px 10px',
+              }}
+            >
+              <span>Dedicated Hackathons Guide</span>
+              <ArrowRight size={13} />
+            </Link>
+          )}
+          {activeCategory === 'Workshops' && (
+            <Link
+              href="/workshops"
+              style={{
+                marginLeft: 'auto',
+                fontSize: '12.5px',
+                color: 'var(--brand)',
+                fontWeight: 600,
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                textDecoration: 'none',
+                whiteSpace: 'nowrap',
+                padding: '6px 10px',
+              }}
+            >
+              <span>Dedicated Workshops Guide</span>
+              <ArrowRight size={13} />
+            </Link>
+          )}
         </div>
 
         {/* EVENT CARDS GRID */}
@@ -585,6 +626,9 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
           </div>
         )}
       </div>
+
+      {/* Floating Ticket Lookup Bubble */}
+      <EventTicketBubble />
     </div>
   );
 }

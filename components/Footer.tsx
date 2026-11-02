@@ -49,6 +49,8 @@ export default function Footer() {
     { label: 'Home', href: '/' },
     { label: 'About', href: '/about' },
     { label: 'Events', href: '/events' },
+    { label: 'Workshops', href: '/workshops' },
+    { label: 'Hackathons', href: '/hackathons' },
     { label: 'Gallery', href: '/gallery' },
     { label: 'Team', href: '/team' },
     { label: 'Tickets', href: '/ticket' },
@@ -88,16 +90,16 @@ export default function Footer() {
                 }}
               />
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-strong)' }}>
-                  Microsoft
+                <span style={{ fontSize: '14px', fontWeight: 700, color: 'var(--text-strong)' }}>
+                  MSC
                 </span>
-                <span style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-strong)', opacity: 0.5 }} />
-                <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Student Community</span>
+                <span style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-strong)', opacity: 0.4 }} />
+                <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>Student Community &bull; SRM-AP</span>
               </div>
             </div>
 
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', lineHeight: 1.6, margin: '0 0 16px 0' }}>
-              A student-led initiative at SRM University-AP empowering innovators through cloud computing, hackathons, and open-source collaboration.
+              The student-led technical community at SRM University-AP dedicated to cloud architecture, competitive hackathons, and open engineering collaboration.
             </p>
 
             <div style={{ display: 'flex', gap: '6px' }}>

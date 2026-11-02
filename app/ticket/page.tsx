@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Ticket, Calendar, MapPin, ArrowRight, AlertCircle } from 'lucide-react';
+import { Ticket, Calendar, MapPin, ArrowRight, AlertCircle, Search } from 'lucide-react';
 
 interface ResolvedTicket {
   hash_payload: string;
@@ -51,24 +51,28 @@ export default function TicketLookupPage() {
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <div
             style={{
-              width: '44px',
-              height: '44px',
-              background: 'var(--brand-soft)',
-              color: 'var(--brand)',
-              borderRadius: '4px',
               display: 'inline-flex',
               alignItems: 'center',
-              justifyContent: 'center',
-              marginBottom: '12px',
+              gap: '8px',
+              padding: '4px 10px',
+              background: 'var(--bg-soft)',
+              border: '1px solid var(--border)',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: '16px',
+              fontSize: '12px',
+              fontWeight: 600,
+              letterSpacing: '0.04em',
+              color: 'var(--text-body)',
             }}
           >
-            <Ticket size={22} />
+            <Ticket size={13} color="var(--brand)" />
+            <span>MSC &bull; EVENT PASS LOOKUP &bull; SRM-AP</span>
           </div>
-          <h1 style={{ fontSize: '28px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '6px' }}>
-            Find your ticket
+          <h1 style={{ fontSize: '28px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '8px', letterSpacing: '-0.01em' }}>
+            Find your event pass
           </h1>
-          <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            Enter your registered email address or college registration number below to retrieve your event pass.
+          <p style={{ fontSize: '14px', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+            Enter your registered email address or university registration number below to retrieve your pass.
           </p>
         </div>
 
@@ -77,15 +81,15 @@ export default function TicketLookupPage() {
           style={{
             background: 'var(--surface)',
             border: '1px solid var(--border)',
-            borderRadius: '4px',
+            borderRadius: 'var(--radius-sm)',
             boxShadow: 'var(--shadow-rest)',
             padding: '28px',
             marginBottom: '28px',
           }}
         >
-          <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <form onSubmit={handleSearch} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
+              <label style={{ display: 'block', fontSize: '13px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
                 Registered email address or registration number
               </label>
               <input
@@ -95,7 +99,7 @@ export default function TicketLookupPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="fluent-input"
-                style={{ padding: '8px 12px', fontSize: '14px', borderRadius: '4px' }}
+                style={{ padding: '10px 12px', fontSize: '14px', borderRadius: 'var(--radius-sm)' }}
               />
             </div>
 
@@ -103,97 +107,131 @@ export default function TicketLookupPage() {
               type="submit"
               disabled={loading}
               className="fluent-btn fluent-btn-primary"
-              style={{ padding: '10px 16px', fontSize: '14px', borderRadius: '4px' }}
+              style={{
+                padding: '10px 16px',
+                fontSize: '14px',
+                borderRadius: 'var(--radius-sm)',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '8px',
+              }}
             >
-              {loading ? 'Searching...' : 'Find ticket'}
+              <Search size={14} />
+              <span>{loading ? 'Searching...' : 'Find my pass'}</span>
             </button>
           </form>
+
+          {errorMsg && (
+            <div
+              style={{
+                marginTop: '18px',
+                padding: '12px 14px',
+                background: 'var(--danger-bg)',
+                color: 'var(--danger)',
+                border: '1px solid rgba(197, 15, 31, 0.2)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '13px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+              }}
+            >
+              <AlertCircle size={15} style={{ flexShrink: 0 }} />
+              <span>{errorMsg}</span>
+            </div>
+          )}
         </div>
 
-        {/* Error Notification */}
-        {errorMsg && (
-          <div
-            style={{
-              background: 'var(--danger-bg)',
-              color: 'var(--danger)',
-              padding: '12px 16px',
-              borderRadius: '4px',
-              fontSize: '13px',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '8px',
-              marginBottom: '24px',
-            }}
-          >
-            <AlertCircle size={16} /> {errorMsg}
-          </div>
-        )}
-
-        {/* Search Results */}
+        {/* Results List */}
         {results !== null && (
           <div>
-            <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '14px' }}>
-              Found tickets ({results.length})
-            </h3>
+            <h2 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '14px' }}>
+              Search results ({results.length})
+            </h2>
 
             {results.length === 0 ? (
               <div
                 style={{
                   background: 'var(--surface)',
                   border: '1px solid var(--border)',
-                  borderRadius: '4px',
-                  padding: '28px',
+                  borderRadius: 'var(--radius-sm)',
+                  padding: '32px 20px',
                   textAlign: 'center',
                   color: 'var(--text-muted)',
-                  fontSize: '13.5px',
                 }}
               >
-                No confirmed tickets found matching <strong>{email}</strong>. Please check for typos or register for an upcoming event.
+                <p style={{ fontSize: '14px', marginBottom: '8px', color: 'var(--text-strong)', fontWeight: 500 }}>
+                  No confirmed tickets found for this query.
+                </p>
+                <p style={{ fontSize: '13px' }}>
+                  Please ensure you entered the exact email or registration number used during sign-up.
+                </p>
               </div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                {results.map((t) => (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                {results.map((ticket, idx) => (
                   <div
-                    key={t.hash_payload}
+                    key={idx}
                     className="fluent-card"
                     style={{
-                      padding: '20px',
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      flexWrap: 'wrap',
-                      gap: '14px',
-                      borderRadius: '4px',
+                      background: 'var(--surface)',
                       border: '1px solid var(--border)',
+                      borderRadius: 'var(--radius-sm)',
+                      padding: '18px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '10px',
                     }}
                   >
-                    <div>
-                      <span className="fluent-badge badge-success" style={{ marginBottom: '6px' }}>
-                        {t.status.toUpperCase()}
-                      </span>
-                      <h4 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', margin: '4px 0' }}>
-                        {t.event_title}
-                      </h4>
-                      <div style={{ fontSize: '12px', color: 'var(--text-muted)', display: 'flex', gap: '10px', marginTop: '4px' }}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <Calendar size={12} color="var(--brand)" />
-                          {new Date(t.date_start).toLocaleDateString()}
-                        </span>
-                        <span>&bull;</span>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
-                          <MapPin size={12} color="var(--brand)" />
-                          {t.location}
-                        </span>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                      <div>
+                        <h3 style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', margin: '0 0 4px 0' }}>
+                          {ticket.event_title}
+                        </h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px', fontSize: '12.5px', color: 'var(--text-muted)' }}>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <Calendar size={13} color="var(--brand)" />
+                            {new Date(ticket.date_start).toLocaleDateString('en-IN', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                            <MapPin size={13} color="var(--brand)" />
+                            {ticket.location}
+                          </span>
+                        </div>
                       </div>
+                      <span
+                        className="fluent-badge badge-success"
+                        style={{ textTransform: 'capitalize', flexShrink: 0 }}
+                      >
+                        {ticket.status}
+                      </span>
                     </div>
 
-                    <Link
-                      href={`/ticket/${t.hash_payload}`}
-                      className="fluent-btn fluent-btn-primary"
-                      style={{ padding: '8px 16px', fontSize: '13px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}
-                    >
-                      View ticket <ArrowRight size={13} />
-                    </Link>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px', paddingTop: '10px', borderTop: '1px solid var(--border)' }}>
+                      <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>
+                        {ticket.is_team_member ? 'Team Member Pass' : 'Individual Pass'}
+                      </span>
+                      <Link
+                        href={`/ticket/${ticket.hash_payload}`}
+                        className="fluent-btn fluent-btn-secondary"
+                        style={{
+                          fontSize: '12.5px',
+                          padding: '6px 12px',
+                          borderRadius: 'var(--radius-sm)',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                        }}
+                      >
+                        <span>View pass</span>
+                        <ArrowRight size={12} />
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { CalendarDays, Plus, RefreshCw, Trash2, ToggleLeft, ToggleRight, QrCode, Users } from 'lucide-react';
 
@@ -49,7 +49,7 @@ export default function AdminSessionsPage() {
       .catch((err) => { setError(err.message || 'Unable to load events.'); setLoading(false); });
   }, []);
 
-  async function loadSessions(id = eventId) {
+  const loadSessions = useCallback(async (id = eventId) => {
     if (!id) { setSessions([]); setLoading(false); return; }
     setLoading(true);
     setSelectedSession(null);
@@ -65,9 +65,13 @@ export default function AdminSessionsPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, [eventId]);
 
-  useEffect(() => { if (eventId) loadSessions(eventId); }, [eventId]);
+  useEffect(() => {
+    if (eventId) {
+      loadSessions(eventId);
+    }
+  }, [eventId, loadSessions]);
 
   async function createSession(event: React.FormEvent) {
     event.preventDefault();

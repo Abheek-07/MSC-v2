@@ -67,7 +67,6 @@ export async function GET(req: Request) {
         : order.status === 'paid'
           ? 'paid_unverified'
           : String(order.status || 'unknown').toLowerCase();
-      const createdAt = payment?.verified_at || payment?.created_at || order.created_at;
       return {
         order_id: order.razorpay_order_id || '',
         payment_id: payment?.razorpay_payment_id || '',
@@ -113,7 +112,7 @@ export async function GET(req: Request) {
       });
     }
 
-    let filtered = rows.filter((row: any) => {
+    const filtered = rows.filter((row: any) => {
       const date = dateValue(row.paid_at || row.created_at);
       if (from && date < dateValue(from)) return false;
       if (to && date > dateValue(to + 'T23:59:59.999Z')) return false;

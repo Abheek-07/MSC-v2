@@ -1,5 +1,4 @@
 import { randomUUID } from 'node:crypto';
-import { NextResponse } from 'next/server';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';

@@ -102,23 +102,20 @@ export default function LoginPage() {
       >
         {/* Microsoft Logo Header */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '20px' }}>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(2, 10px)',
-              gridTemplateRows: 'repeat(2, 10px)',
-              gap: '2px',
-              flexShrink: 0,
-            }}
-          >
-            <div style={{ background: '#f25022', borderRadius: '0.5px' }} />
-            <div style={{ background: '#7fba00', borderRadius: '0.5px' }} />
-            <div style={{ background: '#00a4ef', borderRadius: '0.5px' }} />
-            <div style={{ background: '#ffb900', borderRadius: '0.5px' }} />
+          <img
+            src="https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png"
+            alt="MSC Logo"
+            style={{ width: '28px', height: '28px', objectFit: 'contain' }}
+          />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <span style={{ fontSize: '15px', fontWeight: 700, color: 'var(--text-strong)', letterSpacing: '-0.01em' }}>
+              MSC Portal
+            </span>
+            <span style={{ width: '1px', height: '14px', backgroundColor: 'var(--border-strong)', opacity: 0.4 }} />
+            <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>
+              SRM-AP Chapter
+            </span>
           </div>
-          <span style={{ fontSize: '16px', fontWeight: 600, color: 'var(--text-strong)', letterSpacing: '-0.02em' }}>
-            Microsoft
-          </span>
         </div>
 
         {/* Title */}
@@ -135,7 +132,7 @@ export default function LoginPage() {
           {mode === 'reset' && 'Reset password'}
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 24px 0' }}>
-          {mode === 'signin' && 'to continue to Microsoft Student Community SRM AP'}
+          {mode === 'signin' && 'Sign in with your member or administrator account'}
           {mode === 'reset' && 'Submit a password reset request for approval'}
         </p>
 

@@ -121,7 +121,7 @@ export default function GalleryPage() {
               <div style={{ background: '#00a4ef', borderRadius: '1px' }} />
               <div style={{ background: '#ffb900', borderRadius: '1px' }} />
             </div>
-            <span>MICROSOFT STUDENT COMMUNITY &bull; GALLERY</span>
+            <span>COMMUNITY ARCHIVE &bull; SRM UNIVERSITY-AP</span>
           </div>
 
           <h1

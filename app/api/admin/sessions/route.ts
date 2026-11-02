@@ -25,7 +25,7 @@ export async function GET(req: Request) {
       .eq('event_id', eventId).order('starts_at', { ascending: true, nullsFirst: false });
     if (error) throw error;
     const ids = (sessions || []).map((s: any) => s.id);
-    let counts: Record<string, number> = {};
+    const counts: Record<string, number> = {};
     if (ids.length) {
       for (const sessionId of ids) {
         const { count, error: attendanceError } = await db.from('session_attendance')

@@ -65,6 +65,8 @@
 
   /* Official Microsoft Web Typography System (Segoe UI) */
   --font-family:     "Segoe UI", SegoeUI, -apple-system, BlinkMacSystemFont, "Roboto", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
 }
 
 /* System-level dark mode detection */
@@ -249,9 +251,7 @@ a:hover {
   padding: 8px 16px;
   border-radius: var(--radius-sm);
   cursor: pointer;
-  transition: background-color var(--duration-fast) var(--easing-decelerate),
-              border-color var(--duration-fast) var(--easing-decelerate),
-              color var(--duration-fast) var(--easing-decelerate);
+  transition: transform 140ms var(--ease-out), background-color 140ms ease, border-color 140ms ease, color 140ms ease, box-shadow 140ms ease;
   border: 1px solid transparent;
   text-decoration: none !important;
 }
@@ -272,6 +272,10 @@ a:hover {
 
 .fluent-btn-primary:active {
   background-color: var(--brand-active);
+}
+
+.fluent-btn:active {
+  transform: scale(0.98);
 }
 
 .fluent-btn-secondary {
@@ -306,7 +310,12 @@ a:hover {
 
 .fluent-card:hover {
   box-shadow: var(--shadow-lift);
-  transform: translateY(-1px);
+  border-color: var(--brand-hover);
+  transform: translateY(-2px);
+}
+
+.fluent-card:active {
+  transform: scale(0.995);
 }
 
 /* Large Showcase Card */

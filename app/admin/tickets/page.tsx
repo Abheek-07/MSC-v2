@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import type { CSSProperties } from 'react';
-import { RefreshCw, Mail, RotateCw, Search, Ticket } from 'lucide-react';
+import { RefreshCw, Mail, RotateCw, Search } from 'lucide-react';
 
 type Member = { index: number; name: string; email: string; hash_payload: string; role: string };
 type Registration = {
