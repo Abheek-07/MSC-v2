@@ -355,18 +355,8 @@ export default function EventDetailClient({
       } else {
         setLookupError(`No confirmed passes found for "${lookupQuery}".`);
       }
-    } catch {
-      // In local mode if non-email typed, provide demonstration ticket
-      setFoundTicket({
-        hash_payload: 'e1000000-0000-0000-0000-000000000001',
-        event_title: event.title,
-        event_date: event.date_start,
-        event_location: event.location,
-        lead_name: 'Verified Participant',
-        lead_email: lookupQuery || 'participant@srmap.edu.in',
-        status: 'confirmed',
-        checked_in: false,
-      });
+    } catch (err: any) {
+      setLookupError(err?.message || 'Ticket lookup failed. Please verify your email or registration number and try again.');
     } finally {
       setLookupLoading(false);
     }
