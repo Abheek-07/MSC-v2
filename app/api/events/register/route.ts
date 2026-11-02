@@ -1,7 +1,14 @@
 import { NextResponse } from 'next/server';
-import { enforcePayloadSize, isValidUUID, isValidEmail } from '@/lib/security';
+import { enforcePayloadSize, isPayloadTooLargeError, isValidUUID, isValidEmail } from '@/lib/security';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getAdminClient } from '@/lib/supabase/admin';
+import {
+  createRegistrationClaim,
+  getRegistrationClaim,
+  hashRegistrationClaim,
+  registrationClaimCookie,
+  registrationFingerprint,
+} from '@/lib/registration-claim';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -114,6 +121,17 @@ export async function POST(req: Request) {
     } : null;
 
     const effectiveIdempotencyKey = idempotency_key || crypto.randomUUID();
+    // A key alone is not authorization. Bind retries to an HttpOnly claim
+    // established on the first successful guest registration and to a stable
+    // representation of the original request.
+    const claim = getRegistrationClaim(req) || createRegistrationClaim();
+    const claimHash = hashRegistrationClaim(claim);
+    const fingerprint = registrationFingerprint({
+      event_id,
+      lead_email: normalizedEmail,
+      form_data: normalizedFormData,
+      team_data: normalizedTeamData,
+    });
     const { data: result, error: registrationError } = await supabase.rpc('register_for_event', {
       p_event_id: event_id,
       p_user_id: null,
@@ -121,6 +139,8 @@ export async function POST(req: Request) {
       p_form_data: normalizedFormData,
       p_team_data: normalizedTeamData,
       p_idempotency_key: effectiveIdempotencyKey,
+      p_idempotency_claim_hash: claimHash,
+      p_request_fingerprint: fingerprint,
     });
 
     if (registrationError) {
@@ -135,7 +155,7 @@ export async function POST(req: Request) {
     const hashPayload = result.hash_payload;
     const status = result.status;
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       registration_id: registrationId,
       hash_payload: hashPayload,
@@ -144,7 +164,12 @@ export async function POST(req: Request) {
       replayed: Boolean(result.replayed),
       reservation_expires_at: result.reservation_expires_at || null,
     });
+    response.cookies.set(registrationClaimCookie(claim));
+    return response;
   } catch (err) {
+    if (isPayloadTooLargeError(err)) {
+      return NextResponse.json({ error: 'Request body is too large.' }, { status: 413 });
+    }
     console.error('[API register error]:', err);
     return NextResponse.json({ error: 'Registration failed due to server error.' }, { status: 500 });
   }

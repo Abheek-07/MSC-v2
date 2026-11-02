@@ -18,12 +18,7 @@ import {
 interface TicketMember {
   id?: string;
   fullName: string;
-  email: string;
-  regNum?: string;
-  branch?: string;
   role?: string;
-  checked_in: boolean;
-  hash_payload?: string;
 }
 
 interface TicketData {
@@ -50,17 +45,12 @@ interface TicketData {
 export default function TicketClient({
   ticket,
   invalid,
-  initialMatchedIndex,
 }: {
   ticket?: TicketData;
   invalid?: boolean;
-  initialMatchedIndex?: number;
 }) {
   const ticketRef = useRef<HTMLDivElement>(null);
   const [downloading, setDownloading] = useState(false);
-  // Team tickets are always issued as individual member passes. There is no shared team QR.
-  const [selectedMemberIndex, setSelectedMemberIndex] = useState(initialMatchedIndex || 0);
-
   const isTeam = Boolean(
     ticket?.team_data &&
     ticket.team_data.team_name &&
@@ -68,21 +58,18 @@ export default function TicketClient({
   );
 
   const teamMembers = ticket?.team_data?.members || [];
-  const currentMember = teamMembers[selectedMemberIndex] || null;
-  const activeQrPayload = isTeam
-    ? (currentMember?.hash_payload || '')
-    : (ticket?.hash_payload || '');
+  // The URL token is the only credential ever sent to this client. Team
+  // overview entries intentionally contain no QR token or other member PII.
+  const activeQrPayload = ticket?.hash_payload || '';
 
   const downloadTicketImage = async () => {
-    if (!ticketRef.current || (isTeam && !activeQrPayload)) return;
+    if (!ticketRef.current || !activeQrPayload) return;
     setDownloading(true);
     try {
       const { toPng } = await import('html-to-image');
       const dataUrl = await toPng(ticketRef.current, { cacheBust: true, pixelRatio: 2 });
       const link = document.createElement('a');
-      const filenameSuffix = isTeam && currentMember
-        ? `${currentMember.fullName.replace(/\s+/g, '_')}_Individual`
-        : ticket?.lead_name.replace(/\s+/g, '_');
+      const filenameSuffix = ticket?.lead_name.replace(/\s+/g, '_');
       link.download = `MSC_Ticket_${filenameSuffix}_${(activeQrPayload || ticket?.hash_payload || 'pass').slice(0, 8)}.png`;
       link.href = dataUrl;
       link.click();
@@ -138,7 +125,7 @@ export default function TicketClient({
             </button>
             <button
               onClick={downloadTicketImage}
-              disabled={downloading || (isTeam && !activeQrPayload)}
+              disabled={downloading || !activeQrPayload}
               className="fluent-btn fluent-btn-primary"
               style={{ fontSize: '13px', padding: '6px 14px' }}
             >
@@ -147,35 +134,32 @@ export default function TicketClient({
           </div>
         </div>
 
-        {/* Individual member pass selector. Every member has a separate QR token. */}
+        {/* Team overview deliberately contains no sibling bearer credentials. */}
         {isTeam && (
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '12px 16px', marginBottom: '16px', boxShadow: 'var(--shadow-rest)' }}>
             <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-strong)', marginBottom: '10px' }}>
-              Individual Member Passes
+              Team Overview
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
               {teamMembers.map((member, index) => (
-                <button
-                  key={member.id || member.hash_payload || index}
-                  type="button"
-                  onClick={() => setSelectedMemberIndex(index)}
+                <span
+                  key={member.id || index}
                   style={{
-                    background: selectedMemberIndex === index ? 'var(--brand-soft)' : 'var(--bg-soft)',
-                    border: selectedMemberIndex === index ? '1px solid var(--brand)' : '1px solid var(--border)',
-                    color: selectedMemberIndex === index ? 'var(--brand)' : 'var(--text-body)',
+                    background: 'var(--bg-soft)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-body)',
                     borderRadius: 'var(--radius-sm)',
                     padding: '6px 10px',
                     fontSize: '12px',
                     fontWeight: 600,
-                    cursor: 'pointer',
                   }}
                 >
                   {member.fullName} {member.role ? `(${member.role})` : index === 0 ? '(Lead)' : '(Member)'}
-                </button>
+                </span>
               ))}
             </div>
             <p style={{ fontSize: '11px', color: 'var(--text-muted)', margin: '10px 0 0' }}>
-              Each member must present their own QR code at check-in.
+              This pass is issued only to the attendee named below. Each teammate must use their own recovery link.
             </p>
           </div>
         )}
@@ -323,31 +307,31 @@ export default function TicketClient({
                 fontSize: '13px',
               }}
             >
-              {isTeam && currentMember ? (
+              {isTeam ? (
                 <>
                   <div>
                     <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: 700 }}>
                       Attendee Name
                     </span>
-                    <strong style={{ color: '#0f172a', fontSize: '15px' }}>{currentMember.fullName}</strong>
+                    <strong style={{ color: '#0f172a', fontSize: '15px' }}>{ticket.lead_name}</strong>
                   </div>
                   <div>
                     <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: 700 }}>
                       Registration Number
                     </span>
-                    <strong style={{ color: '#0f172a' }}>{currentMember.regNum || 'N/A'}</strong>
+                    <strong style={{ color: '#0f172a' }}>{ticket.reg_number || 'N/A'}</strong>
                   </div>
                   <div>
                     <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: 700 }}>
                       Official Email
                     </span>
-                    <span style={{ color: '#334155' }}>{currentMember.email}</span>
+                    <span style={{ color: '#334155' }}>{ticket.lead_email}</span>
                   </div>
                   <div>
                     <span style={{ color: '#64748b', display: 'block', fontSize: '10px', textTransform: 'uppercase', fontWeight: 700 }}>
                       Team Affiliation
                     </span>
-                    <span style={{ color: '#0067b8', fontWeight: 600 }}>{ticket.team_data?.team_name} ({currentMember.role || 'Member'})</span>
+                    <span style={{ color: '#0067b8', fontWeight: 600 }}>{ticket.team_data?.team_name} ({ticket.role || 'Member'})</span>
                   </div>
                 </>
               ) : (
@@ -404,8 +388,6 @@ export default function TicketClient({
                           >
                             <div>
                               <strong style={{ color: '#0f172a' }}>{m.fullName}</strong>
-                              {m.regNum && <span style={{ color: '#64748b', marginLeft: '6px' }}>&bull; {m.regNum}</span>}
-                              {m.branch && m.branch !== 'N/A' && <span style={{ color: '#64748b', marginLeft: '4px' }}>({m.branch})</span>}
                             </div>
                             <span
                               style={{

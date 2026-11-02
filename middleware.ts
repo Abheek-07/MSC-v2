@@ -7,21 +7,13 @@ export async function middleware(request: NextRequest) {
   const allowedOrigins = (process.env.ALLOWED_ORIGINS || 'https://mscsrmap.xyz,https://www.mscsrmap.xyz,http://localhost:3000,http://127.0.0.1:3000')
     .split(',')
     .map((o) => o.trim().replace(/\/$/, ''));
-
-  const host = request.headers.get('host') || request.headers.get('x-forwarded-host');
-  const requestOrigin = request.nextUrl.origin;
-
-  // Determine whether this request's origin is authorized
-  const isSameOrigin = !origin || origin === requestOrigin || (host ? origin.replace(/^https?:\/\//, '') === host : false);
-  const isLocalDev = Boolean(
-    origin && (
-      origin.startsWith('http://localhost') ||
-      origin.startsWith('http://127.0.0.1') ||
-      /^https?:\/\/(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[0-1])\.)/.test(origin)
-    )
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const isDevelopmentOrigin = Boolean(
+    origin && isDevelopment && /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)
   );
-  const isExplicitlyAllowed = Boolean(origin && allowedOrigins.includes(origin));
-  const isAllowed = isSameOrigin || isLocalDev || isExplicitlyAllowed;
+  // Production accepts only an exact configured origin. In particular, do not
+  // derive trust from Host/X-Forwarded-Host or arbitrary private IP ranges.
+  const isAllowed = Boolean(origin && (allowedOrigins.includes(origin) || isDevelopmentOrigin));
 
   // 1. CORS Preflight & Origin Verification for /api/ routes
   if (pathname.startsWith('/api/')) {
@@ -45,12 +37,27 @@ export async function middleware(request: NextRequest) {
         return new NextResponse(null, { status: 204, headers: preflightHeaders });
       }
     }
+
+    // Cookie-authenticated writes need an origin proof. Razorpay webhooks and
+    // scheduled jobs use independent signature/secret verification and cannot
+    // carry browser Origin headers.
+    const externalSignedEndpoint = pathname === '/api/razorpay/webhook' || pathname.startsWith('/api/cron/');
+    const unsafeMethod = !['GET', 'HEAD', 'OPTIONS'].includes(request.method);
+    if (unsafeMethod && !externalSignedEndpoint && !isAllowed) {
+      return new NextResponse(JSON.stringify({ error: 'CSRF origin validation failed' }), {
+        status: 403,
+        headers: { 'Content-Type': 'application/json', Vary: 'Origin' },
+      });
+    }
   }
 
   // 2. Setup response and attach transport security headers
+  const nonce = crypto.randomUUID().replace(/-/g, '');
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set('x-nonce', nonce);
   let response = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
 
@@ -73,15 +80,16 @@ export async function middleware(request: NextRequest) {
   }
 
   // Content-Security-Policy
+  const devScriptPolicy = isDevelopment ? " 'unsafe-eval'" : '';
   const cspHeader = `
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'unsafe-eval' https://checkout.razorpay.com;
+    script-src 'self' 'nonce-${nonce}' https://checkout.razorpay.com${devScriptPolicy};
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-    img-src 'self' data: blob: https:;
+    img-src 'self' data: blob: https://*.supabase.co https://avatars.githubusercontent.com https://raw.githubusercontent.com https://images.unsplash.com https://*.srmap.edu.in https://*.mscsrmap.xyz;
     font-src 'self' data: https://fonts.gstatic.com;
-    connect-src 'self' https: wss:;
-    frame-src 'self' https://checkout.razorpay.com;
-    media-src 'self' https: data:;
+    connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.razorpay.com;
+    frame-src https://checkout.razorpay.com;
+    media-src 'self' https://*.supabase.co;
     object-src 'none';
     base-uri 'self';
     form-action 'self';
@@ -120,7 +128,7 @@ export async function middleware(request: NextRequest) {
           setAll(cookiesToSet: Array<{ name: string; value: string; options?: any }>) {
             cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
             response = NextResponse.next({
-              request,
+              request: { headers: requestHeaders },
             });
             cookiesToSet.forEach(({ name, value, options }) =>
               response.cookies.set(name, value, options)

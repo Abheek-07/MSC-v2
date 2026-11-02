@@ -9,7 +9,7 @@ export async function POST(req: Request) {
   try {
     const auth = await requireAdmin();
     if ('error' in auth) return auth.error;
-    const limit = await checkRateLimit(auth.user.id, 'api');
+    const limit = await checkRateLimit(auth.user.id, 'admin');
     if (!limit.success) return noStoreJson({ error: 'Rate limit exceeded.' }, 429, { 'Retry-After': '60' });
 
     const raw = await enforcePayloadSize(req, 8192);

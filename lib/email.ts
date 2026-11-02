@@ -25,8 +25,10 @@ export async function sendTicketEmail(params: SendTicketEmailParams): Promise<{ 
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    console.warn(`[Email Service] RESEND_API_KEY not set. Mocking email delivery to ${params.to} for ticket ${params.ticketUrl}`);
-    return { success: true };
+    // Never claim delivery when no provider is configured, and never log a
+    // bearer ticket URL. Callers can surface a truthful operational status.
+    console.warn('[Email Service] Ticket delivery skipped: RESEND_API_KEY is not configured.');
+    return { success: false, error: 'Email delivery is not configured' };
   }
 
   try {
@@ -103,8 +105,8 @@ export async function sendTicketRecoveryEmail(params: SendTicketRecoveryEmailPar
   const apiKey = process.env.RESEND_API_KEY;
 
   if (!apiKey) {
-    console.warn(`[Email Service] RESEND_API_KEY not set. Mocking recovery email delivery to ${params.to} with ${params.tickets.length} passes`);
-    return { success: true };
+    console.warn('[Email Service] Recovery delivery skipped: RESEND_API_KEY is not configured.');
+    return { success: false, error: 'Email delivery is not configured' };
   }
 
   try {

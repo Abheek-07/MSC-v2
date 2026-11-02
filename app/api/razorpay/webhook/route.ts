@@ -1,18 +1,17 @@
 import { NextResponse } from 'next/server';
 import { verifyWebhookSignature } from '@/lib/razorpay';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { isPayloadTooLargeError, readRawBody } from '@/lib/security';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(req: Request) {
   try {
-    const rawBody = await req.text();
-    if (Buffer.byteLength(rawBody, 'utf8') > 1024 * 1024) {
-      return NextResponse.json({ error: 'Webhook payload too large.' }, { status: 413 });
-    }
+    const rawBytes = await readRawBody(req, 1024 * 1024);
+    const rawBody = rawBytes.toString('utf8');
 
     const signature = req.headers.get('x-razorpay-signature');
-    if (!signature || !verifyWebhookSignature(rawBody, signature)) {
+    if (!signature || !verifyWebhookSignature(rawBytes, signature)) {
       return NextResponse.json({ error: 'Invalid webhook signature.' }, { status: 403 });
     }
 
@@ -53,6 +52,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ status: 'ok' });
   } catch (err) {
+    if (isPayloadTooLargeError(err)) {
+      return NextResponse.json({ error: 'Webhook payload too large.' }, { status: 413 });
+    }
     console.error('[Razorpay webhook error]:', err);
     return NextResponse.json({ error: 'Webhook processing error.' }, { status: 500 });
   }

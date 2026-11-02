@@ -17,7 +17,7 @@ export async function GET(req: Request) {
     const auth = await requireAdmin();
     if ('error' in auth) return auth.error;
 
-    const limit = await checkRateLimit(auth.user.id, 'api');
+    const limit = await checkRateLimit(auth.user.id, 'admin');
     if (!limit.success) return noStoreJson({ error: 'Rate limit exceeded.' }, 429);
 
     const url = new URL(req.url);

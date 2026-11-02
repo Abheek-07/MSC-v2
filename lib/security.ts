@@ -107,21 +107,50 @@ export function decryptSecret(ciphertextWithMetadata: string): string {
   return decrypted;
 }
 
+export class PayloadTooLargeError extends Error {
+  constructor(maxBytes: number) {
+    super(`Payload too large. Exceeds limit of ${maxBytes} bytes.`);
+    this.name = 'PayloadTooLargeError';
+  }
+}
+
+export function isPayloadTooLargeError(error: unknown): error is PayloadTooLargeError {
+  return error instanceof PayloadTooLargeError;
+}
+
 /**
- * Enforce maximum request payload size ceiling (default 64KB)
+ * Reads a request with a hard streaming cap. This protects endpoints from
+ * chunked requests that omit or lie about Content-Length. The returned bytes
+ * are also suitable for HMAC verification, where re-serialising JSON is unsafe.
  */
+export async function readRawBody(req: Request, maxBytes = 64 * 1024): Promise<Buffer> {
+  const declaredLength = req.headers.get('content-length');
+  if (declaredLength && Number(declaredLength) > maxBytes) throw new PayloadTooLargeError(maxBytes);
+  if (!req.body) return Buffer.alloc(0);
+
+  const reader = req.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      received += value.byteLength;
+      if (received > maxBytes) {
+        await reader.cancel();
+        throw new PayloadTooLargeError(maxBytes);
+      }
+      chunks.push(value);
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  return Buffer.concat(chunks.map((chunk) => Buffer.from(chunk)), received);
+}
+
+/** Enforce a maximum request payload size and return its UTF-8 text. */
 export async function enforcePayloadSize(req: Request, maxBytes = 64 * 1024): Promise<string> {
-  const contentLength = req.headers.get('content-length');
-  if (contentLength && parseInt(contentLength, 10) > maxBytes) {
-    throw new Error(`Payload too large. Exceeds limit of ${maxBytes} bytes.`);
-  }
-
-  const raw = await req.text();
-  if (Buffer.byteLength(raw, 'utf8') > maxBytes) {
-    throw new Error(`Payload too large. Exceeds limit of ${maxBytes} bytes.`);
-  }
-
-  return raw;
+  return (await readRawBody(req, maxBytes)).toString('utf8');
 }
 
 /**

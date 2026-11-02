@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { enforcePayloadSize } from '@/lib/security';
+import { enforcePayloadSize, isPayloadTooLargeError } from '@/lib/security';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { verifyRazorpaySignature, getRazorpayClient } from '@/lib/razorpay';
 import { getAdminClient } from '@/lib/supabase/admin';
@@ -62,6 +62,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, status: 'confirmed', confirmation: data });
   } catch (err) {
+    if (isPayloadTooLargeError(err)) {
+      return NextResponse.json({ error: 'Request body is too large.' }, { status: 413 });
+    }
     console.error('[Verify-payment error]:', err);
     return NextResponse.json({ error: 'Payment verification failed. Please retry or contact support.' }, { status: 502 });
   }

@@ -35,7 +35,7 @@ export function verifyRazorpaySignature(orderId: string, paymentId: string, sign
   return safeEqual(generatedSignature, signature);
 }
 
-export function verifyWebhookSignature(rawBody: string, webhookSignature: string): boolean {
+export function verifyWebhookSignature(rawBody: string | Buffer, webhookSignature: string): boolean {
   const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
   if (!webhookSecret || webhookSecret.toLowerCase().includes('placeholder')) return false;
 

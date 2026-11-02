@@ -1,20 +1,10 @@
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getAdminClient } from '@/lib/supabase/admin';
-import { enforcePayloadSize, isSafeLookupQuery } from '@/lib/security';
+import { enforcePayloadSize, isPayloadTooLargeError, isSafeLookupQuery } from '@/lib/security';
 import { sendTicketRecoveryEmail, RecoveryTicketItem } from '@/lib/email';
 
 export const dynamic = 'force-dynamic';
-
-function maskEmail(email: string): string {
-  const parts = email.split('@');
-  if (parts.length !== 2) return '***';
-  const name = parts[0];
-  const domain = parts[1];
-  const visibleLen = Math.min(2, Math.floor(name.length / 2));
-  const maskedName = name.slice(0, visibleLen) + '***' + (name.length > 3 ? name.slice(-1) : '');
-  return `${maskedName}@${domain}`;
-}
 
 export async function POST(req: Request) {
   try {
@@ -38,7 +28,7 @@ export async function POST(req: Request) {
 
     const clientIp = getClientIP(req.headers);
     // Strict rate limiting for credential recovery: 5 attempts per minute
-    const rateLimit = await checkRateLimit(`ticket_recovery_${clientIp}`, 'auth');
+    const rateLimit = await checkRateLimit(`ticket_recovery_${clientIp}`, 'ticket_recovery');
     if (!rateLimit.success) {
       return NextResponse.json(
         { error: 'Too many lookup requests. Please wait a moment before trying again.' },
@@ -189,18 +179,18 @@ export async function POST(req: Request) {
     }
 
     // Dispatch recovery email to proven mailbox
-    let primaryMaskedEmail = '';
     const allFoundTickets: any[] = [];
+    let deliveryFailed = false;
 
     for (const [recipientEmail, data] of recipientBuckets.entries()) {
-      if (!primaryMaskedEmail) primaryMaskedEmail = maskEmail(recipientEmail);
       allFoundTickets.push(...data.rawTickets);
 
-      await sendTicketRecoveryEmail({
+      const delivery = await sendTicketRecoveryEmail({
         to: recipientEmail,
         name: data.name,
         tickets: data.tickets,
       });
+      if (!delivery.success) deliveryFailed = true;
     }
 
     const uniqueTickets = Array.from(
@@ -211,17 +201,21 @@ export async function POST(req: Request) {
     // allow developers to inspect returned tickets, while keeping production secure.
     const isDev = process.env.NODE_ENV !== 'production' && !process.env.RESEND_API_KEY;
 
+    // Keep the external response identical for both found and unknown records;
+    // this endpoint is not an account/registration enumeration oracle.
     return NextResponse.json({
       success: true,
-      delivered: true,
-      masked_email: primaryMaskedEmail,
-      message: `Pass details have been dispatched to ${primaryMaskedEmail}. Please check your inbox.`,
+      message: 'If an active registration exists for this identifier, ticket access instructions have been sent.',
       tickets: isDev ? uniqueTickets : [],
       dev_mode: isDev,
+      ...(isDev && deliveryFailed ? { delivery_error: 'Email delivery is not configured or failed.' } : {}),
     }, {
       headers: { 'Cache-Control': 'no-store, max-age=0', 'X-Content-Type-Options': 'nosniff' },
     });
   } catch (err) {
+    if (isPayloadTooLargeError(err)) {
+      return NextResponse.json({ error: 'Request body is too large.' }, { status: 413 });
+    }
     console.error('[Ticket lookup error]:', err);
     return NextResponse.json({ error: 'Failed to look up tickets.' }, { status: 500 });
   }

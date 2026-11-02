@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import crypto from 'node:crypto';
+import sharp from 'sharp';
 import { getAdminClient } from '@/lib/supabase/admin';
 import { validateImageMagicBytes } from '@/lib/security';
 import { auditLog, noStoreJson, requireAdmin } from '@/lib/api-security';
@@ -7,6 +8,8 @@ import { auditLog, noStoreJson, requireAdmin } from '@/lib/api-security';
 export const dynamic = 'force-dynamic';
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 6000;
+const MAX_IMAGE_PIXELS = 25_000_000;
 
 /** Only these buckets may be written to. The old project let the client pick. */
 const ALLOWED_BUCKETS = ['images'] as const;
@@ -83,6 +86,29 @@ export async function POST(req: NextRequest) {
       return noStoreJson({ error: 'Unsupported or invalid image format' }, 400);
     }
 
+    // Magic bytes alone do not prove an image is decodable (or safe to serve).
+    // Decode with a pixel ceiling, reject oversized/corrupt/animated inputs,
+    // then re-encode to strip EXIF/IPTC/XMP metadata and polyglot payloads.
+    let safeBuffer: Buffer;
+    try {
+      const image = sharp(buffer, { limitInputPixels: MAX_IMAGE_PIXELS, animated: false, failOn: 'error' });
+      const metadata = await image.metadata();
+      if (!metadata.width || !metadata.height || metadata.width > MAX_IMAGE_DIMENSION || metadata.height > MAX_IMAGE_DIMENSION || metadata.width * metadata.height > MAX_IMAGE_PIXELS || (metadata.pages && metadata.pages > 1)) {
+        return noStoreJson({ error: 'Image dimensions or frame count exceed the allowed limit' }, 400);
+      }
+      safeBuffer = await (magic.ext === 'jpg'
+        ? image.rotate().jpeg({ mozjpeg: true, quality: 88 })
+        : magic.ext === 'png'
+          ? image.rotate().png({ compressionLevel: 9, progressive: false })
+          : image.rotate().webp({ quality: 88 })
+      ).toBuffer();
+    } catch {
+      return noStoreJson({ error: 'Unsupported, corrupt, or unsafe image data' }, 400);
+    }
+    if (safeBuffer.length === 0 || safeBuffer.length > MAX_IMAGE_BYTES) {
+      return noStoreJson({ error: 'Processed image is too large (max 5MB)' }, 413);
+    }
+
     // Sanitise the path prefix so it cannot traverse out of the bucket.
     const safePrefix =
       pathPrefix
@@ -94,7 +120,7 @@ export async function POST(req: NextRequest) {
     const fileName = `${safePrefix}-${crypto.randomUUID()}.${magic.ext}`;
 
     const supabase = getAdminClient();
-    const { error } = await supabase.storage.from(bucket).upload(fileName, buffer, {
+    const { error } = await supabase.storage.from(bucket).upload(fileName, safeBuffer, {
       contentType: magic.mime,
       cacheControl: '3600',
       upsert: false,

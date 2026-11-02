@@ -70,7 +70,7 @@ if (hasUpstash) {
   }
 }
 
-export type RateLimitTier = 'auth' | 'register' | 'payment' | 'api' | 'default';
+export type RateLimitTier = 'auth' | 'register' | 'payment' | 'ticket_recovery' | 'admin' | 'api' | 'default';
 
 const TIER_CONFIGS: Record<RateLimitTier, { requests: number; windowMs: number }> = {
   auth: {
@@ -85,6 +85,14 @@ const TIER_CONFIGS: Record<RateLimitTier, { requests: number; windowMs: number }
     requests: 10,
     windowMs: 60000,
   },
+  ticket_recovery: {
+    requests: 5,
+    windowMs: 60000,
+  },
+  admin: {
+    requests: 30,
+    windowMs: 60000,
+  },
   api: {
     requests: parseInt(process.env.RATE_LIMIT_API_MAX_REQUESTS || '30', 10),
     windowMs: parseInt(process.env.RATE_LIMIT_API_WINDOW_MS || '60000', 10),
@@ -96,13 +104,13 @@ const TIER_CONFIGS: Record<RateLimitTier, { requests: number; windowMs: number }
 };
 
 /**
- * Check rate limit for a client identifier and tier.
- * Tries Upstash first, degrades gracefully to in-memory limiter.
+ * High-risk production operations require Redis. Memory is intentionally a
+ * development-only convenience; it cannot protect a horizontally scaled app.
  */
 export async function checkRateLimit(
   identifier: string,
   tier: RateLimitTier = 'default'
-): Promise<{ success: boolean; remaining: number; reset: number; source: 'upstash' | 'memory' }> {
+): Promise<{ success: boolean; remaining: number; reset: number; source: 'upstash' | 'memory' | 'unavailable' }> {
   const config = TIER_CONFIGS[tier] || TIER_CONFIGS.default;
   const key = `msc_rl:${tier}:${identifier}`;
 
@@ -123,11 +131,19 @@ export async function checkRateLimit(
         source: 'upstash',
       };
     } catch (err) {
-      console.warn('[RateLimit] Upstash execution error, falling back to memory limiter.', err);
+      console.error('[RateLimit] Upstash execution error.', err);
     }
   }
 
-  // In-memory fallback
+  const production = process.env.NODE_ENV === 'production';
+  const distributedRequired = tier !== 'default';
+  if (production && distributedRequired) {
+    // Deliberate fail-closed behaviour: do not accept brute-force, payment,
+    // registration, recovery, or admin traffic without distributed protection.
+    return { success: false, remaining: 0, reset: Date.now() + config.windowMs, source: 'unavailable' };
+  }
+
+  // Local development/test fallback only.
   const memResult = globalMemoryLimiter.check(key, config.requests, config.windowMs);
   return {
     ...memResult,
@@ -136,16 +152,20 @@ export async function checkRateLimit(
 }
 
 /**
- * Extract client IP from headers
+ * Extract an address only from a verified platform header. Never accept an
+ * arbitrary X-Forwarded-For or X-Real-IP supplied by a direct client.
+ * Configure TRUSTED_PROXY_MODE=vercel or cloudflare in production; otherwise
+ * callers share the conservative "unknown" bucket.
  */
 export function getClientIP(headers: Headers): string {
-  const forwarded = headers.get('x-forwarded-for');
-  if (forwarded) {
-    return forwarded.split(',')[0].trim();
+  const proxy = process.env.TRUSTED_PROXY_MODE;
+  if (proxy === 'vercel') {
+    const value = headers.get('x-vercel-forwarded-for');
+    if (value) return value.split(',')[0].trim();
   }
-  const realIp = headers.get('x-real-ip');
-  if (realIp) {
-    return realIp.trim();
+  if (proxy === 'cloudflare') {
+    const value = headers.get('cf-connecting-ip');
+    if (value) return value.trim();
   }
-  return '127.0.0.1';
+  return process.env.NODE_ENV === 'production' ? 'unknown' : '127.0.0.1';
 }

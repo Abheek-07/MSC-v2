@@ -20,7 +20,7 @@
  * window) are the authoritative, stricter limits.
  */
 
-export type RateLimitTier = 'auth' | 'register' | 'payment' | 'api' | 'default';
+export type RateLimitTier = 'auth' | 'register' | 'payment' | 'ticket_recovery' | 'admin' | 'api' | 'default';
 
 const TIER_CONFIGS: Record<RateLimitTier, { requests: number; windowMs: number }> = {
   auth: {
@@ -33,6 +33,14 @@ const TIER_CONFIGS: Record<RateLimitTier, { requests: number; windowMs: number }
   },
   payment: {
     requests: 10,
+    windowMs: 60000,
+  },
+  ticket_recovery: {
+    requests: 5,
+    windowMs: 60000,
+  },
+  admin: {
+    requests: 30,
     windowMs: 60000,
   },
   api: {
@@ -150,7 +158,7 @@ export async function checkRateLimit(
   success: boolean;
   remaining: number;
   reset: number;
-  source: 'upstash' | 'memory';
+  source: 'upstash' | 'memory' | 'unavailable';
 }> {
   const config = TIER_CONFIGS[tier] || TIER_CONFIGS.default;
   const key = `msc_rl:${tier}:${identifier}`;
@@ -159,18 +167,27 @@ export async function checkRateLimit(
     try {
       return { ...(await upstashFixedWindow(key, config.requests, config.windowMs)), source: 'upstash' };
     } catch (err) {
-      // Fail open to the in-memory limiter, matching the Node path.
-      console.warn('[RateLimit:edge] Upstash error, using in-memory limiter.', err);
+      console.error('[RateLimit:edge] Upstash error.', err);
     }
+  }
+
+  if (process.env.NODE_ENV === 'production' && tier !== 'default') {
+    return { success: false, remaining: 0, reset: Date.now() + config.windowMs, source: 'unavailable' };
   }
 
   return { ...memory.check(key, config.requests, config.windowMs), source: 'memory' };
 }
 
 export function getClientIP(headers: Headers): string {
-  const forwarded = headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0].trim();
-  return headers.get('x-real-ip')?.trim() || '127.0.0.1';
+  if (process.env.TRUSTED_PROXY_MODE === 'vercel') {
+    const value = headers.get('x-vercel-forwarded-for');
+    if (value) return value.split(',')[0].trim();
+  }
+  if (process.env.TRUSTED_PROXY_MODE === 'cloudflare') {
+    const value = headers.get('cf-connecting-ip');
+    if (value) return value.trim();
+  }
+  return process.env.NODE_ENV === 'production' ? 'unknown' : '127.0.0.1';
 }
 
 /**

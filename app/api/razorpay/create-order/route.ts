@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
-import { enforcePayloadSize, isValidUUID } from '@/lib/security';
+import { enforcePayloadSize, isPayloadTooLargeError, isValidUUID } from '@/lib/security';
 import { checkRateLimit, getClientIP } from '@/lib/ratelimit';
 import { getRazorpayClient } from '@/lib/razorpay';
 import { getAdminClient } from '@/lib/supabase/admin';
+import { getRegistrationClaim, hashRegistrationClaim } from '@/lib/registration-claim';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,13 +32,19 @@ export async function POST(req: Request) {
     const supabase = getAdminClient();
     const { data: registration, error: registrationError } = await supabase
       .from('registrations')
-      .select('id, event_id, user_id, status, form_data')
+      .select('id, event_id, user_id, status, form_data, registration_claim_hash')
       .eq('id', registrationId)
       .eq('event_id', eventId)
       .maybeSingle();
 
     if (registrationError) throw registrationError;
     if (!registration) return NextResponse.json({ error: 'Registration not found for this event.' }, { status: 404 });
+    const claim = getRegistrationClaim(req);
+    if (!claim || !registration.registration_claim_hash || registration.registration_claim_hash !== hashRegistrationClaim(claim)) {
+      // Registration ids are references, not checkout credentials. Guests must
+      // initiate payment from the browser that owns the registration claim.
+      return NextResponse.json({ error: 'This checkout session is not authorized for the selected registration.' }, { status: 403 });
+    }
     if (registration.status !== 'pending_payment') {
       return NextResponse.json({ error: 'This registration is not awaiting payment.' }, { status: 409 });
     }
@@ -153,6 +160,9 @@ export async function POST(req: Request) {
       throw gatewayError;
     }
   } catch (err) {
+    if (isPayloadTooLargeError(err)) {
+      return NextResponse.json({ error: 'Request body is too large.' }, { status: 413 });
+    }
     console.error('[Razorpay create-order error]:', err);
     return NextResponse.json({ error: 'Unable to create payment order. Please try again.' }, { status: 502 });
   }

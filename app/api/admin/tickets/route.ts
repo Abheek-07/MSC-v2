@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 async function guard() {
   const auth = await requireAdmin();
   if ('error' in auth) return { response: auth.error };
-  const limit = await checkRateLimit(auth.user.id, 'api');
+  const limit = await checkRateLimit(auth.user.id, 'admin');
   if (!limit.success) return { response: noStoreJson({ error: 'Rate limit exceeded.' }, 429) };
   return { user: auth.user };
 }

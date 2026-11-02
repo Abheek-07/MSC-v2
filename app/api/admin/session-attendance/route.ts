@@ -9,7 +9,7 @@ export async function GET(req: Request) {
   try {
     const auth = await requireAdmin();
     if ('error' in auth) return auth.error;
-    const limit = await checkRateLimit(auth.user.id, 'api');
+    const limit = await checkRateLimit(auth.user.id, 'admin');
     if (!limit.success) return noStoreJson({ error: 'Rate limit exceeded.' }, 429, { 'Retry-After': '60' });
 
     const sessionId = new URL(req.url).searchParams.get('session_id') || '';

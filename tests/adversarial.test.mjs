@@ -2,10 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   isValidUUID,
+  readRawBody,
   safeEqual,
   isSafeLookupQuery,
 } from '../lib/security.ts';
 import { escapeHtml, sanitizeCertificateHtml } from '../lib/sanitize.ts';
+import { createSafeTeamOverview } from '../lib/ticket-presentation.ts';
+import { createRegistrationClaim, getRegistrationClaim, hashRegistrationClaim, registrationFingerprint } from '../lib/registration-claim.ts';
+import { getClientIP } from '../lib/ratelimit.ts';
 
 test('adversarial: PostgREST operator injection bypass attempts', () => {
   const attacks = [
@@ -86,6 +90,56 @@ test('adversarial: XSS mutation payloads and URI bypass attempts', () => {
   }
 });
 
+test('adversarial: encoded URI, SVG, data URI, and CSS attacks do not survive certificate sanitization', () => {
+  const attacks = [
+    '<a href="jav&#x61;script:alert(1)">encoded</a>',
+    '<a href="&#106;&#97;&#118;&#97;&#115;&#99;&#114;&#105;&#112;&#116;:alert(1)">encoded</a>',
+    '<img src="data:image/svg+xml,&lt;svg onload=alert(1)&gt;">',
+    '<svg><a xlink:href="javascript:alert(1)">x</a></svg>',
+    '<div style="background:url(javascript:alert(1))">x</div>',
+    '<p><img src=x onerror=alert(1)><script>alert(1)</script></p>',
+  ];
+  for (const attack of attacks) {
+    const sanitized = sanitizeCertificateHtml(attack);
+    assert.doesNotMatch(sanitized, /javascript:|data:|onerror|onload|<svg|<script|url\s*\(/i, sanitized);
+  }
+});
+
+test('adversarial: a team pass projection cannot disclose sibling QR tokens or PII', () => {
+  const overview = createSafeTeamOverview('reg-1', [
+    { fullName: 'Alice', email: 'alice@example.test', regNum: 'A1', hash_payload: 'token-a', checked_in: true },
+    { fullName: 'Bob', email: 'bob@example.test', hash_payload: 'token-b', branch: 'CSE' },
+  ]);
+  assert.deepEqual(overview, [
+    { id: 'reg-1-m-0', fullName: 'Alice', role: 'Lead' },
+    { id: 'reg-1-m-1', fullName: 'Bob', role: 'Member' },
+  ]);
+  assert.equal(JSON.stringify(overview).includes('token-'), false);
+  assert.equal(JSON.stringify(overview).includes('@example'), false);
+});
+
+test('adversarial: registration claim and fingerprint bind retries to a single browser/request', () => {
+  const claim = createRegistrationClaim();
+  assert.match(claim, /^[A-Za-z0-9_-]{40,}$/);
+  assert.notEqual(hashRegistrationClaim(claim), hashRegistrationClaim(createRegistrationClaim()));
+  assert.equal(getRegistrationClaim(new Request('https://example.test', { headers: { cookie: `msc_registration_claim=${claim}` } })), claim);
+  const original = registrationFingerprint({ event_id: 'event-a', email: 'a@example.test', form: { name: 'A', x: 1 } });
+  assert.equal(original, registrationFingerprint({ form: { x: 1, name: 'A' }, email: 'a@example.test', event_id: 'event-a' }));
+  assert.notEqual(original, registrationFingerprint({ event_id: 'event-b', email: 'a@example.test', form: { name: 'A', x: 1 } }));
+});
+
+test('adversarial: production IP extraction ignores spoofed forwarding headers', () => {
+  const oldEnv = process.env.NODE_ENV;
+  const oldProxy = process.env.TRUSTED_PROXY_MODE;
+  process.env.NODE_ENV = 'production';
+  delete process.env.TRUSTED_PROXY_MODE;
+  assert.equal(getClientIP(new Headers({ 'x-forwarded-for': '203.0.113.77', 'x-real-ip': '203.0.113.78' })), 'unknown');
+  process.env.TRUSTED_PROXY_MODE = 'cloudflare';
+  assert.equal(getClientIP(new Headers({ 'x-forwarded-for': '203.0.113.77', 'cf-connecting-ip': '198.51.100.10' })), '198.51.100.10');
+  if (oldEnv === undefined) delete process.env.NODE_ENV; else process.env.NODE_ENV = oldEnv;
+  if (oldProxy === undefined) delete process.env.TRUSTED_PROXY_MODE; else process.env.TRUSTED_PROXY_MODE = oldProxy;
+});
+
 test('adversarial: HTML entity escape handles non-string and nested characters', () => {
   assert.equal(escapeHtml('<b onmouseover="alert(1)">Test</b>'), '&lt;b onmouseover=&quot;alert(1)&quot;&gt;Test&lt;/b&gt;');
   assert.equal(escapeHtml('"""\'\'\'<<<>>>&&&'), '&quot;&quot;&quot;&#39;&#39;&#39;&lt;&lt;&lt;&gt;&gt;&gt;&amp;&amp;&amp;');
@@ -164,4 +218,19 @@ test('adversarial: Streaming byte-counter aborts oversized chunked stream even w
   assert.ok(caughtError !== null, 'Stream should have thrown PAYLOAD_TOO_LARGE');
   assert.equal(caughtError.message, 'PAYLOAD_TOO_LARGE');
   assert.ok(bytesReceived > maxLimit);
+});
+
+test('adversarial: raw body reader aborts an oversized chunked request before buffering it', async () => {
+  const request = new Request('https://example.test', {
+    method: 'POST',
+    body: new ReadableStream({
+      start(controller) {
+        controller.enqueue(new Uint8Array(700));
+        controller.enqueue(new Uint8Array(700));
+        controller.close();
+      },
+    }),
+    duplex: 'half',
+  });
+  await assert.rejects(() => readRawBody(request, 1024), { name: 'PayloadTooLargeError' });
 });

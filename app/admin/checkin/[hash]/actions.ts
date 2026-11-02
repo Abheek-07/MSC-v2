@@ -14,7 +14,7 @@ export interface ActionResponse {
 async function authorizeAction() {
   const auth = await requireAdmin();
   if ('error' in auth) return { error: 'Admin access required.' };
-  const limit = await checkRateLimit(auth.user.id, 'api');
+  const limit = await checkRateLimit(auth.user.id, 'admin');
   if (!limit.success) return { error: 'Too many check-in actions. Try again shortly.' };
   return { userId: auth.user.id };
 }
