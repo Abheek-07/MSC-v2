@@ -19,8 +19,9 @@ async function getEventBySlug(slug: string): Promise<EventItem | null> {
     const supabase = getAdminClient();
     let filter = `slug.eq.${slug},id.eq.${slug}`;
     if (slug === 'synora' || slug === 'synora-2026' || slug === 'synora-pitstop') {
-      filter += `,slug.eq.synora-26`;
+      filter += ',slug.eq.synora-26';
     }
+
     const queryPromise = supabase
       .from('events')
       .select('*')
@@ -33,17 +34,15 @@ async function getEventBySlug(slug: string): Promise<EventItem | null> {
     );
 
     const { data, error } = (await Promise.race([queryPromise, timeoutPromise])) as any;
-
-    if (!error) {
-      return data ? (data as EventItem) : null;
-    }
+    if (!error) return data ? (data as EventItem) : null;
   } catch {
-    // Fall back to local event data only when Supabase is unavailable or times out.
     return (
       FALLBACK_EVENTS.find(
-        (e) =>
-          e.is_published &&
-          (e.slug === slug || e.id === slug || (slug === 'synora' && e.slug === 'synora-26'))
+        (event) =>
+          event.is_published &&
+          (event.slug === slug ||
+            event.id === slug ||
+            (slug === 'synora' && event.slug === 'synora-26'))
       ) || null
     );
   }
@@ -54,33 +53,44 @@ async function getEventBySlug(slug: string): Promise<EventItem | null> {
 export async function generateMetadata({ params }: EventPageProps) {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
-  if (!event) return { title: 'Event Not Found' };
+
+  if (!event) {
+    return {
+      title: 'Event not found',
+      robots: { index: false, follow: false },
+    };
+  }
+
+  const title = `${event.title} | Microsoft Student Community SRM AP`;
+  const plainDescription = (event.description || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+  const description = plainDescription.slice(0, 160) ||
+    `Event details, schedule, and registration information for ${event.title} at SRM University-AP.`;
+  const canonicalPath = `/events/${event.slug}`;
+  const image = event.banner_url || event.image_url || '/hero_bg.png';
 
   return {
-    title: `${event.title} | Microsoft Student Community SRM AP`,
-    description: event.description,
-    alternates: {
-      canonical: `/events/${event.slug}`,
-    },
+    title,
+    description,
+    alternates: { canonical: canonicalPath },
     openGraph: {
-      title: `${event.title} | Microsoft Student Community SRM AP`,
-      description: event.description,
-      url: `/events/${event.slug}`,
+      title,
+      description,
+      url: canonicalPath,
       type: 'article',
-      images: [
-        {
-          url: event.image_url || '/hero_bg.png',
-          width: 1200,
-          height: 630,
-          alt: event.title,
-        },
-      ],
+      images: [{ url: image, width: 1200, height: 630, alt: event.title }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${event.title} | Microsoft Student Community SRM AP`,
-      description: event.description,
-      images: [event.image_url || '/hero_bg.png'],
+      title,
+      description,
+      images: [image],
     },
   };
 }
@@ -90,11 +100,8 @@ export default async function EventDetailPage({ params, searchParams }: EventPag
   const { view, invite, tab } = await searchParams;
   const event = await getEventBySlug(slug);
 
-  if (!event) {
-    notFound();
-  }
+  if (!event) notFound();
 
-  // Custom Flagship Microsite Routing (Section 2.A)
   if ((slug === 'synora' || slug === 'synora-pitstop') && view !== 'portal') {
     return (
       <div style={{ position: 'relative', width: '100%', height: 'calc(100vh - 64px)', overflow: 'hidden' }}>
@@ -141,22 +148,30 @@ export default async function EventDetailPage({ params, searchParams }: EventPag
     );
   }
 
+  const now = Date.now();
+  const endTime = event.date_end ? new Date(event.date_end).getTime() : Number.NaN;
+  const isCompleted =
+    event.status === 'completed' || (Number.isFinite(endTime) && endTime < now);
+
   const eventJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Event',
     name: event.title,
     description: event.description,
-    image: event.image_url,
+    url: `${BASE_URL}/events/${event.slug}`,
+    image: [event.banner_url || event.image_url || `${BASE_URL}/hero_bg.png`],
     startDate: event.date_start,
-    endDate: event.date_end,
+    ...(event.date_end ? { endDate: event.date_end } : {}),
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
-    eventStatus: 'https://schema.org/EventScheduled',
+    eventStatus: isCompleted
+      ? 'https://schema.org/EventCompleted'
+      : 'https://schema.org/EventScheduled',
     location: {
       '@type': 'Place',
       name: event.location,
       address: {
         '@type': 'PostalAddress',
-        addressLocality: 'Amaravati',
+        addressLocality: 'Neerukonda',
         addressRegion: 'Andhra Pradesh',
         postalCode: '522240',
         addressCountry: 'IN',
@@ -166,16 +181,19 @@ export default async function EventDetailPage({ params, searchParams }: EventPag
       '@type': 'Organization',
       name: 'Microsoft Student Community SRM AP',
       url: BASE_URL,
+      logo: 'https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png',
     },
-    offers: {
-      '@type': 'Offer',
-      url: `${BASE_URL}/events/${event.slug}`,
-      price: event.form_requirements?.registration_fee || '0',
-      priceCurrency: 'INR',
-      availability: event.registration_open
-        ? 'https://schema.org/InStock'
-        : 'https://schema.org/SoldOut',
-    },
+    ...(event.registration_open && !isCompleted
+      ? {
+          offers: {
+            '@type': 'Offer',
+            url: `${BASE_URL}/events/${event.slug}`,
+            price: Number(event.form_requirements?.registration_fee || 0),
+            priceCurrency: 'INR',
+            availability: 'https://schema.org/InStock',
+          },
+        }
+      : {}),
   };
 
   return (
@@ -184,11 +202,7 @@ export default async function EventDetailPage({ params, searchParams }: EventPag
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(eventJsonLd) }}
       />
-      <EventDetailClient
-        event={event}
-        initialInvite={invite}
-        initialTab={tab}
-      />
+      <EventDetailClient event={event} initialInvite={invite} initialTab={tab} />
     </>
   );
 }

@@ -12,41 +12,33 @@ export const metadata: Metadata = {
     template: '%s | Microsoft Student Community SRM AP',
   },
   description:
-    'The official student developer guild at SRM University-AP. We engineer cloud applications on Azure, host national hackathons (SYNORA), and empower visionary student builders.',
+    'Explore technology events, hackathons, workshops, and student developer opportunities at Microsoft Student Community, SRM University-AP.',
   applicationName: 'Microsoft Student Community SRM AP',
   keywords: [
-    'Microsoft Student Community',
+    'Microsoft Student Community SRM AP',
     'MSC SRM AP',
-    'SRM University AP',
-    'SRM AP Hackathon',
-    'SYNORA 2026',
-    'SYNORA Hackathon',
-    'Azure Cloud Computing',
-    'Student Developer Community',
-    'Amaravati Tech Club',
-    'Engineering Guild SRM AP',
-    'Microsoft Student Chapter',
-    'Open Source SRM',
-    'SRM AP Coding Club',
+    'SRM University AP events',
+    'SRM AP hackathons',
+    'student developer community',
+    'technology workshops SRM AP',
+    'Azure and AI workshops',
   ],
   authors: [{ name: 'Microsoft Student Community SRM AP', url: BASE_URL }],
   creator: 'Microsoft Student Community SRM AP',
   publisher: 'Microsoft Student Community SRM AP',
-  alternates: {
-    canonical: '/',
-  },
+  alternates: { canonical: '/' },
   openGraph: {
     title: 'Microsoft Student Community | SRM University-AP',
     description:
-      'Where Student Builders Engineer Production Scale. Official Microsoft student community at SRM University-AP hosting national hackathons, Azure compute workshops, and AI bootcamps.',
-    url: BASE_URL,
+      'Explore technology events, hackathons, workshops, and student developer opportunities at Microsoft Student Community, SRM University-AP.',
+    url: '/',
     siteName: 'Microsoft Student Community SRM AP',
     images: [
       {
         url: '/hero_bg.png',
         width: 1200,
         height: 630,
-        alt: 'Microsoft Student Community SRM University-AP',
+        alt: 'Microsoft Student Community at SRM University-AP',
       },
     ],
     locale: 'en_IN',
@@ -56,7 +48,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Microsoft Student Community | SRM University-AP',
     description:
-      'The premier student engineering guild at SRM University AP. Building on Azure, hosting hackathons, and empowering student engineers.',
+      'Explore technology events, hackathons, workshops, and student developer opportunities at SRM University-AP.',
     images: ['/hero_bg.png'],
   },
   robots: {
@@ -85,49 +77,29 @@ export default function RootLayout({
 }>) {
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@graph': [
-      {
-        '@type': 'EducationalOrganization',
-        '@id': `${BASE_URL}/#organization`,
-        name: 'Microsoft Student Community - SRM University-AP',
-        alternateName: 'MSC SRM AP',
-        url: BASE_URL,
-        logo: `${BASE_URL}/hero_bg.png`,
-        description:
-          'Official Microsoft Student Community chapter at SRM University-AP fostering technical excellence, cloud architecture, and hackathon development.',
-        address: {
-          '@type': 'PostalAddress',
-          streetAddress: 'Neerukonda',
-          addressLocality: 'Mangalagiri, Amaravati',
-          addressRegion: 'Andhra Pradesh',
-          postalCode: '522240',
-          addressCountry: 'IN',
-        },
-        sameAs: [
-          'https://github.com/YUVRAJ-SINGH-3178/MSC-v2',
-          'https://linkedin.com/company/msc-srmap',
-          'https://instagram.com/msc_srmap',
-        ],
-      },
-      {
-        '@type': 'WebSite',
-        '@id': `${BASE_URL}/#website`,
-        url: BASE_URL,
-        name: 'Microsoft Student Community SRM AP',
-        publisher: {
-          '@id': `${BASE_URL}/#organization`,
-        },
-        potentialAction: {
-          '@type': 'SearchAction',
-          target: `${BASE_URL}/events?search={search_term_string}`,
-          'query-input': 'required name=search_term_string',
-        },
-      },
+    '@type': 'EducationalOrganization',
+    '@id': `${BASE_URL}/#organization`,
+    name: 'Microsoft Student Community - SRM University-AP',
+    alternateName: 'MSC SRM AP',
+    url: BASE_URL,
+    description:
+      'A student-led technology community at SRM University-AP focused on developer learning, technical events, hackathons, and collaboration.',
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Neerukonda',
+      addressRegion: 'Andhra Pradesh',
+      postalCode: '522240',
+      addressCountry: 'IN',
+    },
+    sameAs: [
+      'https://github.com/YUVRAJ-SINGH-3178/MSC-v2',
+      'https://linkedin.com/company/msc-srmap',
+      'https://instagram.com/msc_srmap',
     ],
   };
 
   return (
-    <html lang="en">
+    <html lang="en-IN">
       <head>
         <script
           type="application/ld+json"

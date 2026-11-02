@@ -38,10 +38,11 @@ async function getEventBySlug(slug: string): Promise<EventItem | null> {
 export async function generateMetadata({ params }: CertificatePageProps) {
   const { slug } = await params;
   const event = await getEventBySlug(slug);
-  if (!event) return { title: 'Certificate' };
+  if (!event) return { title: 'Certificate', robots: { index: false, follow: false } };
 
   return {
     title: `Certificate of Participation - ${event.title} | MSC SRM AP`,
+    robots: { index: false, follow: false },
     description: `Official verified certificate of participation for ${event.title} issued by Microsoft Student Community SRM AP.`,
     alternates: {
       canonical: `/events/${event.slug}/certificate`,
