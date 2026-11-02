@@ -6,7 +6,7 @@ import { getAdminClient } from '@/lib/supabase/admin';
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://mscsrmap.xyz';
 
 export const metadata: Metadata = {
-  title: 'Student Hackathons | Microsoft Student Community | SRM University-AP',
+  title: 'Student Hackathons',
   description: 'Explore student hackathons at Microsoft Student Community, SRM University-AP. Find team-based coding challenges, project-building events, and registration details.',
   alternates: { canonical: '/hackathons' },
   openGraph: {
