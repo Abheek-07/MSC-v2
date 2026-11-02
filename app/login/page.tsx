@@ -11,8 +11,6 @@ export default function LoginPage() {
   const [mode, setMode] = useState<'signin' | 'reset'>('signin');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
 
@@ -51,23 +49,16 @@ export default function LoginPage() {
 
         router.push('/events');
       } else if (mode === 'reset') {
-        // Submit admin-approved password reset request
-        if (newPassword !== confirmPassword) {
-          setMessage({ type: 'error', text: 'Passwords do not match.' });
-          setLoading(false);
-          return;
-        }
-
         const res = await fetch('/api/auth/request-password-reset', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, new_password: newPassword }),
+          body: JSON.stringify({ email }),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to submit reset request.');
         setMessage({
           type: 'success',
-          text: 'Password reset request submitted for administrator approval.',
+          text: 'If your account exists, your reset request has been submitted for administrator review.',
         });
       }
     } catch (err: any) {
@@ -145,7 +136,7 @@ export default function LoginPage() {
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)', margin: '0 0 24px 0' }}>
           {mode === 'signin' && 'to continue to Microsoft Student Community SRM AP'}
-          {mode === 'reset' && 'Submit a password update request for approval'}
+          {mode === 'reset' && 'Submit a password reset request for approval'}
         </p>
 
         {/* Status Message */}
