@@ -60,9 +60,7 @@ export async function POST(req: Request) {
       status: body.status || 'upcoming',
       date_start: body.date_start || new Date().toISOString(),
       date_end: body.date_end || new Date().toISOString(),
-      image_url:
-        body.image_url ||
-        'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=1200&q=80',
+      image_url: body.image_url || 'https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png',
       registration_open: body.registration_open ?? true,
       show_opening_soon: false,
       is_published: body.is_published ?? true,
