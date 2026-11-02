@@ -102,9 +102,9 @@ export async function POST(req: Request) {
         if (typeof member.hash_payload !== 'string' || !member.hash_payload) continue;
         tickets.push({
           hash_payload: member.hash_payload,
-          event_title: 'MSC Event',
-          date_start: null,
-          location: 'SRM University AP',
+          event_title: row.events?.title || 'MSC Event',
+          date_start: row.events?.date_start || null,
+          location: row.events?.location || 'SRM University AP',
           status: row.status,
         });
       }
