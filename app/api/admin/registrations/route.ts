@@ -2,6 +2,7 @@ import { getAdminClient } from '@/lib/supabase/admin';
 import { requireAdmin, noStoreJson } from '@/lib/api-security';
 import { checkRateLimit } from '@/lib/ratelimit';
 import { randomUUID } from 'node:crypto';
+import { enforcePayloadSize } from '@/lib/security';
 
 function ensureTeamMemberQrTokens(teamData: any) {
   if (!teamData || !Array.isArray(teamData.members)) return teamData;
@@ -86,145 +87,118 @@ export async function POST(req: Request) {
         { 'Retry-After': '60' }
       );
     }
-    const body = await req.json();
+
+    const rawBody = await enforcePayloadSize(req, 1024 * 1024);
+    let body: any;
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return noStoreJson({ error: 'Invalid JSON request body' }, 400);
+    }
     const supabase = getAdminClient();
 
-    // 1. Bulk Batch Import with Smart Upsert / Merge
-    const batchList = Array.isArray(body) ? body : (Array.isArray(body.batch) ? body.batch : null);
-    if (batchList && batchList.length > 0) {
-      // Find the event ID(s)
-      const eventIds = Array.from(new Set(batchList.map((item: any) => item.event_id).filter(Boolean)));
-      
-      // If user chose to clear the current roster before uploading fresh CSV
-      if (body.clear_first && eventIds.length > 0) {
-        const { error: delError } = await supabase
-          .from('registrations')
-          .delete()
-          .in('event_id', eventIds);
+    // 1. Atomic bulk import. The database function performs clear + upsert
+    // in one transaction, so a failure rolls back the entire operation.
+    const batchList = Array.isArray(body)
+      ? body
+      : (body && Array.isArray(body.batch) ? body.batch : null);
 
-        if (delError) {
-          console.error('Failed to clear event registrations before batch import:', delError);
-          throw delError;
-        }
+    if (batchList) {
+      const MAX_IMPORT_ROWS = 500;
+      if (batchList.length === 0) {
+        return noStoreJson({ error: 'The import batch is empty' }, 400);
+      }
+      if (batchList.length > MAX_IMPORT_ROWS) {
+        return noStoreJson({ error: `A maximum of ${MAX_IMPORT_ROWS} registrations can be imported at once` }, 413);
       }
 
-      // Fetch all existing registrations for these events to prevent unique constraint collisions
-      const existingEmailMap = new Map<string, string>(); // key: `${event_id}:${lower(email)}`, value: registration_id
-      if (!body.clear_first && eventIds.length > 0) {
-        const { data: existingRows } = await supabase
-          .from('registrations')
-          .select('id, event_id, lead_email')
-          .in('event_id', eventIds);
-
-        if (existingRows) {
-          existingRows.forEach((r: any) => {
-            const key = `${r.event_id}:${(r.lead_email || '').toLowerCase().trim()}`;
-            existingEmailMap.set(key, r.id);
-          });
+      const seen = new Set<string>();
+      const rows = [];
+      for (let i = 0; i < batchList.length; i++) {
+        const item = batchList[i];
+        if (!item || typeof item !== 'object' || Array.isArray(item)) {
+          return noStoreJson({ error: `Invalid registration at row ${i + 1}` }, 400);
         }
-      }
 
-      const toInsert: any[] = [];
-      const toUpdate: Array<{ id: string; data: any }> = [];
-      const seenInThisBatch = new Set<string>();
-
-      batchList.forEach((item: any, i: number) => {
-        let email = (item.lead_email || item.Email || item.email || `imported-${Date.now()}-${i}@srmap.edu.in`).toLowerCase().trim();
-        const eventId = item.event_id || eventIds[0];
-        
-        let batchKey = `${eventId}:${email}`;
-        let duplicateCounter = 1;
-        while (seenInThisBatch.has(batchKey)) {
-          duplicateCounter++;
-          const [userPart, domain] = email.split('@');
-          email = `${userPart.split('+m')[0]}+m${duplicateCounter}@${domain || 'srmap.edu.in'}`;
-          batchKey = `${eventId}:${email}`;
+        const eventId = typeof item.event_id === 'string' ? item.event_id.trim() : '';
+        const rawEmail = item.lead_email || item.Email || item.email;
+        const email = typeof rawEmail === 'string' ? rawEmail.trim().toLowerCase() : '';
+        if (!eventId || !email || email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          return noStoreJson({ error: `A valid event_id and email are required at row ${i + 1}` }, 400);
         }
-        seenInThisBatch.add(batchKey);
 
-        const recordPayload = {
+        const key = `${eventId}:${email}`;
+        if (seen.has(key)) {
+          return noStoreJson({ error: `Duplicate event/email pair at row ${i + 1}: ${email}` }, 400);
+        }
+        seen.add(key);
+
+        const status = item.status || 'confirmed';
+        if (!['pending_payment', 'confirmed', 'waitlisted', 'cancelled'].includes(status)) {
+          return noStoreJson({ error: `Invalid registration status at row ${i + 1}` }, 400);
+        }
+
+        rows.push({
           event_id: eventId,
           lead_email: email,
-          status: item.status || 'confirmed',
+          status,
           checked_in: Boolean(item.checked_in),
-          form_data: item.form_data || {
-            full_name: item.full_name || item.lead_name || item.Name || item.name || 'Imported Participant',
-            registration_number: item.registration_number || item.reg_number || item.RegNum || item.reg_num || 'AP0000000000',
-            phone: item.phone || item.Phone || '',
-            college: item.college || item.College || 'SRM University AP',
-          },
-          team_data: ensureTeamMemberQrTokens(item.team_data || ((item.team_name || item.Team || item.team) ? { team_name: item.team_name || item.Team || item.team } : null)),
+          form_data: item.form_data && typeof item.form_data === 'object'
+            ? item.form_data
+            : {
+                full_name: item.full_name || item.lead_name || item.Name || item.name || 'Imported Participant',
+                registration_number: item.registration_number || item.reg_number || item.RegNum || item.reg_num || 'AP0000000000',
+                phone: item.phone || item.Phone || '',
+                college: item.college || item.College || 'SRM University AP',
+              },
+          team_data: ensureTeamMemberQrTokens(item.team_data || (
+            item.team_name || item.Team || item.team
+              ? { team_name: item.team_name || item.Team || item.team }
+              : null
+          )),
           created_at: item.created_at || new Date().toISOString(),
-        };
-
-        const existingId = existingEmailMap.get(`${eventId}:${email}`);
-        if (existingId) {
-          toUpdate.push({ id: existingId, data: recordPayload });
-        } else {
-          toInsert.push(recordPayload);
-        }
-      });
-
-      // Execute Inserts for new records
-      let insertedCount = 0;
-      if (toInsert.length > 0) {
-        const { data: insertedData, error: insertError } = await supabase
-          .from('registrations')
-          .insert(toInsert)
-          .select();
-
-        if (insertError) {
-          console.error('Batch insert error:', insertError);
-          throw insertError;
-        }
-        insertedCount = insertedData?.length || toInsert.length;
+        });
       }
 
-      // Execute Updates for existing records (including updating checked_in and status)
-      let updatedCount = 0;
-      if (toUpdate.length > 0) {
-        await Promise.all(
-          toUpdate.map(({ id, data }) =>
-            supabase
-              .from('registrations')
-              .update({
-                form_data: data.form_data,
-                team_data: data.team_data,
-                status: data.status,
-                checked_in: data.checked_in,
-                updated_at: new Date().toISOString(),
-              })
-              .eq('id', id)
-          )
-        );
-        updatedCount = toUpdate.length;
+      const { data, error } = await supabase.rpc('admin_import_registrations', {
+        p_rows: rows,
+        p_clear_first: Boolean(!Array.isArray(body) && body.clear_first),
+      });
+
+      if (error) {
+        console.error('Atomic registration import failed:', error);
+        return noStoreJson({ error: 'Import failed. Existing registrations were not changed.' }, 500);
       }
 
       return noStoreJson({
         success: true,
-        count: insertedCount + updatedCount,
-        inserted: insertedCount,
-        updated: updatedCount,
-        cleared_first: Boolean(body.clear_first),
+        count: data?.processed_count ?? rows.length,
+        cleared_first: Boolean(!Array.isArray(body) && body.clear_first),
+        message: 'Registrations imported successfully.',
       });
     }
 
-    // 2. Single Registration Creation with Smart Upsert
+    // 2. Single registration creation/update.
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return noStoreJson({ error: 'Invalid request body' }, 400);
+    }
     const { event_id, lead_email, full_name, registration_number, phone, college, team_name, checked_in } = body;
-
-    if (!event_id || !lead_email) {
+    if (!event_id || typeof lead_email !== 'string') {
       return noStoreJson({ error: 'event_id and lead_email are required' }, 400);
     }
 
     const cleanEmail = lead_email.toLowerCase().trim();
+    if (cleanEmail.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      return noStoreJson({ error: 'A valid email address is required' }, 400);
+    }
 
-    // Check if registration already exists
-    const { data: existingSingle } = await supabase
+    const { data: existingSingle, error: lookupError } = await supabase
       .from('registrations')
       .select('id')
       .eq('event_id', event_id)
       .eq('lead_email', cleanEmail)
       .maybeSingle();
+    if (lookupError) throw lookupError;
 
     if (existingSingle) {
       const { data, error } = await supabase
@@ -243,7 +217,6 @@ export async function POST(req: Request) {
         .eq('id', existingSingle.id)
         .select()
         .single();
-
       if (error) throw error;
       return noStoreJson({ success: true, registration: data, updated: true });
     }
@@ -265,16 +238,14 @@ export async function POST(req: Request) {
       })
       .select()
       .single();
-
     if (error) throw error;
 
     return noStoreJson({ success: true, registration: data });
   } catch (err: any) {
     console.error('Error creating registration:', err);
-    return noStoreJson({ error: err.message }, 500);
+    return noStoreJson({ error: 'Failed to process registration import' }, 500);
   }
 }
-
 export async function DELETE(req: Request) {
   try {
     const auth = await requireAdmin();
