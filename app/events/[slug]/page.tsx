@@ -17,7 +17,13 @@ const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://mscsrmap.xyz';
 async function getEventBySlug(slug: string): Promise<EventItem | null> {
   try {
     const supabase = getAdminClient();
-    let filter = `slug.eq.${slug},id.eq.${slug}`;
+    // The events.id column is UUID. Comparing a normal slug (for example,
+    // "msc") against it makes PostgreSQL reject the entire OR filter.
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slug);
+    let filter = isUuid
+      ? `slug.eq.${slug},id.eq.${slug}`
+      : `slug.eq.${slug}`;
+
     if (slug === 'synora' || slug === 'synora-2026' || slug === 'synora-pitstop') {
       filter += ',slug.eq.synora-26';
     }
