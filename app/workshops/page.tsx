@@ -6,7 +6,7 @@ import { getAdminClient } from '@/lib/supabase/admin';
 const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://mscsrmap.xyz';
 
 export const metadata: Metadata = {
-  title: 'Technology Workshops | Microsoft Student Community | SRM University-AP',
+  title: 'Technology Workshops',
   description: 'Find hands-on technology workshops at Microsoft Student Community, SRM University-AP. Explore practical sessions in AI, cloud, software development, and emerging technologies.',
   alternates: { canonical: '/workshops' },
   openGraph: {
