@@ -62,10 +62,18 @@ export async function generateMetadata({ params }: EventPageProps) {
   }
 
   const title = `${event.title} | Microsoft Student Community SRM AP`;
-  const description = event.description?.trim().slice(0, 160) ||
+  const plainDescription = (event.description || '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&nbsp;|&#160;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;|&apos;/gi, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+  const description = plainDescription.slice(0, 160) ||
     `Event details, schedule, and registration information for ${event.title} at SRM University-AP.`;
   const canonicalPath = `/events/${event.slug}`;
-  const image = event.image_url || '/hero_bg.png';
+  const image = event.banner_url || event.image_url || '/hero_bg.png';
 
   return {
     title,
@@ -151,7 +159,7 @@ export default async function EventDetailPage({ params, searchParams }: EventPag
     name: event.title,
     description: event.description,
     url: `${BASE_URL}/events/${event.slug}`,
-    image: event.image_url ? [event.image_url] : [`${BASE_URL}/hero_bg.png`],
+    image: [event.banner_url || event.image_url || `${BASE_URL}/hero_bg.png`],
     startDate: event.date_start,
     ...(event.date_end ? { endDate: event.date_end } : {}),
     eventAttendanceMode: 'https://schema.org/OfflineEventAttendanceMode',
@@ -173,14 +181,16 @@ export default async function EventDetailPage({ params, searchParams }: EventPag
       '@type': 'Organization',
       name: 'Microsoft Student Community SRM AP',
       url: BASE_URL,
+      logo: 'https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png',
     },
-    ...(event.registration_open
+    ...(event.registration_open && !isCompleted
       ? {
           offers: {
             '@type': 'Offer',
             url: `${BASE_URL}/events/${event.slug}`,
             price: Number(event.form_requirements?.registration_fee || 0),
             priceCurrency: 'INR',
+            availability: 'https://schema.org/InStock',
           },
         }
       : {}),
