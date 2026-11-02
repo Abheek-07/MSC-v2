@@ -49,7 +49,10 @@ const globalMemoryLimiter = new MemoryRateLimiter();
 
 // Run periodic cleanup every 2 minutes
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => globalMemoryLimiter.cleanup(), 120000);
+  // Do not keep one-off workers or the Node test runner alive solely for
+  // limiter housekeeping. Long-running application processes still retain it.
+  const cleanupTimer = setInterval(() => globalMemoryLimiter.cleanup(), 120000);
+  (cleanupTimer as ReturnType<typeof setInterval> & { unref?: () => void }).unref?.();
 }
 
 // Check if Upstash is configured

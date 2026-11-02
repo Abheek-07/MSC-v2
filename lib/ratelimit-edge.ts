@@ -103,7 +103,8 @@ class MemoryLimiter {
 const memory = new MemoryLimiter();
 
 if (typeof setInterval !== 'undefined') {
-  setInterval(() => memory.cleanup(), 120_000);
+  const cleanupTimer = setInterval(() => memory.cleanup(), 120_000);
+  (cleanupTimer as ReturnType<typeof setInterval> & { unref?: () => void }).unref?.();
 }
 
 // ---------------------------------------------------------------------------
