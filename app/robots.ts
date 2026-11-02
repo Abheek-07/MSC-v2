@@ -15,7 +15,6 @@ export default function robots(): MetadataRoute.Robots {
         '/dashboard',
         '/ticket',
         '/update-password',
-        '/events/*/certificate',
       ],
     },
     sitemap: `${BASE_URL}/sitemap.xml`,
