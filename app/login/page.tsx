@@ -210,41 +210,6 @@ export default function LoginPage() {
             </div>
           )}
 
-          {mode === 'reset' && (
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
-                New password (min. 8 characters)
-              </label>
-              <input
-                type="password"
-                required
-                minLength={8}
-                placeholder="••••••••"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                className="fluent-input"
-                style={{ width: '100%' }}
-              />
-            </div>
-          )}
-          {mode === 'reset' && (
-            <div>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: 600, marginBottom: '6px', color: 'var(--text-strong)' }}>
-                Confirm new password
-              </label>
-              <input
-                type="password"
-                required
-                minLength={8}
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="fluent-input"
-                style={{ width: '100%' }}
-              />
-            </div>
-          )}
-
           {/* Links & Action Switchers */}
           {mode === 'reset' && (
             <button
