@@ -57,7 +57,7 @@ export default function PasswordResetQueuePage() {
 
       setMessage({
         type: 'success',
-        text: `Request successfully ${action === 'approve' ? 'approved & password updated in database' : 'rejected'}.`,
+        text: `Request successfully ${action === 'approve' ? 'approved & recovery email sent' : 'rejected'}.`,
       });
     } catch (err: any) {
       setMessage({
@@ -76,7 +76,7 @@ export default function PasswordResetQueuePage() {
           Password Reset Approval Queue
         </h1>
         <p style={{ fontSize: '13px', color: 'var(--text-muted)' }}>
-          Review pending member credential resets. Passwords remain encrypted as AES-256-GCM ciphertext until approval.
+          Review pending member credential resets. Approval sends a one-time recovery link. The portal never stores submitted passwords.
         </p>
       </div>
 
@@ -98,25 +98,8 @@ export default function PasswordResetQueuePage() {
         </div>
       )}
 
-      {/* Security notice */}
-      <div
-        style={{
-          background: 'var(--bg-tinted)',
-          border: '1px solid var(--border)',
-          borderRadius: 'var(--radius-sm)',
-          padding: '16px',
-          display: 'flex',
-          alignItems: 'center',
-          gap: '12px',
-          fontSize: '13px',
-          color: 'var(--text-body)',
-        }}
-      >
-        <ShieldCheck size={20} color="var(--brand)" />
-        <span>
-          <strong>Cryptographic Safety Notice:</strong> Raw passwords are never displayed in the organizer UI. When approved,
-          the server decrypts the ciphertext in memory using <code>DB_ENCRYPTION_KEY</code> and updates Supabase Auth directly.
-        </span>
+      <div style={{ background: 'var(--bg-tinted)', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '16px', fontSize: '13px', color: 'var(--text-body)' }}>
+        <strong>Secure reset process:</strong> Approval sends a one-time Supabase recovery link to the member. Administrators never see or set member passwords.
       </div>
 
       {/* Queue Table */}
@@ -135,7 +118,7 @@ export default function PasswordResetQueuePage() {
             <tr style={{ background: 'var(--bg-soft)', borderBottom: '1px solid var(--border)', color: 'var(--text-strong)' }}>
               <th style={{ padding: '12px 16px' }}>Request ID</th>
               <th style={{ padding: '12px 16px' }}>Requester Email</th>
-              <th style={{ padding: '12px 16px' }}>Ciphertext Protection</th>
+              <th style={{ padding: '12px 16px' }}>Reset Method</th>
               <th style={{ padding: '12px 16px' }}>Status</th>
               <th style={{ padding: '12px 16px' }}>Requested At</th>
               <th style={{ padding: '12px 16px' }}>Actions</th>
@@ -163,7 +146,7 @@ export default function PasswordResetQueuePage() {
                 </td>
                 <td style={{ padding: '14px 16px' }}>
                   <span style={{ fontFamily: 'monospace', fontSize: '11px', color: 'var(--text-muted)' }}>
-                    AES-256-GCM (iv:authTag:cipher)
+                    One-time recovery email
                   </span>
                 </td>
                 <td style={{ padding: '14px 16px' }}>
