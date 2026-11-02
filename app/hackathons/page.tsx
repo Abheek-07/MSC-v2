@@ -139,7 +139,7 @@ export default async function HackathonPage() {
             </div>
           ) : (
             <p style={{ color: 'var(--text-muted)', lineHeight: 1.7 }}>
-              No {category.toLowerCase()} events are published right now. Check the full events page for the latest MSC activities.
+              No hackathon events are published right now. Check the full events page for the latest MSC activities.
             </p>
           )}
         </section>
