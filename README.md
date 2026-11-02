@@ -11,7 +11,7 @@
 
 <p align="center">
   <a href="https://mscsrmap.xyz">Website</a> ·
-  <a href="https://github.com/Pragnesh-10/MSC-v2">Repository</a> ·
+  <a href="https://github.com/YUVRAJ-SINGH-3178/MSC-v2">Repository</a> ·
   <a href="https://www.linkedin.com/company/msc-srmap/">LinkedIn</a> ·
   <a href="https://www.instagram.com/msc_srmap/">Instagram</a>
 </p>
@@ -105,7 +105,7 @@ The diagram is a high-level view. Individual routes use only the services they n
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/Pragnesh-10/MSC-v2.git
+git clone https://github.com/YUVRAJ-SINGH-3178/MSC-v2.git
 cd MSC-v2
 ```
 
@@ -318,7 +318,7 @@ Do not include secrets, real user data, production database exports, or unapprov
 ## Community and contact
 
 - Website: [mscsrmap.xyz](https://mscsrmap.xyz)
-- GitHub: [MSC-v2](https://github.com/Pragnesh-10/MSC-v2)
+- GitHub: [MSC-v2](https://github.com/YUVRAJ-SINGH-3178/MSC-v2)
 - LinkedIn: [Microsoft Student Community SRM AP](https://www.linkedin.com/company/msc-srmap/)
 - Instagram: [@msc_srmap](https://www.instagram.com/msc_srmap/)
 
