@@ -17,10 +17,6 @@ export const runtime = 'nodejs';
 const execFileAsync = promisify(execFile);
 const MSC_LOGO_URL = 'https://lkbwunzswqbnoygxtilm.supabase.co/storage/v1/object/public/webpage/MSC%20Logo.png';
 
-function escapeJson(value: string) {
-  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"').replace(/\n/g, ' ');
-}
-
 async function makeIcon() {
   const response = await fetch(MSC_LOGO_URL, { cache: 'force-cache' });
   if (!response.ok) throw new Error('MSC logo asset is unavailable');
@@ -40,6 +36,7 @@ async function createPkpass(pass: Record<string, any>, icon: Buffer) {
   try {
     const passPath = path.join(tempDir, 'pass.json');
     const iconPath = path.join(tempDir, 'icon.png');
+    const icon2xPath = path.join(tempDir, 'icon@2x.png');
     const manifestPath = path.join(tempDir, 'manifest.json');
     const signaturePath = path.join(tempDir, 'signature');
     const certPath = path.join(tempDir, 'signer.pem');
@@ -48,7 +45,8 @@ async function createPkpass(pass: Record<string, any>, icon: Buffer) {
 
     await Promise.all([
       fs.writeFile(passPath, JSON.stringify(pass)),
-      fs.writeFile(iconPath, icon),
+      fs.writeFile(iconPath, await sharp(icon).resize(29, 29).png().toBuffer()),
+      fs.writeFile(icon2xPath, await sharp(icon).resize(58, 58).png().toBuffer()),
       fs.writeFile(certPath, certificate),
       fs.writeFile(keyPath, privateKey),
       fs.writeFile(wwdrPath, wwdrCertificate),
@@ -56,7 +54,8 @@ async function createPkpass(pass: Record<string, any>, icon: Buffer) {
 
     const manifest = {
       'pass.json': crypto.createHash('sha1').update(await fs.readFile(passPath)).digest('hex'),
-      'icon.png': crypto.createHash('sha1').update(icon).digest('hex'),
+      'icon.png': crypto.createHash('sha1').update(await fs.readFile(iconPath)).digest('hex'),
+      'icon@2x.png': crypto.createHash('sha1').update(await fs.readFile(icon2xPath)).digest('hex'),
     };
     const manifestBytes = Buffer.from(JSON.stringify(manifest));
     await fs.writeFile(manifestPath, manifestBytes);
@@ -82,6 +81,7 @@ async function createPkpass(pass: Record<string, any>, icon: Buffer) {
     });
     archive.file(passPath, { name: 'pass.json' });
     archive.file(iconPath, { name: 'icon.png' });
+    archive.file(icon2xPath, { name: 'icon@2x.png' });
     archive.file(manifestPath, { name: 'manifest.json' });
     archive.file(signaturePath, { name: 'signature' });
     await archive.finalize();
@@ -107,6 +107,10 @@ export async function GET(req: Request, context: { params?: Promise<Record<strin
     const organizationName = process.env.APPLE_WALLET_ORGANIZATION || 'Microsoft Student Community';
     if (!passTypeIdentifier || !teamIdentifier) {
       return NextResponse.json({ error: 'Apple Wallet is not configured for this site yet.' }, { status: 503 });
+    }
+
+    if (!process.env.APPLE_WALLET_SIGNING_CERTIFICATE || !process.env.APPLE_WALLET_PRIVATE_KEY || !process.env.APPLE_WALLET_WWDR_CERTIFICATE) {
+      return NextResponse.json({ error: 'Apple Wallet signing credentials are not configured.' }, { status: 503 });
     }
 
     const ticket = await getConfirmedWalletTicket(token);
