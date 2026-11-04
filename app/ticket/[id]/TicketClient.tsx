@@ -3,6 +3,7 @@
 import React, { useRef, useState } from 'react';
 import Link from 'next/link';
 import { QRCodeSVG } from 'qrcode.react';
+import WalletButtons from '@/components/WalletButtons';
 // html-to-image dynamically loaded on download
 import {
   Calendar,
@@ -133,6 +134,8 @@ export default function TicketClient({
             </button>
           </div>
         </div>
+
+        <WalletButtons token={activeQrPayload} enabled={ticket.status === 'confirmed'} />
 
         {/* Team overview deliberately contains no sibling bearer credentials. */}
         {isTeam && (
