@@ -21,7 +21,7 @@ async function makeIcon() {
   const response = await fetch(MSC_LOGO_URL, { cache: 'force-cache' });
   if (!response.ok) throw new Error('MSC logo asset is unavailable');
   const source = Buffer.from(await response.arrayBuffer());
-  return sharp(source).resize(29, 29, { fit: 'contain' }).png().toBuffer();
+  return sharp(source).resize(58, 58, { fit: 'contain' }).png().toBuffer();
 }
 
 async function createPkpass(pass: Record<string, any>, icon: Buffer) {
@@ -63,7 +63,7 @@ async function createPkpass(pass: Record<string, any>, icon: Buffer) {
     // Apple's Wallet pass signature is detached CMS/PKCS#7. OpenSSL is used
     // only for this standard signing operation; pass data remains server-side.
     await execFileAsync('openssl', [
-      'smime', '-binary', '-sign',
+      'smime', '-binary', '-sign', '-md', 'sha1',
       '-signer', certPath,
       '-inkey', keyPath,
       '-certfile', wwdrPath,
@@ -92,7 +92,7 @@ async function createPkpass(pass: Record<string, any>, icon: Buffer) {
   }
 }
 
-export async function GET(req: Request, context: { params?: Promise<Record<string, string>> }) {
+export async function GET(req: Request) {
   try {
     const url = new URL(req.url);
     const token = url.searchParams.get('token') || '';
