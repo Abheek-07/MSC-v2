@@ -5,6 +5,11 @@ import { checkRateLimit } from '@/lib/ratelimit';
 
 export const dynamic = 'force-dynamic';
 
+function parseMaxCapacity(value: unknown): number | null {
+  const capacity = typeof value === 'number' ? value : Number(value);
+  return Number.isSafeInteger(capacity) && capacity >= 1 ? capacity : null;
+}
+
 export async function GET() {
   try {
     const auth = await requireAdmin();
@@ -47,8 +52,12 @@ export async function POST(req: Request) {
       );
     }
     const body = await req.json();
-    const supabase = getAdminClient();
+    const maxCapacity = parseMaxCapacity(body.max_capacity ?? 100);
+    if (maxCapacity === null) {
+      return noStoreJson({ error: 'Maximum capacity must be a positive whole number.' }, 400);
+    }
 
+    const supabase = getAdminClient();
     const hasCert = body.form_requirements?.provide_certificates ?? (body.certificate_html ? true : false);
 
     const newEv = {
@@ -64,7 +73,7 @@ export async function POST(req: Request) {
       registration_open: body.registration_open ?? true,
       show_opening_soon: false,
       is_published: body.is_published ?? true,
-      max_capacity: body.max_capacity || 100,
+      max_capacity: maxCapacity,
       form_requirements: {
         event_pricing: body.form_requirements?.event_pricing || 'free',
         registration_fee: body.form_requirements?.registration_fee || 0,
@@ -119,6 +128,14 @@ export async function PUT(req: Request) {
       return noStoreJson({ error: 'Event ID is required' }, 400);
     }
 
+    if (Object.prototype.hasOwnProperty.call(updates, 'max_capacity')) {
+      const maxCapacity = parseMaxCapacity(updates.max_capacity);
+      if (maxCapacity === null) {
+        return noStoreJson({ error: 'Maximum capacity must be a positive whole number.' }, 400);
+      }
+      updates.max_capacity = maxCapacity;
+    }
+
     const supabase = getAdminClient();
     const { data, error } = await supabase
       .from('events')
@@ -145,7 +162,7 @@ export async function PUT(req: Request) {
 
     return noStoreJson({ success: true, event: data });
   } catch (err: any) {
-    console.error('Error updating admin event:', err);
+    console.error('Error updating admin events:', err);
     return noStoreJson({ error: err.message }, 500);
   }
 }
