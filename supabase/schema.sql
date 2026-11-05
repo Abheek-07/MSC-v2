@@ -1,12 +1,23 @@
 
 create extension if not exists pgcrypto;
 
+-- Production uses the enum user_role. Legacy labels remain in the enum
+-- because PostgreSQL does not support removing enum values in-place. The
+-- role check below (in the consolidated section) restricts active assignments.
+do $
+begin
+  create type public.user_role as enum ('user', 'core_member', 'admin', 'member');
+exception
+  when duplicate_object then null;
+end
+$;
+
 -- 1. MEMBER PROFILES (1:1 with auth.users)
 create table if not exists public.member_profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text unique,
   full_name text,
-  role text not null default 'member' check (role in ('admin', 'member')),
+  role public.user_role not null default 'member',
   registration_number text,
   phone_number text,
   department text,
