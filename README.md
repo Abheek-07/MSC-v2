@@ -141,7 +141,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-## Environment variables
+## Wallet ticket support\n\nThe ticket page supports Google Wallet save links and Apple Wallet `.pkpass` downloads for confirmed registrations. Issuer setup, Apple signing certificates, environment variables, and launch checks are documented in [docs/wallet-tickets.md](./docs/wallet-tickets.md). Wallet provider credentials are server-only and must not be committed.\n\n## Environment variables
 
 The authoritative template is [`.env.example`](./.env.example). Keep it updated whenever application configuration changes.
 
