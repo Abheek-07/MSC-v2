@@ -1141,7 +1141,17 @@ export default function EventDetailClient({
                       <input
                         type="text"
                         value={couponCode}
-                        onChange={(e) => { setCouponCode(e.target.value.toUpperCase()); setAppliedCoupon(''); setPromotionMessage(null); }}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value.toUpperCase());
+                          setAppliedCoupon('');
+                          setPromotionMessage(null);
+                          fetch('/api/events/promotions/validate', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ event_id: event.id, lead_email: leadEmail, coupon_code: '' }),
+                          }).then((response) => response.json()).then((data) => {
+                            if (data.success) setPromotionQuote(data);
+                          }).catch(() => undefined);
+                        }}
                         placeholder="Coupon code"
                         aria-label="Coupon code"
                         className="fluent-input"

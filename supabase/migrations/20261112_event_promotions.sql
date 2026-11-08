@@ -7,7 +7,7 @@ create table if not exists public.event_promotions (
   promotion_type text not null check (promotion_type in ('early_bird', 'coupon')),
   code text,
   discount_type text not null check (discount_type in ('fixed', 'percentage')),
-  discount_value integer not null check (discount_value > 0),
+  discount_value integer not null check (discount_value > 0 and (discount_type <> 'percentage' or discount_value <= 99)),
   starts_at timestamptz not null default now(),
   ends_at timestamptz,
   max_redemptions integer check (max_redemptions is null or max_redemptions > 0),

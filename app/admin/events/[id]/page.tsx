@@ -781,6 +781,13 @@ export default function PerEventManagementPage({ params }: { params: Promise<{ i
         {/* Action Buttons */}
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
           <Link
+            href={`/admin/events/${eventId}/promotions`}
+            className="fluent-btn fluent-btn-secondary"
+            style={{ fontSize: '13px' }}
+          >
+            Pricing & Promotions
+          </Link>
+          <Link
             href={`/admin/events/${eventId}/scanner`}
             className="fluent-btn fluent-btn-primary"
             style={{ fontSize: '13px' }}

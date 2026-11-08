@@ -152,6 +152,7 @@ export async function POST(req: Request) {
 
     if (insertError) {
       // A concurrent request may have won the active-order unique constraint.
+      await supabase.rpc('release_event_promotion', { p_registration_id: registration.id });
       if (insertError.code === '23505') {
         return NextResponse.json({ error: 'A payment order is already being created. Retry shortly.' }, { status: 409 });
       }
