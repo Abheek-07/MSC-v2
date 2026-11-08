@@ -32,7 +32,7 @@ export async function POST(req: Request) {
     const supabase = getAdminClient();
     const { data: registration, error: registrationError } = await supabase
       .from('registrations')
-      .select('id, event_id, user_id, status, form_data, registration_claim_hash')
+      .select('id, event_id, user_id, lead_email, status, form_data, registration_claim_hash')
       .eq('id', registrationId)
       .eq('event_id', eventId)
       .maybeSingle();
@@ -72,12 +72,11 @@ export async function POST(req: Request) {
     if (!Number.isSafeInteger(fee) || fee <= 0 || !Number.isSafeInteger(fee * 100)) {
       return NextResponse.json({ error: 'A valid registration fee is not configured for this event.' }, { status: 409 });
     }
-    const amountInPaise = fee * 100;
 
     // Reuse an existing unexpired order. This makes repeated checkout requests idempotent.
     const { data: previousOrder, error: previousOrderError } = await supabase
       .from('payment_orders')
-      .select('id, razorpay_order_id, amount, currency, status, expires_at')
+      .select('id, razorpay_order_id, amount, currency, status, expires_at, promotion_id, discount_amount')
       .eq('registration_id', registration.id)
       .in('status', ['creating', 'created'])
       .maybeSingle();
@@ -104,6 +103,36 @@ export async function POST(req: Request) {
     }
 
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+
+    // Release any stale promotion hold from an expired order, then reserve
+    // the selected coupon or active early-bird offer under a database row lock.
+    const { error: releaseError } = await supabase.rpc('release_event_promotion', {
+      p_registration_id: registration.id,
+    });
+    if (releaseError) throw releaseError;
+
+    const couponCode = typeof body.coupon_code === 'string' ? body.coupon_code.trim().toUpperCase() : '';
+    const { data: promotionResult, error: promotionError } = await supabase.rpc('reserve_event_promotion', {
+      p_event_id: registration.event_id,
+      p_registration_id: registration.id,
+      p_coupon_code: couponCode,
+      p_base_amount: fee,
+      p_lead_email: registration.lead_email,
+      p_reserved_until: expiresAt,
+    });
+    if (promotionError) throw promotionError;
+    if (!promotionResult?.success) {
+      return NextResponse.json({ error: promotionResult?.error || 'The selected offer is no longer available.' }, { status: 400 });
+    }
+
+    const finalAmount = Number(promotionResult.final_amount);
+    const discountAmount = Number(promotionResult.discount_amount || 0);
+    if (!Number.isSafeInteger(finalAmount) || finalAmount <= 0 || !Number.isSafeInteger(finalAmount * 100)) {
+      await supabase.rpc('release_event_promotion', { p_registration_id: registration.id });
+      return NextResponse.json({ error: 'The offer must leave a positive payment amount. Please contact the organizer.' }, { status: 409 });
+    }
+    const amountInPaise = finalAmount * 100;
+
     const { data: orderRecord, error: insertError } = await supabase
       .from('payment_orders')
       .insert({
@@ -113,6 +142,8 @@ export async function POST(req: Request) {
         idempotency_key: registration.id,
         amount: amountInPaise,
         currency: 'INR',
+        promotion_id: promotionResult.promotion_id || null,
+        discount_amount: discountAmount,
         status: 'creating',
         expires_at: expiresAt,
       })
@@ -121,6 +152,7 @@ export async function POST(req: Request) {
 
     if (insertError) {
       // A concurrent request may have won the active-order unique constraint.
+      await supabase.rpc('release_event_promotion', { p_registration_id: registration.id });
       if (insertError.code === '23505') {
         return NextResponse.json({ error: 'A payment order is already being created. Retry shortly.' }, { status: 409 });
       }
@@ -152,11 +184,14 @@ export async function POST(req: Request) {
         order_id: gatewayOrder.id,
         amount: gatewayOrder.amount,
         currency: gatewayOrder.currency,
+        discount_amount: discountAmount,
+        final_amount: finalAmount,
       });
     } catch (gatewayError) {
       await supabase.from('payment_orders')
         .update({ status: 'failed', updated_at: new Date().toISOString() })
         .eq('id', orderRecord.id);
+      await supabase.rpc('release_event_promotion', { p_registration_id: registration.id });
       throw gatewayError;
     }
   } catch (err) {
