@@ -423,6 +423,21 @@ export default function AdminEventsPage() {
                         >
                           Manage
                         </Link>
+                        <Link
+                          href={`/admin/events/${ev.id}/promotions`}
+                          className="fluent-btn fluent-btn-secondary"
+                          style={{
+                            padding: '4px 10px',
+                            fontSize: '12px',
+                            borderRadius: '3px',
+                            whiteSpace: 'nowrap',
+                            borderColor: 'var(--brand)',
+                            color: 'var(--brand)',
+                            fontWeight: 600,
+                          }}
+                        >
+                          Coupons & Offers
+                        </Link>
                         <button
                           onClick={() => handleOpenEditModal(ev)}
                           className="fluent-btn fluent-btn-secondary"
