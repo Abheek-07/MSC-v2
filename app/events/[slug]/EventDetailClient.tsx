@@ -144,6 +144,10 @@ export default function EventDetailClient({
   // Submit / Loading
   const [submitting, setSubmitting] = useState(false);
   const [noRefundAccepted, setNoRefundAccepted] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState('');
+  const [promotionQuote, setPromotionQuote] = useState<any | null>(null);
+  const [promotionMessage, setPromotionMessage] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [confirmedTicket, setConfirmedTicket] = useState<any | null>(null);
 
@@ -160,6 +164,40 @@ export default function EventDetailClient({
   const [verifiedParticipant, setVerifiedParticipant] = useState<any | null>(null);
   const [certDownloading, setCertDownloading] = useState(false);
   const certContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (event.form_requirements?.event_pricing !== 'paid') return;
+    fetch('/api/events/promotions/validate', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event_id: event.id, lead_email: leadEmail, coupon_code: '' }),
+    }).then((response) => response.json()).then((data) => {
+      if (data.success) setPromotionQuote(data);
+    }).catch(() => undefined);
+  }, [event.id, event.form_requirements?.event_pricing]);
+
+  const applyPromotionCode = async () => {
+    const normalizedCode = couponCode.trim().toUpperCase();
+    if (!normalizedCode) {
+      setAppliedCoupon('');
+      setPromotionMessage('Enter a coupon code first.');
+      return;
+    }
+    try {
+      const response = await fetch('/api/events/promotions/validate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event_id: event.id, lead_email: leadEmail, coupon_code: normalizedCode }),
+      });
+      const data = await response.json();
+      if (!response.ok || !data.success) throw new Error(data.error || 'Coupon code could not be applied.');
+      setAppliedCoupon(normalizedCode);
+      setPromotionQuote(data);
+      setPromotionMessage(`Applied ${normalizedCode}.`);
+      setErrorMsg(null);
+    } catch (error: any) {
+      setAppliedCoupon('');
+      setPromotionMessage(error.message || 'Coupon code could not be applied.');
+    }
+  };
 
   // Add member
   const addMember = () => {
@@ -218,6 +256,7 @@ export default function EventDetailClient({
         registration_number: leadRegNum,
         branch: leadBranch,
         year: leadYear,
+        coupon_code: appliedCoupon,
       },
       team_data: isTeamRegistration
         ? {
@@ -270,6 +309,7 @@ export default function EventDetailClient({
               event_id: event.id,
               registration_id: data.registration_id,
               idempotency_key: idempotencyKey,
+              coupon_code: appliedCoupon,
             }),
           });
           const orderData = await orderRes.json();
@@ -1080,6 +1120,53 @@ export default function EventDetailClient({
                   </div>
                 )}
 
+
+                {!isFree && (
+                  <div style={{ border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', padding: '14px', display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px' }}>
+                      <span style={{ color: 'var(--text-muted)' }}>Ticket price</span>
+                      <span>₹{event.form_requirements?.registration_fee || 0}</span>
+                    </div>
+                    {promotionQuote?.discount_amount > 0 && (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: '#15803d' }}>
+                        <span>{promotionQuote.promotion?.type === 'early_bird' ? 'Early-bird offer' : 'Coupon discount'}</span>
+                        <span>−₹{promotionQuote.discount_amount}</span>
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '14px', fontWeight: 700, borderTop: '1px solid var(--border)', paddingTop: '8px' }}>
+                      <span>Payable</span>
+                      <span>₹{promotionQuote?.final_amount ?? event.form_requirements?.registration_fee ?? 0}</span>
+                    </div>
+                    <div style={{ display: 'flex', gap: '8px' }}>
+                      <input
+                        type="text"
+                        value={couponCode}
+                        onChange={(e) => {
+                          setCouponCode(e.target.value.toUpperCase());
+                          setAppliedCoupon('');
+                          setPromotionMessage(null);
+                          fetch('/api/events/promotions/validate', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ event_id: event.id, lead_email: leadEmail, coupon_code: '' }),
+                          }).then((response) => response.json()).then((data) => {
+                            if (data.success) setPromotionQuote(data);
+                          }).catch(() => undefined);
+                        }}
+                        placeholder="Coupon code"
+                        aria-label="Coupon code"
+                        className="fluent-input"
+                        style={{ textTransform: 'uppercase' }}
+                      />
+                      <button type="button" onClick={applyPromotionCode} className="fluent-btn fluent-btn-secondary" style={{ whiteSpace: 'nowrap' }}>
+                        Apply
+                      </button>
+                    </div>
+                    {promotionMessage && <p role="status" style={{ margin: 0, fontSize: '12px', color: appliedCoupon ? '#15803d' : 'var(--text-muted)' }}>{promotionMessage}</p>}
+                    {promotionQuote?.promotion?.type === 'early_bird' && !appliedCoupon && (
+                      <p style={{ margin: 0, fontSize: '12px', color: '#15803d' }}>Early-bird pricing is active. Enter a coupon to replace this offer.</p>
+                    )}
+                  </div>
+                )}
 
                 {!isFree && (
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', padding: '12px', border: '1px solid var(--border)', borderRadius: 'var(--radius-sm)', fontSize: '12px', lineHeight: 1.5, color: 'var(--text-muted)' }}>

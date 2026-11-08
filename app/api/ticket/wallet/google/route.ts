@@ -7,7 +7,7 @@ import { enforcePayloadSize, isPayloadTooLargeError, isValidUUID } from '@/lib/s
 export const dynamic = 'force-dynamic';
 
 function base64url(value: string | Buffer) {
-  return Buffer.from(value).toString('base64').replace(/=/g, '').replace(/\\+/g, '-').replace(/\\//g, '_');
+  return Buffer.from(value).toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
 }
 
 function signedJwt(payload: Record<string, unknown>, privateKey: string) {
