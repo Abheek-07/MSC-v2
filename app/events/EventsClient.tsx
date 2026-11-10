@@ -370,10 +370,12 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
         >
           {categories.map((cat) => {
             const isActive = activeCategory === cat;
-            const count =
-              cat === 'All'
-                ? events.length
-                : events.filter((e) => e.type.toLowerCase().includes(cat.toLowerCase())).length;
+            const count = events.filter((event) => {
+              const categoryMatches = cat === 'All' || event.type.toLowerCase().includes(cat.toLowerCase());
+              const statusMatches = statusFilter === 'all' ||
+                (statusFilter === 'past' ? isPastEvent(event) : !isPastEvent(event));
+              return categoryMatches && statusMatches;
+            }).length;
 
             return (
               <button
