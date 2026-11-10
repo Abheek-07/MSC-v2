@@ -608,7 +608,7 @@ export default function Navbar() {
               <span>SRM University-AP &middot; Chapter &apos;26</span>
             </div>
           </div>
-        </div>
+        </nav>
       )}
 
       <style>{`
