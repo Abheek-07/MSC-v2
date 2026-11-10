@@ -56,6 +56,21 @@ export default function Navbar() {
     checkAuth();
   }, []);
 
+  // Close the mobile drawer after navigation, including browser back/forward.
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [pathname]);
+
+  // Let keyboard users dismiss the drawer without searching for the close button.
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMobileMenuOpen(false);
+    };
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [mobileMenuOpen]);
+
   // Lock body scroll when mobile menu is open to prevent accidental background scrolling
   useEffect(() => {
     if (mobileMenuOpen) {
@@ -127,6 +142,7 @@ export default function Navbar() {
           {/* Microsoft Brand: "Microsoft | Student Community" pattern */}
           <Link
             href="/"
+            aria-label="MSC SRM-AP homepage"
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -188,6 +204,7 @@ export default function Navbar() {
 
           {/* Desktop Navigation: underline active indicator */}
           <nav
+            aria-label="Main navigation"
             style={{ display: 'none', alignItems: 'center', gap: '2px' }}
             className="desktop-nav"
           >
@@ -197,6 +214,7 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  aria-current={isActive ? 'page' : undefined}
                   style={{
                     padding: '14px 12px',
                     fontSize: '13px',
@@ -362,8 +380,11 @@ export default function Navbar() {
             {/* Mobile hamburger button */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              type="button"
               className="mobile-toggle-btn"
               aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="msc-mobile-navigation"
               style={{
                 display: 'flex',
                 alignItems: 'center',
@@ -399,7 +420,9 @@ export default function Navbar() {
 
       {/* Mobile Slide-in Drawer */}
       {mobileMenuOpen && (
-        <div
+        <nav
+          id="msc-mobile-navigation"
+          aria-label="Mobile navigation"
           style={{
             position: 'fixed',
             inset: '48px 0 0 0',
@@ -424,6 +447,7 @@ export default function Navbar() {
                 <Link
                   key={link.href}
                   href={link.href}
+                  aria-current={isActive ? 'page' : undefined}
                   onClick={() => setMobileMenuOpen(false)}
                   style={{
                     display: 'flex',
