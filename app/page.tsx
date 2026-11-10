@@ -58,9 +58,16 @@ export default async function HomePage() {
     // Immediately uses fallback events catalog if offline or slow
   }
 
-  const openUpcoming = allEvents.filter((e) => e.status === 'upcoming' && e.registration_open);
-  const upcomingList = allEvents.filter((e) => e.status === 'upcoming');
-  const flagship = openUpcoming[0] || upcomingList[0] || allEvents[0];
+  // A stale status or registration flag must not advertise an expired event.
+  const now = Date.now();
+  const upcomingList = allEvents
+    .filter((event) => {
+      if (event.status !== 'upcoming') return false;
+      const endTime = new Date(event.date_end).getTime();
+      return Number.isFinite(endTime) && endTime >= now;
+    })
+    .sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime());
+  const flagship = upcomingList.find((event) => event.registration_open) || upcomingList[0];
 
   return (
     <div style={{ background: 'var(--bg)', color: 'var(--text-body)', fontFamily: 'var(--font-family)' }}>
@@ -372,7 +379,7 @@ export default async function HomePage() {
           </div>
 
           {/* Spotlight Card */}
-          {flagship && (() => {
+          {flagship ? (() => {
             const startDate = new Date(flagship.date_start);
             const isValidDate = !isNaN(startDate.getTime());
             const formattedDate = isValidDate
@@ -508,7 +515,17 @@ export default async function HomePage() {
                 </div>
               </div>
             );
-          })()}
+          })() : (
+            <div className="fluent-card" style={{ padding: '32px 24px', background: 'var(--surface)', border: '1px solid var(--border)' }}>
+              <h3 style={{ color: 'var(--text-strong)', fontSize: '19px', marginBottom: '8px' }}>No upcoming events announced yet</h3>
+              <p style={{ color: 'var(--text-muted)', marginBottom: '16px' }}>
+                Check back for new events, or explore highlights from our past events.
+              </p>
+              <Link href="/events" style={{ color: 'var(--brand)', fontWeight: 600 }}>
+                Explore all events <ArrowRight size={14} style={{ verticalAlign: 'middle' }} />
+              </Link>
+            </div>
+          )}
         </div>
       </section>
 
