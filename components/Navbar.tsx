@@ -28,12 +28,21 @@ export default function Navbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    // Check saved theme
-    const savedTheme = localStorage.getItem('msc_theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      setTheme(savedTheme);
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    }
+    // Respect the visitor's saved preference, otherwise follow their device.
+    const savedTheme = localStorage.getItem('msc_theme');
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const applyTheme = () => {
+      const selected = savedTheme === 'light' || savedTheme === 'dark'
+        ? savedTheme
+        : media.matches ? 'dark' : 'light';
+      setTheme(selected);
+      document.documentElement.setAttribute('data-theme', selected);
+    };
+    applyTheme();
+    const onSystemThemeChange = () => {
+      if (!localStorage.getItem('msc_theme')) applyTheme();
+    };
+    media.addEventListener('change', onSystemThemeChange);
 
     // Check user auth state via Supabase session
     const checkAuth = async () => {
@@ -54,6 +63,7 @@ export default function Navbar() {
       }
     };
     checkAuth();
+    return () => media.removeEventListener('change', onSystemThemeChange);
   }, []);
 
   // Lock body scroll when mobile menu is open to prevent accidental background scrolling
@@ -230,7 +240,9 @@ export default function Navbar() {
             {/* Theme Toggle */}
             <button
               onClick={toggleTheme}
-              aria-label="Toggle theme"
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+              aria-pressed={theme === 'dark'}
               style={{
                 background: 'transparent',
                 border: 'none',
