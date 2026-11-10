@@ -8,6 +8,7 @@ import EventTicketBubble from '@/components/EventTicketBubble';
 
 export default function EventsClient({ events }: { events: EventItem[] }) {
   const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'upcoming' | 'past'>('all');
 
   const categories = ['All', 'Hackathons', 'Workshops', 'Webinars', 'Speaker Sessions'];
 
@@ -15,10 +16,22 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
   const upcomingEvents = events.filter((e) => e.status === 'upcoming');
   const featuredEvent = upcomingEvents[0] || events[0];
 
-  const filteredEvents =
-    activeCategory === 'All'
-      ? events
-      : events.filter((e) => e.type.toLowerCase().includes(activeCategory.toLowerCase()));
+  const isPastEvent = (event: EventItem) => {
+    const endTime = new Date(event.date_end).getTime();
+    return event.status === 'completed' || (Number.isFinite(endTime) && endTime < Date.now());
+  };
+
+  const filteredEvents = events
+    .filter((event) => activeCategory === 'All' || event.type.toLowerCase().includes(activeCategory.toLowerCase()))
+    .filter((event) => statusFilter === 'all' || (statusFilter === 'past' ? isPastEvent(event) : !isPastEvent(event)))
+    .sort((a, b) => {
+      const aPast = isPastEvent(a);
+      const bPast = isPastEvent(b);
+      if (aPast !== bPast) return aPast ? 1 : -1;
+      return aPast
+        ? new Date(b.date_start).getTime() - new Date(a.date_start).getTime()
+        : new Date(a.date_start).getTime() - new Date(b.date_start).getTime();
+    });
 
   return (
     <div style={{ background: 'var(--bg)', minHeight: '100vh', padding: '60px 0 100px 0' }}>
@@ -323,8 +336,29 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
           );
         })()}
 
+        {/* Event availability filter: stays visible above the category tabs on mobile. */}
+        <div className="events-status-filter" role="group" aria-label="Filter events by date">
+          {([
+            { key: 'all', text: 'All events' },
+            { key: 'upcoming', text: 'Upcoming' },
+            { key: 'past', text: 'Past events' },
+          ] as const).map((item) => (
+            <button
+              key={item.key}
+              type="button"
+              className="events-status-button"
+              aria-pressed={statusFilter === item.key}
+              onClick={() => setStatusFilter(item.key)}
+            >
+              {item.text}
+            </button>
+          ))}
+        </div>
+
         {/* MICROSOFT PIVOT CATEGORY TABS */}
         <div
+          role="group"
+          aria-label="Filter events by category"
           style={{
             display: 'flex',
             alignItems: 'center',
@@ -344,12 +378,15 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
             return (
               <button
                 key={cat}
+                type="button"
+                aria-pressed={isActive}
                 onClick={() => setActiveCategory(cat)}
                 style={{
                   background: 'none',
                   border: 'none',
                   borderBottom: isActive ? '2px solid var(--brand)' : '2px solid transparent',
-                  padding: '8px 14px',
+                  padding: '12px 14px',
+                  minHeight: '44px',
                   fontSize: '13.5px',
                   fontWeight: isActive ? 600 : 400,
                   color: isActive ? 'var(--brand)' : 'var(--text-muted)',
@@ -420,6 +457,11 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
           )}
         </div>
 
+        {/* Event count updates when either filter changes. */}
+        <p role="status" aria-live="polite" className="events-result-count">
+          Showing {filteredEvents.length} {filteredEvents.length === 1 ? 'event' : 'events'}
+        </p>
+
         {/* EVENT CARDS GRID */}
         {filteredEvents.length === 0 ? (
           <div
@@ -432,13 +474,13 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
             }}
           >
             <p style={{ fontSize: '15px', color: 'var(--text-strong)', fontWeight: 600, marginBottom: '4px' }}>
-              No events found under &ldquo;{activeCategory}&rdquo;
+              No matching events found
             </p>
             <p style={{ fontSize: '13px', color: 'var(--text-muted)', marginBottom: '16px' }}>
-              Select &ldquo;All&rdquo; to browse all scheduled community sessions.
+              Try changing the category or date filter to see more community events.
             </p>
             <button
-              onClick={() => setActiveCategory('All')}
+              onClick={() => { setActiveCategory('All'); setStatusFilter('all'); }}
               className="fluent-btn fluent-btn-secondary"
               style={{ padding: '6px 14px', fontSize: '13px', borderRadius: '4px' }}
             >
@@ -492,7 +534,9 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                   <div style={{ height: '180px', position: 'relative', overflow: 'hidden', background: 'var(--bg-soft)' }}>
                     <img
                       src={evt.image_url || '/hero_bg.png'}
-                      alt={evt.title}
+                      alt={`${evt.title} event artwork`}
+                      loading="lazy"
+                      decoding="async"
                       style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
 
@@ -536,7 +580,7 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                         bottom: '10px',
                         right: '10px',
                         background: '#ffffff',
-                        color: 'var(--text-strong)',
+                        color: '#242424',
                         padding: '2px 8px',
                         borderRadius: '2px',
                         fontSize: '11.5px',
@@ -604,10 +648,12 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
                     <div>
                       <Link
                         href={`/events/${evt.slug}`}
-                        className="fluent-btn fluent-btn-primary"
+                        className="fluent-btn fluent-btn-primary events-card-action"
+                        aria-label={`View details for ${evt.title}`}
                         style={{
                           width: '100%',
-                          padding: '8px 14px',
+                          padding: '12px 14px',
+                          minHeight: '44px',
                           fontSize: '13px',
                           borderRadius: '4px',
                           display: 'inline-flex',
