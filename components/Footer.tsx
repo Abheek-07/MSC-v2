@@ -112,9 +112,10 @@ export default function Footer() {
                     target="_blank"
                     rel="noopener noreferrer"
                     title={s.label}
+                    aria-label={s.label}
                     style={{
-                      width: '32px',
-                      height: '32px',
+                      width: '44px',
+                      height: '44px',
                       background: 'var(--surface)',
                       border: '1px solid var(--border)',
                       borderRadius: 'var(--radius-sm)',
@@ -171,6 +172,9 @@ export default function Footer() {
                     color: 'var(--text-muted)',
                     textDecoration: 'none',
                     fontSize: '13px',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    minHeight: '40px',
                     transition: 'color var(--duration-fast) var(--easing-decelerate)',
                   }}
                   onMouseEnter={(e) => ((e.target as HTMLElement).style.color = 'var(--brand)')}
