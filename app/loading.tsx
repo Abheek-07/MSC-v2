@@ -3,6 +3,9 @@ import React from 'react';
 export default function Loading() {
   return (
     <div
+      role="status"
+      aria-live="polite"
+      aria-label="Loading page"
       style={{
         minHeight: '60vh',
         display: 'flex',
@@ -15,6 +18,8 @@ export default function Loading() {
     >
       {/* Fluent 2 Circular Progress */}
       <div
+        aria-hidden="true"
+        className="msc-loading-spinner"
         style={{
           width: '32px',
           height: '32px',
@@ -36,6 +41,9 @@ export default function Loading() {
       <style>{`
         @keyframes fluent-spin {
           to { transform: rotate(360deg); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .msc-loading-spinner { animation: none !important; }
         }
       `}</style>
     </div>
