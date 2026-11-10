@@ -459,3 +459,67 @@ a:hover {
   }
 }
 
+
+
+/* Public event catalogue: accessible filters and comfortable touch targets */
+.events-status-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.events-status-button {
+  min-height: 44px;
+  padding: 10px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-body);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color var(--duration-fast), border-color var(--duration-fast);
+}
+
+.events-status-button[aria-pressed="true"] {
+  background: var(--brand-soft);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
+.events-status-button:hover {
+  border-color: var(--brand);
+}
+
+.events-result-count {
+  margin-bottom: 16px;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.events-status-button:focus-visible,
+.events-card-action:focus-visible,
+.events-status-filter ~ [role="group"] button:focus-visible {
+  outline: 3px solid var(--ring-focus);
+  outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+  .events-status-filter {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+
+  .events-status-button {
+    padding: 10px 6px;
+    font-size: 12px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .events-status-button {
+    transition: none;
+  }
+}
