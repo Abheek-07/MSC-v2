@@ -11,8 +11,15 @@ export default function EventsClient({ events }: { events: EventItem[] }) {
 
   const categories = ['All', 'Hackathons', 'Workshops', 'Webinars', 'Speaker Sessions'];
 
-  // Spotlight the closest upcoming event or first event
-  const upcomingEvents = events.filter((e) => e.status === 'upcoming');
+  // Date takes precedence over stale event status for the featured event.
+  const now = Date.now();
+  const upcomingEvents = events
+    .filter((event) => {
+      if (event.status !== 'upcoming') return false;
+      const endTime = new Date(event.date_end).getTime();
+      return Number.isFinite(endTime) && endTime >= now;
+    })
+    .sort((a, b) => new Date(a.date_start).getTime() - new Date(b.date_start).getTime());
   const featuredEvent = upcomingEvents[0] || events[0];
 
   const filteredEvents =
